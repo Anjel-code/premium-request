@@ -43,17 +43,29 @@
     /* Premium gradients */
     --gradient-primary: linear-gradient(135deg, hsl(0 0% 11.8%), hsl(0 0% 18%));
     --gradient-gold: linear-gradient(135deg, hsl(43 96% 56%), hsl(43 96% 65%));
-    --gradient-subtle: linear-gradient(180deg, hsl(0 0% 96.1%), hsl(0 0% 93.3%));
-    --gradient-button: linear-gradient(135deg, hsl(43 96% 56%), hsl(43 100% 62%));
-    --gradient-hover: linear-gradient(135deg, hsl(43 100% 62%), hsl(43 100% 68%));
+    --gradient-subtle: linear-gradient(
+      180deg,
+      hsl(0 0% 96.1%),
+      hsl(0 0% 93.3%)
+    );
+    --gradient-button: linear-gradient(
+      135deg,
+      hsl(43 96% 56%),
+      hsl(43 100% 62%)
+    );
+    --gradient-hover: linear-gradient(
+      135deg,
+      hsl(43 100% 62%),
+      hsl(43 100% 68%)
+    );
 
     /* Shadows */
     --shadow-elegant: 0 10px 30px -10px hsl(0 0% 11.8% / 0.15);
     --shadow-premium: 0 25px 50px -12px hsl(0 0% 11.8% / 0.25);
 
     /* Typography hierarchy */
-    --font-display: 'Inter', system-ui, sans-serif;
-    --font-body: 'Inter', system-ui, sans-serif;
+    --font-display: "Inter", system-ui, sans-serif;
+    --font-body: "Inter", system-ui, sans-serif;
 
     --radius: 0.75rem;
 
@@ -120,5 +132,24 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+
+  .bg-concierge-gradient {
+    /* Base background color: a very dark, slightly blue slate */
+    background-color: #0f172a;
+
+    /* Layering multiple radial gradients to create the glowing, swirling effect */
+    background-image:
+      /* Top-right golden glow */ radial-gradient(
+        ellipse 80% 50% at 90% -20%,
+        rgba(250, 204, 21, 0.3),
+        transparent
+      ),
+      /* Bottom-left purple/blue glow */
+        radial-gradient(
+          ellipse 100% 60% at 10% 110%,
+          rgba(99, 102, 241, 0.2),
+          transparent
+        );
   }
 }

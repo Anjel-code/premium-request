@@ -43,7 +43,7 @@ const Contact = () => {
       <Navigation />
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6">
+      <section className="pt-36 pb-20 px-6">
         <div className="container mx-auto text-center">
           <h1 className="text-5xl md:text-6xl font-bold text-primary mb-6 animate-fade-in">
             Contact

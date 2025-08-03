@@ -17,17 +17,18 @@ import AnimatedCounter from "@/components/AnimatedCounter";
 
 const Home = () => {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-hidden">
       <Navigation />
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6">
-        <div className="container mx-auto text-center">
-          <h1 className="text-5xl md:text-7xl font-bold text-primary mb-6 animate-fade-in">
+      <section className="relative overflow-hidden  px-6 bg-[url('/public/hero-background.jpg')] bg-no-repeat bg-cover bg-bottom">
+        <div className="absolute inset-0 z-0 bg-black/35"></div>
+        <div className="relative container mx-auto text-center pt-36 pb-36 z-10">
+          <h1 className="text-5xl md:text-7xl font-bold text-stone-100 mb-6 animate-fade-in">
             Your Personal Product
             <span className="block text-accent">Concierge</span>
           </h1>
-          <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto animate-slide-up">
+          <p className="text-xl md:text-2xl text-stone-300 mb-8 max-w-3xl mx-auto animate-slide-up">
             From concept to delivery, we handle every aspect of finding,
             sourcing, and acquiring any product you need. Experience the luxury
             of having a dedicated team work exclusively for you.
@@ -55,7 +56,7 @@ const Home = () => {
           </div>
 
           {/* Statistics */}
-          <div className="grid md:grid-cols-3 gap-8 mt-16 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-8 mt-14 max-w-4xl mx-auto">
             <div className="text-center">
               <div className="flex items-center justify-center mb-2">
                 <Users className="h-8 w-8 text-accent mr-2" />
@@ -66,7 +67,7 @@ const Home = () => {
                   duration={2500}
                 />
               </div>
-              <p className="text-muted-foreground">Satisfied Clients</p>
+              <p className="text-stone-300">Satisfied Clients</p>
             </div>
             <div className="text-center">
               <div className="flex items-center justify-center mb-2">
@@ -78,7 +79,7 @@ const Home = () => {
                   duration={2500}
                 />
               </div>
-              <p className="text-muted-foreground">Success Rate</p>
+              <p className="text-stone-300">Success Rate</p>
             </div>
             <div className="text-center">
               <div className="flex items-center justify-center mb-2">
@@ -90,7 +91,7 @@ const Home = () => {
                   duration={2500}
                 />
               </div>
-              <p className="text-muted-foreground">Avg Response Time</p>
+              <p className="text-stone-300">Avg Response Time</p>
             </div>
           </div>
         </div>
