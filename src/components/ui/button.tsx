@@ -14,14 +14,14 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90 hover:scale-105 active:animate-button-press",
         outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground hover:scale-105 active:animate-button-press",
+          "border-[2px] border-input bg-stone-100 hover:bg-accent hover:text-accent-foreground hover:scale-105 active:animate-button-press", // Changed hover:text-primary to hover:text-accent-foreground
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80 hover:scale-105 active:animate-button-press",
         ghost:
-          "hover:bg-accent hover:text-accent-foreground hover:scale-105 active:animate-button-press",
+          "hover:bg-accent hover:text-accent-foreground hover:scale-105 active:animate-button-press", // Changed hover:text-primary to hover:text-accent-foreground
         link: "text-primary underline-offset-4 hover:underline hover:scale-105",
         premium:
-          "bg-gradient-button text-accent-foreground hover:bg-[#E6AC10] before:bg-[#E6AC10] hover:scale-105 hover:shadow-lg hover:shadow-accent/25 active:animate-button-press transition-all duration-300 relative group overflow-hidden before:absolute before:inset-0 before:opacity-0 hover:before:opacity-100 before:transition-opacity before:duration-300",
+          "bg-gradient-button text-accent-foreground hover:bg-[#E6AC10] hover:scale-105 hover:shadow-lg hover:shadow-accent/25 active:animate-button-press transition-all duration-300", // This one was already working
         glow: "bg-accent text-accent-foreground hover:bg-accent/90 hover:scale-105 active:animate-button-press animate-button-glow duration-700",
       },
       size: {

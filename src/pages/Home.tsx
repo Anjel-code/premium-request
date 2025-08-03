@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -11,17 +11,32 @@ import {
   Trophy,
   Zap,
 } from "lucide-react";
-import Navigation from "@/components/Navigation";
+// Removed: import Navigation from "@/components/Navigation"; // Navigation is now handled in App.jsx
 import TestimonialCarousel from "@/components/TestimonialCarousel";
 import AnimatedCounter from "@/components/AnimatedCounter";
 
-const Home = () => {
+// Home component now accepts props for authentication state and modal control
+const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
+  const navigate = useNavigate(); // Initialize useNavigate hook
+
+  // Function to handle "Start Your Request" button click
+  const handleStartRequestClick = () => {
+    if (!user) {
+      // If user is not logged in, show the auth modal
+      setShowAuthModal(true);
+      setIsLoginView(true); // Default to login view when opening from "Start Request"
+    } else {
+      // If user is logged in, navigate to the order page
+      navigate("/order");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background overflow-hidden">
-      <Navigation />
+      {/* Navigation component is now rendered at the App.jsx level, not here. */}
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden  px-6 bg-[url('/public/hero-background.jpg')] bg-no-repeat bg-cover bg-bottom">
+      <section className="relative overflow-hidden px-6 bg-[url('/public/hero-background.jpg')] bg-no-repeat bg-cover bg-bottom">
         <div className="absolute inset-0 z-0 bg-black/35"></div>
         <div className="relative container mx-auto text-center pt-36 pb-36 z-10">
           <h1 className="text-5xl md:text-7xl font-bold text-stone-100 mb-6 animate-fade-in">
@@ -35,21 +50,19 @@ const Home = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-scale-in">
             <Button
-              asChild
               variant="premium"
               size="lg"
               className="text-lg px-8 py-6"
+              onClick={handleStartRequestClick} // Use the new handler
             >
-              <Link to="/order">
-                <span className="relative z-10">Start Your Request</span>{" "}
-                <ArrowRight className="ml-2 h-5 w-5 z-10" />
-              </Link>
+              <span className="relative z-10">Start Your Request</span>{" "}
+              <ArrowRight className="ml-2 h-5 w-5 z-10" />
             </Button>
             <Button
               asChild
               variant="outline"
               size="lg"
-              className="text-lg px-8 py-6 border-accent text-accent hover:bg-accent/10"
+              className="text-lg px-8 py-6 border-accent text-accent bg-stone-800 hover:text-stone-200 hover:bg-accent/10"
             >
               <Link to="/about">Learn More</Link>
             </Button>
@@ -256,14 +269,12 @@ const Home = () => {
             important product needs.
           </p>
           <Button
-            asChild
             variant="glow"
             size="lg"
             className="text-lg px-8 py-6"
+            onClick={handleStartRequestClick} // Use the new handler here too
           >
-            <Link to="/order">
-              Start Your Request Today <ArrowRight className="ml-2 h-5 w-5" />
-            </Link>
+            Start Your Request Today <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
         </div>
       </section>

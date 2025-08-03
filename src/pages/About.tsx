@@ -2,12 +2,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Shield, Users, Award, Globe, Clock, CheckCircle } from "lucide-react";
 import { Link } from "react-router-dom";
-import Navigation from "@/components/Navigation";
+// Removed: import Navigation from "@/components/Navigation"; // Navigation is now handled in App.jsx
 
 const About = () => {
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
+      {/* Navigation component is now rendered at the App.jsx level, not here. */}
 
       {/* Hero Section */}
       <section className="pt-36 pb-20 px-6">
@@ -47,11 +47,11 @@ const About = () => {
               </p>
               <div className="grid grid-cols-2 gap-6">
                 <div className="text-center">
-                  <h3 className="text-2xl font-bold text-accent mb-2">500+</h3>
+                  <h3 className="text-2xl font-bold text-accent mb-2">2370+</h3>
                   <p className="text-muted-foreground">Satisfied Clients</p>
                 </div>
                 <div className="text-center">
-                  <h3 className="text-2xl font-bold text-accent mb-2">95%</h3>
+                  <h3 className="text-2xl font-bold text-accent mb-2">100%</h3>
                   <p className="text-muted-foreground">Success Rate</p>
                 </div>
               </div>

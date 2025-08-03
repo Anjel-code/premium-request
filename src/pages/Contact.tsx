@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Mail, Phone, MapPin, Clock, Send } from "lucide-react";
 import { Link } from "react-router-dom";
-import Navigation from "@/components/Navigation";
+// Removed: import Navigation from "@/components/Navigation"; // Navigation is now handled in App.jsx
 import { useToast } from "@/hooks/use-toast";
 
 const Contact = () => {
@@ -18,7 +18,8 @@ const Contact = () => {
     message: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e) => {
+    // Removed React.FormEvent type for broader compatibility
     e.preventDefault();
     // Here you would typically send the form data to your backend
     toast({
@@ -30,7 +31,7 @@ const Contact = () => {
   };
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e // Removed explicit type for broader compatibility
   ) => {
     setFormData((prev) => ({
       ...prev,
@@ -40,7 +41,7 @@ const Contact = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
+      {/* Navigation component is now rendered at the App.jsx level, not here. */}
 
       {/* Hero Section */}
       <section className="pt-36 pb-20 px-6">
