@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle, Clock, Shield, Star, ArrowRight } from "lucide-react";
+import { CheckCircle, Clock, Shield, Star, ArrowRight, Users, Trophy, Zap } from "lucide-react";
 import Navigation from "@/components/Navigation";
+import TestimonialCarousel from "@/components/TestimonialCarousel";
+import AnimatedCounter from "@/components/AnimatedCounter";
 
 const Home = () => {
   return (
@@ -20,12 +22,52 @@ const Home = () => {
             From concept to delivery, we handle every aspect of finding, sourcing, and acquiring any product you need. Experience the luxury of having a dedicated team work exclusively for you.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-scale-in">
-            <Button asChild size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground text-lg px-8 py-6">
+            <Button asChild variant="premium" size="lg" className="text-lg px-8 py-6">
               <Link to="/order">Start Your Request <ArrowRight className="ml-2 h-5 w-5" /></Link>
             </Button>
             <Button asChild variant="outline" size="lg" className="text-lg px-8 py-6 border-accent text-accent hover:bg-accent/10">
               <Link to="/about">Learn More</Link>
             </Button>
+          </div>
+          
+          {/* Statistics */}
+          <div className="grid md:grid-cols-3 gap-8 mt-16 max-w-4xl mx-auto">
+            <div className="text-center">
+              <div className="flex items-center justify-center mb-2">
+                <Users className="h-8 w-8 text-accent mr-2" />
+                <AnimatedCounter 
+                  end={500} 
+                  suffix="+" 
+                  className="text-4xl font-bold text-accent" 
+                  duration={2500}
+                />
+              </div>
+              <p className="text-muted-foreground">Satisfied Clients</p>
+            </div>
+            <div className="text-center">
+              <div className="flex items-center justify-center mb-2">
+                <Trophy className="h-8 w-8 text-accent mr-2" />
+                <AnimatedCounter 
+                  end={98} 
+                  suffix="%" 
+                  className="text-4xl font-bold text-accent" 
+                  duration={2500}
+                />
+              </div>
+              <p className="text-muted-foreground">Success Rate</p>
+            </div>
+            <div className="text-center">
+              <div className="flex items-center justify-center mb-2">
+                <Zap className="h-8 w-8 text-accent mr-2" />
+                <AnimatedCounter 
+                  end={24} 
+                  suffix=" hrs" 
+                  className="text-4xl font-bold text-accent" 
+                  duration={2500}
+                />
+              </div>
+              <p className="text-muted-foreground">Avg Response Time</p>
+            </div>
           </div>
         </div>
       </section>
@@ -125,50 +167,7 @@ const Home = () => {
       <section className="py-20 px-6 bg-gradient-subtle">
         <div className="container mx-auto">
           <h2 className="text-4xl font-bold text-center text-primary mb-16">What Our Clients Say</h2>
-          <div className="grid md:grid-cols-3 gap-8">
-            <Card className="border-0 shadow-elegant">
-              <CardContent className="p-8">
-                <div className="flex mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-5 w-5 fill-accent text-accent" />
-                  ))}
-                </div>
-                <p className="text-muted-foreground mb-6">"Absolutely exceptional service. They found exactly what I needed at a price I never could have negotiated myself."</p>
-                <div>
-                  <p className="font-semibold">Sarah Chen</p>
-                  <p className="text-sm text-muted-foreground">Technology Executive</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-0 shadow-elegant">
-              <CardContent className="p-8">
-                <div className="flex mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-5 w-5 fill-accent text-accent" />
-                  ))}
-                </div>
-                <p className="text-muted-foreground mb-6">"The level of detail and care they put into each request is remarkable. Truly a premium experience."</p>
-                <div>
-                  <p className="font-semibold">Michael Rodriguez</p>
-                  <p className="text-sm text-muted-foreground">Investment Manager</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-0 shadow-elegant">
-              <CardContent className="p-8">
-                <div className="flex mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-5 w-5 fill-accent text-accent" />
-                  ))}
-                </div>
-                <p className="text-muted-foreground mb-6">"They handle everything so professionally. I can't imagine going back to researching products myself."</p>
-                <div>
-                  <p className="font-semibold">Emily Watson</p>
-                  <p className="text-sm text-muted-foreground">Creative Director</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <TestimonialCarousel />
         </div>
       </section>
 
@@ -179,7 +178,7 @@ const Home = () => {
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
             Join hundreds of satisfied clients who trust us with their most important product needs.
           </p>
-          <Button asChild size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground text-lg px-8 py-6">
+          <Button asChild variant="glow" size="lg" className="text-lg px-8 py-6">
             <Link to="/order">Start Your Request Today <ArrowRight className="ml-2 h-5 w-5" /></Link>
           </Button>
         </div>
