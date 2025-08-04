@@ -1,4 +1,3 @@
-// src/pages/Dashboard.tsx
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -136,8 +135,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
     );
 
     if (userRole.includes("admin") || userRole.includes("team_member")) {
-      // Admins and Team Members can see all orders
-      ordersQuery = query(ordersCollectionRef, orderBy("createdAt", "desc"));
+      // Admins and Team Members now only see orders assigned to them
+      ordersQuery = query(
+        ordersCollectionRef,
+        where("assignedTo", "==", user.uid), // <--- KEY CHANGE: Filter by assignedTo current user
+        orderBy("createdAt", "desc")
+      );
     } else if (userRole.includes("customer")) {
       // Customers can only see their own orders
       ordersQuery = query(
