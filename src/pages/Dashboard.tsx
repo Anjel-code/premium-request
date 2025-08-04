@@ -286,12 +286,17 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
             </p>
           </div>
           {hasAdminOrTeamRole && (
-            <Button
-              onClick={() => navigate("/create-dummy-order")}
-              className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-md shadow-sm"
-            >
-              <PlusCircle className="mr-2 h-4 w-4" /> Create Dummy Order
-            </Button>
+            <div className="flex flex-col sm:flex-row">
+              <Button className="mr-2" onClick={() => navigate("queue")}>
+                See the Queue
+              </Button>
+              <Button
+                onClick={() => navigate("/create-dummy-order")}
+                className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-md shadow-sm"
+              >
+                <PlusCircle className="mr-2 h-4 w-4" /> Create Dummy Order
+              </Button>
+            </div>
           )}
         </div>
 

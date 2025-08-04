@@ -1,4 +1,3 @@
-// src/pages/Dashboard.tsx
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -79,54 +78,24 @@ interface UserProfile {
 interface DashboardProps {
   user: UserProfile | null;
   appId: string;
-  userRoles: string[]; // <-- Add this line
+  userRoles: string[]; // <-- Now correctly passed as a prop
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ user, appId, userRoles }) => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
-  const [userRole, setUserRole] = useState<string[]>([]);
-  const [loadingUserRole, setLoadingUserRole] = useState(true);
   const [error, setError] = useState<string | null>(null); // State for errors
-
-  // Fetch user's role on component mount or when user changes
-  useEffect(() => {
-    const fetchUserRole = async () => {
-      if (!user || !db) {
-        setLoadingUserRole(false);
-        setUserRole([]); // No user, no roles
-        return;
-      }
-      try {
-        const userProfileRef = doc(db, `users`, user.uid); // Top-level 'users' collection
-        const userSnap = await getDoc(userProfileRef);
-        if (userSnap.exists()) {
-          const profileData = userSnap.data() as UserProfile;
-          setUserRole(profileData.roles || []);
-        } else {
-          setUserRole(["customer"]); // Default to customer if profile not found
-        }
-      } catch (err) {
-        console.error("Error fetching user role:", err);
-        setUserRole([]);
-        setError("Failed to load user permissions.");
-      } finally {
-        setLoadingUserRole(false);
-      }
-    };
-    fetchUserRole();
-  }, [user, db]); // Re-run when user or db instance changes
 
   // Fetch orders based on user role
   useEffect(() => {
-    // Wait until db, user, and userRole are loaded
-    if (!db || !user || loadingUserRole) {
+    // Wait until db and user are loaded, and userRoles is available
+    if (!db || !user || userRoles.length === 0) {
       if (!user) {
         // If no user, set orders to empty and stop loading
         setOrders([]);
-        setLoadingOrders(false);
       }
+      setLoadingOrders(false); // Stop loading if prerequisites aren't met
       return;
     }
 
@@ -136,10 +105,17 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId, userRoles }) => {
       `artifacts/${appId}/public/data/orders`
     );
 
-    if (userRole.includes("admin") || userRole.includes("team_member")) {
-      // Admins and Team Members can see all orders
+    if (userRoles.includes("admin")) {
+      // Admins see ALL orders for overview statistics
       ordersQuery = query(ordersCollectionRef, orderBy("createdAt", "desc"));
-    } else if (userRole.includes("customer")) {
+    } else if (userRoles.includes("team_member")) {
+      // Team Members only see orders assigned to them for overview statistics
+      ordersQuery = query(
+        ordersCollectionRef,
+        where("assignedTo", "==", user.uid),
+        orderBy("createdAt", "desc")
+      );
+    } else if (userRoles.includes("customer")) {
       // Customers can only see their own orders
       ordersQuery = query(
         ordersCollectionRef,
@@ -163,7 +139,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId, userRoles }) => {
           createdAt: doc.data().createdAt?.toDate(),
           updatedAt: doc.data().updatedAt?.toDate(),
           estimatedCompletion: doc.data().estimatedCompletion?.toDate() || null,
+          assignedTo: doc.data().assignedTo || null, // Ensure assignedTo is correctly mapped
           assignedDate: doc.data().assignedDate?.toDate() || null,
+          dismissedBy: doc.data().dismissedBy || null,
           dismissedDate: doc.data().dismissedDate?.toDate() || null,
         })) as Order[];
         setOrders(fetchedOrders);
@@ -179,11 +157,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId, userRoles }) => {
     );
 
     return () => unsubscribe(); // Clean up the listener when the component unmounts
-  }, [db, user, appId, userRole, loadingUserRole]); // Depend on userRole and loadingUserRole
+  }, [db, user, appId, userRoles]); // Depend on userRoles prop
 
   // Determine if the user has admin or team_member role
   const hasAdminOrTeamRole =
-    userRole.includes("admin") || userRole.includes("team_member");
+    userRoles.includes("admin") || userRoles.includes("team_member");
 
   // --- Helper Functions for UI ---
   const getStatusColor = (status: Order["status"]) => {
@@ -223,6 +201,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId, userRoles }) => {
       .join(" ");
   };
 
+  // These calculations now correctly reflect the filtered 'orders' state
   const totalOrders = orders.length;
   const completedOrders = orders.filter((o) => o.status === "completed").length;
   const activeOrders = orders.filter(
@@ -235,8 +214,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId, userRoles }) => {
         )
       : 0;
 
-  if (loadingUserRole || loadingOrders) {
-    // Combine loading states
+  if (loadingOrders) {
     return (
       <DashboardLayout>
         <div className="min-h-[calc(100vh-100px)] flex items-center justify-center p-6">
@@ -448,7 +426,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId, userRoles }) => {
                 ) : orders.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">
                     No orders found.
-                    {userRole.includes("customer") && (
+                    {userRoles.includes("customer") && (
                       <Link
                         to="/order"
                         className="text-accent hover:underline ml-1 font-medium"
@@ -459,52 +437,47 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId, userRoles }) => {
                   </p>
                 ) : (
                   <div className="space-y-4">
-                    {/* Removed .slice(0, 3) to show all orders here */}
-                    {orders.map(
-                      (
-                        order // Display all orders
-                      ) => (
-                        <Card
-                          key={order.id}
-                          className="border shadow-sm rounded-lg"
-                        >
-                          <CardContent className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                            <div>
-                              <h3 className="font-semibold text-lg text-primary">
-                                {order.title || `Order ${order.ticketNumber}`}
-                              </h3>
-                              <p className="text-sm text-muted-foreground">
-                                Status:{" "}
-                                <span
-                                  className={`font-medium ${getStatusColor(
-                                    order.status
-                                  )}`}
-                                >
-                                  {formatStatus(order.status)}
-                                </span>
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                Created:{" "}
-                                {order.createdAt
-                                  ? new Date(
-                                      order.createdAt
-                                    ).toLocaleDateString()
-                                  : "N/A"}
-                              </p>
-                            </div>
-                            <Button
-                              onClick={() => navigate(`/ticket/${order.id}`)}
-                              variant="outline"
-                              size="sm"
-                              className="border-primary text-primary hover:bg-primary/10 rounded-md"
-                            >
-                              View Details
-                            </Button>
-                          </CardContent>
-                        </Card>
-                      )
-                    )}
-                    {/* Always show "View All Orders" button for clarity, or remove if all are shown above */}
+                    {/* Display all orders fetched based on the role-specific query */}
+                    {orders.map((order) => (
+                      <Card
+                        key={order.id}
+                        className="border shadow-sm rounded-lg"
+                      >
+                        <CardContent className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                          <div>
+                            <h3 className="font-semibold text-lg text-primary">
+                              {order.title || `Order ${order.ticketNumber}`}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              Status:{" "}
+                              <span
+                                className={`font-medium ${getStatusColor(
+                                  order.status
+                                )}`}
+                              >
+                                {formatStatus(order.status)}
+                              </span>
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Created:{" "}
+                              {order.createdAt
+                                ? new Date(order.createdAt).toLocaleDateString()
+                                : "N/A"}
+                            </p>
+                          </div>
+                          <Button
+                            onClick={() => navigate(`/ticket/${order.id}`)}
+                            variant="outline"
+                            size="sm"
+                            className="border-primary text-primary hover:bg-primary/10 rounded-md"
+                          >
+                            View Details
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                    {/* The "View All Orders" button is less relevant if all are shown, but kept for consistency */}
+                    {/* Consider removing if you always show all orders in this tab */}
                     <div className="text-center mt-6">
                       <Button asChild variant="outline">
                         <Link to="/dashboard/orders">View All Orders</Link>
