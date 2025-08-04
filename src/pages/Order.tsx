@@ -1,10 +1,11 @@
-// src/pages/Order.tsx (Now standalone)
+// src/pages/Order.tsx
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Bot, Send, CheckCircle, Loader2 } from "lucide-react";
-// Removed: import { useNavigate } from "react-router-dom"; // No longer needed for standalone component
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "../firebase"; // Corrected to "../firebase"
 
 // Define the Message interface for chat messages
 interface Message {
@@ -14,21 +15,23 @@ interface Message {
   timestamp: Date;
 }
 
-// Define the ChatHistoryPart for the Gemini API request
-interface ChatHistoryPart {
-  text: string;
+// Define the ChatMessage for OpenRouter API request
+interface ChatMessage {
+  role: "user" | "assistant" | "system"; // OpenRouter/OpenAI roles
+  content: string;
 }
 
-// Define the ChatHistoryContent for the Gemini API request
-interface ChatHistoryContent {
-  role: "user" | "model";
-  parts: ChatHistoryPart[];
+// Define the UserProfile interface (matching what's stored in Firestore)
+interface UserProfile {
+  uid: string;
+  email: string;
+  displayName: string;
+  // Add other fields if necessary, e.g., photoURL
 }
 
 // Basic Navigation Component (extracted to allow prop passing)
 interface BasicNavbarProps {
   isProcessing: boolean;
-  // Removed: navigate: ReturnType<typeof useNavigate>; // No longer needed
 }
 
 const BasicNavbar: React.FC<BasicNavbarProps> = ({ isProcessing }) => {
@@ -42,25 +45,23 @@ const BasicNavbar: React.FC<BasicNavbarProps> = ({ isProcessing }) => {
         <div>
           <Button
             variant="ghost"
-            // Changed: onClick to use window.location.href
             onClick={() => {
               if (!isProcessing) window.location.href = "/";
             }}
             disabled={isProcessing}
-            className={isProcessing ? "text-gray-400 cursor-not-allowed" : ""} // Gray out when disabled
-            title={isProcessing ? disabledMessage : ""} // Tooltip message
+            className={isProcessing ? "text-gray-400 cursor-not-allowed" : ""}
+            title={isProcessing ? disabledMessage : ""}
           >
             Home
           </Button>
           <Button
             variant="ghost"
-            // Changed: onClick to use window.location.href
             onClick={() => {
               if (!isProcessing) window.location.href = "/dashboard";
             }}
             disabled={isProcessing}
-            className={isProcessing ? "text-gray-400 cursor-not-allowed" : ""} // Gray out when disabled
-            title={isProcessing ? disabledMessage : ""} // Tooltip message
+            className={isProcessing ? "text-gray-400 cursor-not-allowed" : ""}
+            title={isProcessing ? disabledMessage : ""}
           >
             Dashboard
           </Button>
@@ -114,13 +115,17 @@ const markdownToHtml = (markdownText: string) => {
   return html;
 };
 
-const Order = () => {
-  // Removed: const navigate = useNavigate(); // No longer needed
-  // State to manage the current step of the order process
+// Props for the Order component to receive user information and appId
+interface OrderProps {
+  user: UserProfile | null;
+  appId: string; // NEW: Add appId to props
+}
+
+const Order: React.FC<OrderProps> = ({ user, appId }) => {
+  // Accept appId here
   const [currentStep, setCurrentStep] = useState<
     "chat" | "processing" | "complete"
   >("chat");
-  // State to store all chat messages
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
@@ -129,20 +134,14 @@ const Order = () => {
       timestamp: new Date(),
     },
   ]);
-  // State to store the current message being typed by the user
   const [currentMessage, setCurrentMessage] = useState("");
-  // State to track if the AI is currently processing a response
   const [isLoading, setIsLoading] = useState(false);
-  // State to track the current step in the processing phase
   const [processingStep, setProcessingStep] = useState(0);
-  // NEW: State to store the AI-generated summary for the team
   const [generatedSummary, setGeneratedSummary] = useState<string | null>(null);
   const [awaitingFinalAnswer, setAwaitingFinalAnswer] = useState(false);
 
-  // Ref for auto-scrolling the chat window
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Static processing steps (can be made dynamic with AI if needed later)
   const processingSteps = [
     "Analyzing your request...",
     "Researching market options...",
@@ -153,140 +152,80 @@ const Order = () => {
     "Finalizing your personalized plan...",
   ];
 
-  // Effect to scroll to the bottom of the chat when messages update
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Function to call the Gemini API with exponential backoff
-  const callGeminiApi = async (payload: any, retries = 3, delay = 1000) => {
-    // For Vite projects, environment variables are accessed via import.meta.env
-    // Ensure your .env variable is named VITE_GEMINI_API_KEY
-    // If you are using Create React App, it would be process.env.REACT_APP_GEMINI_API_KEY
-    // If you are still seeing "import.meta is not available" warning,
-    // ensure your vite.config.js build target is set to 'es2020' or 'esnext'.
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
+  // Function to call the OpenRouter API (for Kimi K2) with exponential backoff
+  const callOpenRouterApi = async (payload: any, retries = 3, delay = 1000) => {
+    const apiKey = import.meta.env.VITE_MOONSHOT_API_KEY || ""; // Use the new API key variable
+    const apiUrl = "https://openrouter.ai/api/v1/chat/completions";
 
     if (!apiKey) {
       console.error(
-        "GEMINI_API_KEY environment variable is not set. Please ensure it's defined in your .env file (e.g., VITE_GEMINI_API_KEY=YOUR_API_KEY) and your build tool is configured to expose it."
+        "VITE_MOONSHOT_API_KEY environment variable is not set. Please ensure it's defined in your .env file."
       );
-      throw new Error("API key is missing.");
+      throw new Error("Moonshot API key is missing.");
     }
-    console.log(
-      "Using API Key (first 5 chars):",
-      apiKey.substring(0, 5) + "..."
-    ); // Log first few chars to confirm it's loaded
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+    // Optional: Site URL and title for OpenRouter leaderboards
+    const httpReferer = window.location.origin; // Your site's URL
+    const xTitle = "Quibble Concierge"; // Your application's title
 
     for (let i = 0; i < retries; i++) {
       try {
         const response = await fetch(apiUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "HTTP-Referer": httpReferer,
+            "X-Title": xTitle,
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify(payload),
         });
 
         if (!response.ok) {
-          const errorBody = await response.text(); // Read error body to get more details
+          const errorBody = await response.text();
           console.error(
-            `API error response (status ${response.status}):`,
+            `OpenRouter API error (status ${response.status}):`,
             errorBody
           );
           if (response.status === 429 && i < retries - 1) {
             // Too Many Requests
             await new Promise((res) => setTimeout(res, delay));
-            delay *= 2; // Exponential backoff
+            delay *= 2;
             continue;
           }
           throw new Error(
-            `API error: ${response.status} ${response.statusText} - ${errorBody}`
+            `OpenRouter API error: ${response.status} ${response.statusText} - ${errorBody}`
           );
         }
 
         const result = await response.json();
-        // Log the full result for debugging unexpected structures
-        console.log("Gemini API raw result:", result);
+        console.log("OpenRouter API raw result:", result);
 
-        // Check for prompt feedback which indicates if the prompt itself was blocked
-        if (result.promptFeedback && result.promptFeedback.blockReason) {
-          console.error(
-            "Prompt was blocked by safety settings:",
-            result.promptFeedback.blockReason
-          );
-          throw new Error(
-            `Prompt blocked: ${result.promptFeedback.blockReason}`
-          );
-        }
-
-        // Check if candidates array exists and is not empty
+        // OpenRouter's response structure is OpenAI-compatible
         if (
-          result.candidates &&
-          result.candidates.length > 0 &&
-          result.candidates[0].content &&
-          result.candidates[0].content.parts &&
-          result.candidates[0].content.parts.length > 0
+          result.choices &&
+          result.choices.length > 0 &&
+          result.choices[0].message &&
+          result.choices[0].message.content
         ) {
-          return result.candidates[0].content.parts[0].text;
+          return result.choices[0].message.content;
         } else {
-          // Log specific details if structure is unexpected or content is missing
           console.error(
-            "Unexpected API response structure or missing content. Result:",
+            "Unexpected OpenRouter API response structure or missing content. Result:",
             JSON.stringify(result, null, 2)
           );
-
-          // Check if candidates array exists but is empty
-          if (result.candidates && result.candidates.length === 0) {
-            console.error(
-              "API response: 'candidates' array is empty. This usually means no content was generated."
-            );
-            if (result.promptFeedback && result.promptFeedback.safetyRatings) {
-              console.error(
-                "Prompt safety ratings:",
-                result.promptFeedback.safetyRatings
-              );
-            }
-            // Check for a finishReason on the first candidate if it exists
-            if (result.candidates[0] && result.candidates[0].finishReason) {
-              console.error(
-                "Candidate finish reason:",
-                result.candidates[0].finishReason
-              );
-              if (result.candidates[0].safetyRatings) {
-                console.error(
-                  "Candidate safety ratings:",
-                  result.candidates[0].safetyRatings
-                );
-              }
-            }
-            throw new Error(
-              "API response: No content generated (empty candidates array)."
-            );
-          }
-
-          // Check if there's a finishReason on the candidate, which can indicate why no text was generated
-          if (
-            result.candidates &&
-            result.candidates.length > 0 &&
-            result.candidates[0].finishReason
-          ) {
-            console.error(
-              "Candidate finish reason:",
-              result.candidates[0].finishReason
-            );
-            throw new Error(
-              `API response: No generated text. Finish reason: ${result.candidates[0].finishReason}`
-            );
-          }
           throw new Error(
-            "Unexpected API response structure or missing content."
+            "Unexpected OpenRouter API response structure or missing content."
           );
         }
       } catch (error) {
         if (i === retries - 1) {
           console.error(
-            "Failed to call Gemini API after multiple retries:",
+            "Failed to call OpenRouter API after multiple retries:",
             error
           );
           throw error;
@@ -295,67 +234,110 @@ const Order = () => {
         delay *= 2;
       }
     }
-    throw new Error("API call failed after multiple retries.");
+    throw new Error("OpenRouter API call failed after multiple retries.");
   };
 
-  // NEW: Function to generate the summary for the team
-  const generateSummaryForTeam = async () => {
+  // Function to generate the summary for the team using Kimi K2
+  const generateSummaryForTeam = async (): Promise<string | null> => {
     let summaryText =
       "Failed to generate summary. Please check the console for errors and ensure the AI model can respond to the summary prompt.";
     try {
-      // Only use the last 10 messages for summary
-      const recentMessages = messages.slice(-10);
-      const conversation = recentMessages
-        .map((msg) => `${msg.isBot ? "Assistant" : "User"}: ${msg.text}`)
-        .join("\n");
+      // Use the entire conversation for summary, or a subset if too long for context window
+      const conversationForSummary: ChatMessage[] = messages.map((msg) => ({
+        role: msg.isBot ? "assistant" : "user",
+        content: msg.text,
+      }));
 
-      // Simplified summary prompt and higher temperature
-      const summaryPrompt = `Please summarize the following conversation for a team:\n\n${conversation}`;
+      const summaryPrompt: ChatMessage[] = [
+        {
+          role: "system",
+          content:
+            "You are an expert summarizer for a product procurement team. Summarize the following conversation concisely, highlighting the key product, requirements, budget, preferences, and timeline. Format it as a clear, actionable summary for the team.",
+        },
+        ...conversationForSummary,
+        {
+          role: "user",
+          content:
+            "Please provide a concise summary of this conversation for our procurement team.",
+        },
+      ];
 
       const payload = {
-        contents: [{ role: "user", parts: [{ text: summaryPrompt }] }],
-        safetySettings: [
-          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-          {
-            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-            threshold: "BLOCK_NONE",
-          },
-        ],
-        generationConfig: {
-          responseMimeType: "text/plain",
-          temperature: 0.9, // Increased temperature
-          maxOutputTokens: 2048,
-        },
+        model: "moonshotai/kimi-k2:free",
+        messages: summaryPrompt,
+        temperature: 0.7, // Keep temperature moderate for summarization
+        max_tokens: 500, // Limit summary length
       };
 
-      const apiResponseText = await callGeminiApi(payload);
+      const apiResponseText = await callOpenRouterApi(payload);
       if (apiResponseText) {
         summaryText = apiResponseText;
+        setGeneratedSummary(summaryText);
+        return summaryText;
       } else {
         console.warn(
           "API call for summary returned no text. Using fallback summary."
         );
-        // Attempt to create a basic summary from the first user message as a fallback
         const firstUserMessage = messages.find((msg) => !msg.isBot);
-        if (firstUserMessage) {
-          summaryText = `AI could not generate a detailed summary. Initial request: "${firstUserMessage.text}"`;
-        } else {
-          summaryText =
-            "AI could not generate a detailed summary, and no initial user request found.";
-        }
+        const fallback = firstUserMessage
+          ? `AI could not generate a detailed summary. Initial request: "${firstUserMessage.text}"`
+          : "AI could not generate a detailed summary, and no initial user request found.";
+        setGeneratedSummary(fallback);
+        return fallback;
       }
-      setGeneratedSummary(summaryText);
     } catch (error) {
       console.error("Error generating summary:", error);
-      // Fallback message if summary generation fails due to an error
-      setGeneratedSummary(
-        "Failed to generate summary due to an error. Please check the console for details."
+      const errorFallback =
+        "Failed to generate summary due to an error. Please check the console for details.";
+      setGeneratedSummary(errorFallback);
+      return null;
+    }
+  };
+
+  // Function to save the entire order (conversation + summary) to Firestore
+  const saveOrderToFirestore = async (summary: string) => {
+    if (!user || !user.uid) {
+      console.error("User not authenticated. Cannot save order.");
+      return;
+    }
+    if (!db) {
+      console.error("Firestore DB not initialized. Cannot save order.");
+      return;
+    }
+
+    // --- NEW: Debugging Logs ---
+    console.log("Attempting to save order to Firestore:");
+    console.log("  appId:", appId);
+    console.log("  userId:", user.uid);
+    console.log("  userEmail:", user.email);
+    console.log("  userName:", user.displayName);
+    console.log("  summary:", summary);
+    console.log("  conversation length:", messages.length);
+    // --- END Debugging Logs ---
+
+    try {
+      const ordersCollectionRef = collection(
+        db,
+        `artifacts/${appId}/public/data/orders`
       );
+
+      await addDoc(ordersCollectionRef, {
+        userId: user.uid,
+        userEmail: user.email,
+        userName: user.displayName,
+        conversation: messages.map((msg) => ({
+          text: msg.text,
+          isBot: msg.isBot,
+          timestamp: msg.timestamp.toISOString(),
+        })),
+        summary: summary,
+        status: "pending",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      console.log("Order saved to Firestore successfully!");
+    } catch (error) {
+      console.error("Error saving order to Firestore:", error);
     }
   };
 
@@ -375,52 +357,35 @@ const Order = () => {
     setIsLoading(true);
 
     try {
-      // Build chat history for the AI, alternating user and model roles
-      const chatHistory: ChatHistoryContent[] = messages.map((msg) => ({
-        role: msg.isBot ? "model" : "user",
-        parts: [{ text: msg.text }],
-      }));
-      // Add the current user message to the history for the API call
-      chatHistory.push({ role: "user", parts: [{ text: userMessage.text }] });
+      // Build chat history for the AI in OpenRouter/OpenAI format
+      const chatHistoryForAPI: ChatMessage[] = [];
 
-      // Initial prompt to guide the AI's behavior
-      const initialPrompt =
+      // Initial prompt to guide the AI's behavior (can be a system message or first user message)
+      const initialPromptContent =
         "You are a personal product concierge assistant. Your goal is to gather detailed information about a product or service the user is looking for. Ask one clear, concise follow-up question at a time. Once you have enough information (product, requirements, budget, preferences, timeline), conclude by saying 'Thank you for all the details! Let me process your request and create a personalized procurement plan for you.' Do not generate the plan, just indicate readiness to process.";
 
-      // Prepend the initial prompt to the chat history for context
+      // Add the initial prompt as a system message or first user message
+      // Using 'user' role for initial prompt as per OpenRouter's example for simplicity
+      chatHistoryForAPI.push({ role: "user", content: initialPromptContent });
+
+      // Add previous messages from state to chat history for context
+      messages.forEach((msg) => {
+        chatHistoryForAPI.push({
+          role: msg.isBot ? "assistant" : "user",
+          content: msg.text,
+        });
+      });
+      // Add the current user message to the history for the API call
+      chatHistoryForAPI.push({ role: "user", content: userMessage.text });
+
       const payload = {
-        contents: [
-          { role: "user", parts: [{ text: initialPrompt }] },
-          ...chatHistory,
-        ],
-        // NEW: Add safety settings to allow more responses for testing
-        safetySettings: [
-          {
-            category: "HARM_CATEGORY_HARASSMENT",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_HATE_SPEECH",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-            threshold: "BLOCK_NONE",
-          },
-        ],
-        // Explicitly ask for text output and set temperature
-        generationConfig: {
-          responseMimeType: "text/plain",
-          temperature: 0.9,
-          maxOutputTokens: 2048, // or 4096 if supported
-        },
+        model: "moonshotai/kimi-k2:free", // Specify the model
+        messages: chatHistoryForAPI, // Pass the formatted chat history
+        temperature: 0.9, // Adjust as needed for creativity
+        max_tokens: 1000, // Limit response length
       };
 
-      const aiResponseText = await callGeminiApi(payload);
+      const aiResponseText = await callOpenRouterApi(payload);
 
       const botResponse: Message = {
         id: messages.length + 2,
@@ -431,16 +396,20 @@ const Order = () => {
 
       setMessages((prev) => [...prev, botResponse]);
 
+      // Check if the AI's response indicates completion
       if (
         aiResponseText.includes("Thank you for all the details!") ||
         aiResponseText.includes("Let me process your request")
       ) {
-        setAwaitingFinalAnswer(true); // Set flag, don't generate summary yet
+        setAwaitingFinalAnswer(true); // Set flag to indicate AI is ready to conclude
       } else if (awaitingFinalAnswer) {
-        // User just sent their final answer, now generate summary
+        // User just sent their final answer, now generate summary and save order
         setAwaitingFinalAnswer(false);
-        await generateSummaryForTeam();
-        setTimeout(() => startProcessing(), 500);
+        const finalSummary = await generateSummaryForTeam(); // Get the summary from Kimi K2
+        if (finalSummary) {
+          await saveOrderToFirestore(finalSummary); // Save the order to Firestore
+        }
+        setTimeout(() => startProcessing(), 500); // Then start processing animation
       }
     } catch (error) {
       console.error("Error communicating with AI:", error);
@@ -491,8 +460,7 @@ const Order = () => {
   if (currentStep === "processing") {
     return (
       <div className="min-h-screen bg-background">
-        <BasicNavbar isProcessing={isNavbarDisabled} />{" "}
-        {/* Removed navigate prop */}
+        <BasicNavbar isProcessing={isNavbarDisabled} />
         <div className="pt-32 pb-20 px-6">
           <div className="container mx-auto max-w-2xl">
             <Card className="border-0 shadow-premium rounded-xl">
@@ -535,8 +503,7 @@ const Order = () => {
   if (currentStep === "complete") {
     return (
       <div className="min-h-screen bg-background">
-        <BasicNavbar isProcessing={isNavbarDisabled} />{" "}
-        {/* Removed navigate prop */}
+        <BasicNavbar isProcessing={isNavbarDisabled} />
         <div className="pt-32 pb-20 px-6">
           <div className="container mx-auto max-w-2xl">
             <Card className="border-0 shadow-premium rounded-xl">
@@ -553,7 +520,7 @@ const Order = () => {
                   via email.
                 </p>
 
-                {/* NEW: Display the generated summary here */}
+                {/* Display the generated summary here */}
                 {generatedSummary && (
                   <div className="mt-8 p-6 bg-muted rounded-lg text-left">
                     <h3 className="text-xl font-semibold mb-4 text-primary">
@@ -570,7 +537,6 @@ const Order = () => {
 
                 <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
                   <Button
-                    // Changed: onClick to use window.location.href
                     onClick={() => (window.location.href = "/dashboard")}
                     size="lg"
                     className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-md"
@@ -594,19 +560,9 @@ const Order = () => {
     );
   }
 
-  // Find the index where the assistant asks about the timeline
-  const timelineIndex = messages.findIndex(
-    (msg) =>
-      msg.isBot && msg.text.toLowerCase().includes("acquisition timeline")
-  );
-  // Include all messages after that point
-  const recentMessages =
-    timelineIndex !== -1 ? messages.slice(timelineIndex) : messages.slice(-15);
-
   return (
     <div className="min-h-screen bg-background">
-      <BasicNavbar isProcessing={isNavbarDisabled} />{" "}
-      {/* Removed navigate prop */}
+      <BasicNavbar isProcessing={isNavbarDisabled} />
       <div className="pt-32 pb-20 px-6">
         <div className="container mx-auto max-w-4xl">
           <div className="text-center mb-8">

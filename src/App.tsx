@@ -6,20 +6,20 @@ import {
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithPopup,
-  // Removed useLocation from here as it will be used in a child component
 } from "firebase/auth";
-import { auth } from "./firebase";
+import { doc, setDoc } from "firebase/firestore"; // Import Firestore functions
+import { auth, db } from "./firebase"; // Import both auth and db
 
 // Your existing imports for UI components and routing
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom"; // Keep useLocation for the inner component
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Your page components
 import Home from "./pages/Home";
-import Order from "./pages/Order";
+import Order from "./pages/Order"; // This component now expects 'user' and 'appId' props
 import Dashboard from "./pages/Dashboard";
 import DashboardOrders from "./pages/DashboardOrders";
 import DashboardNotifications from "./pages/DashboardNotifications";
@@ -27,7 +27,7 @@ import TicketView from "./pages/TicketView";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
-import Navigation from "@/components/Navigation"; // Ensure Navigation is imported here
+import Navigation from "@/components/Navigation";
 
 // --- Tailwind-like styles for basic UI (kept for standalone functionality) ---
 const styles = `
@@ -97,7 +97,9 @@ const AppContent = ({
   loading,
   handleAuthAction,
   handleGoogleSignIn,
+  appId,
 }) => {
+  // Added appId prop
   const location = useLocation(); // useLocation is now correctly inside BrowserRouter's context
   const hideNavbarPaths = [
     "/dashboard",
@@ -132,7 +134,8 @@ const AppContent = ({
             />
           }
         />
-        <Route path="/order" element={<Order />} />
+        {/* Pass the 'user' and 'appId' props to the Order component */}
+        <Route path="/order" element={<Order user={user} appId={appId} />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/dashboard/orders" element={<DashboardOrders />} />
         <Route
@@ -268,14 +271,62 @@ function App() {
   const [loading, setLoading] = useState(true); // Initial loading state for Firebase Auth
   const [showAuthModal, setShowAuthModal] = useState(false); // New state for modal visibility
 
+  // Retrieve __app_id at the top level of App component and ensure it's a string
+  // THIS IS THE CRUCIAL PART THAT WAS MISSING IN YOUR PREVIOUS COPY
+  // Safely access __app_id from the global window object to avoid reference errors
+  const rawAppId =
+    typeof (window as any).__app_id !== "undefined"
+      ? (window as any).__app_id
+      : "default-app-id-fallback";
+  console.log(
+    "App.jsx Debug: Type of __app_id:",
+    typeof (window as any).__app_id
+  );
+  console.log("App.jsx Debug: Value of __app_id:", (window as any).__app_id);
+  const appId = String(rawAppId); // Explicitly convert to string to prevent 'undefined' as a segment
+  console.log("App.jsx Debug: Final appId being used:", appId);
+
+  // Function to create or update user profile in Firestore
+  const createUserProfile = async (user) => {
+    if (!user) return; // Ensure user object exists
+
+    const userRef = doc(db, "users", user.uid);
+    const createdAt = user.metadata.creationTime
+      ? new Date(user.metadata.creationTime)
+      : new Date();
+    const lastLoginAt = user.metadata.lastSignInTime
+      ? new Date(user.metadata.lastSignInTime)
+      : new Date();
+
+    try {
+      await setDoc(
+        userRef,
+        {
+          email: user.email,
+          displayName: user.displayName || user.email.split("@")[0], // Use display name or email username
+          createdAt: createdAt,
+          lastLoginAt: lastLoginAt,
+          roles: ["customer"], // Default role
+          profilePictureUrl: user.photoURL || null, // Store profile picture URL if available (e.g., from Google)
+        },
+        { merge: true }
+      ); // Use merge: true to update if document exists, create if not
+      console.log("User profile updated/created in Firestore:", user.uid);
+    } catch (firestoreError) {
+      console.error("Error writing user to Firestore:", firestoreError);
+      setError("Failed to save user profile.");
+    }
+  };
+
   // Use a useEffect hook to set up the onAuthStateChanged listener
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       setLoading(false); // Authentication state has been determined
-      // If user logs in, close the modal automatically
+      // If user logs in, close the modal automatically and create/update profile
       if (currentUser) {
         setShowAuthModal(false);
+        await createUserProfile(currentUser); // Call profile creation/update
       }
     });
 
@@ -287,14 +338,23 @@ function App() {
     setLoading(true);
 
     try {
+      let userCredential;
       if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password);
+        userCredential = await signInWithEmailAndPassword(
+          auth,
+          email,
+          password
+        );
       } else {
-        await createUserWithEmailAndPassword(auth, email, password);
+        userCredential = await createUserWithEmailAndPassword(
+          auth,
+          email,
+          password
+        );
       }
       setEmail("");
       setPassword("");
-      // The modal will close automatically via the useEffect on successful login
+      // createUserProfile will be called by onAuthStateChanged listener
     } catch (e) {
       console.error(e);
       let errorMessage = "An unexpected error occurred.";
@@ -313,9 +373,6 @@ function App() {
           case "auth/wrong-password":
             errorMessage = "Invalid email or password.";
             break;
-          case "auth/popup-closed-by-user":
-            errorMessage = "Authentication popup closed.";
-            break;
           default:
             errorMessage = e.message;
         }
@@ -331,9 +388,8 @@ function App() {
     setError("");
     setLoading(true);
     try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      // The modal will close automatically via the useEffect on successful login
+      const result = await signInWithPopup(auth, new GoogleAuthProvider());
+      // createUserProfile will be called by onAuthStateChanged listener
     } catch (e) {
       console.error(e);
       let errorMessage = "Failed to sign in with Google.";
@@ -397,6 +453,7 @@ function App() {
             loading={loading}
             handleAuthAction={handleAuthAction}
             handleGoogleSignIn={handleGoogleSignIn}
+            appId={appId} // Pass appId to AppContent
           />
         </BrowserRouter>
       </TooltipProvider>
