@@ -1,9 +1,35 @@
-// src/pages/DashboardOrders.tsx
+// src/pages/Dashboard.tsx
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import {
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  TrendingUp,
+  Package,
+  DollarSign,
+  Calendar,
+  MessageSquare,
+  Target,
+  Award,
+  Zap,
+  Star,
+  Loader2, // Import Loader2 for loading state
+  PlusCircle, // For the "Create Dummy Order" button
+  ShoppingCart, // For Orders tab (from previous shorter version)
+  Bell, // For Notifications tab (from previous shorter version)
+  Users, // For Team Chat tab (from previous shorter version)
+  XCircle, // For dismissed status
+} from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { DashboardLayout } from "@/components/DashboardLayout";
+import AnimatedCounter from "@/components/AnimatedCounter";
+
+// Firebase imports
 import {
   collection,
   query,
@@ -13,29 +39,31 @@ import {
   doc,
   getDoc,
 } from "firebase/firestore";
-import { db } from "../firebase"; // Ensure db is imported
+import { db } from "../firebase"; // Ensure this path is correct for your firebase.js
 
-// Define the Order interface (matching Firestore document structure)
+// Define the Order interface to match Firestore data and your display needs
 interface Order {
   id: string;
-  userId: string;
-  userEmail: string;
-  userName: string;
+  userId: string; // Added userId for filtering
+  userEmail: string; // Added userEmail for context
+  userName: string; // Added userName for context
   title: string;
-  summary: string;
-  status: "pending" | "accepted" | "completed" | "dismissed";
-  createdAt: Date;
-  updatedAt: Date;
+  summary?: string; // Optional summary field
+  status: "pending" | "accepted" | "completed" | "dismissed"; // Updated status types for consistency
+  createdAt: Date; // Changed to Date as it will be converted on fetch
+  updatedAt: Date; // Changed to Date as it will be converted on fetch
   ticketNumber: string;
-  estimatedCompletion: string | null;
+  estimatedCompletion: Date | null; // Changed to Date or null
   budget: string;
   progress: number;
   lastUpdate: string;
-  assignedTo: string | null;
-  assignedDate: Date | null;
-  dismissedBy: string | null;
-  dismissedDate: Date | null;
-  conversation: Array<{ text: string; isBot: boolean; timestamp: string }>;
+  timeRemaining?: string; // Optional field
+  isPaid?: boolean; // Optional field
+  assignedTo: string | null; // Added assignedTo
+  assignedDate: Date | null; // Added assignedDate
+  dismissedBy: string | null; // Added dismissedBy
+  dismissedDate: Date | null; // Added dismissedDate
+  conversation?: Array<{ text: string; isBot: boolean; timestamp: string }>; // Optional conversation
 }
 
 // Define the UserProfile interface (matching what's stored in Firestore)
@@ -47,39 +75,42 @@ interface UserProfile {
   photoURL?: string; // Optional, if you store it
 }
 
-// Props for the DashboardOrders component
-interface DashboardOrdersProps {
-  user: UserProfile | null; // Now accepts user object
-  appId: string; // Now accepts appId
+// Props for the Dashboard component
+interface DashboardProps {
+  user: UserProfile | null;
+  appId: string;
+  userRoles: string[]; // <-- Add this line
 }
 
-const DashboardOrders: React.FC<DashboardOrdersProps> = ({ user, appId }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, appId, userRoles }) => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [userRole, setUserRole] = useState<string[]>([]);
   const [loadingUserRole, setLoadingUserRole] = useState(true);
+  const [error, setError] = useState<string | null>(null); // State for errors
 
-  // Fetch user's role on component mount
+  // Fetch user's role on component mount or when user changes
   useEffect(() => {
     const fetchUserRole = async () => {
       if (!user || !db) {
         setLoadingUserRole(false);
+        setUserRole([]); // No user, no roles
         return;
       }
       try {
-        // Fetch user profile from the 'users' collection
-        const userProfileRef = doc(db, `users`, user.uid);
+        const userProfileRef = doc(db, `users`, user.uid); // Top-level 'users' collection
         const userSnap = await getDoc(userProfileRef);
         if (userSnap.exists()) {
           const profileData = userSnap.data() as UserProfile;
           setUserRole(profileData.roles || []);
         } else {
-          setUserRole([]); // Default to no roles if profile not found
+          setUserRole(["customer"]); // Default to customer if profile not found
         }
-      } catch (error) {
-        console.error("Error fetching user role in DashboardOrders:", error);
+      } catch (err) {
+        console.error("Error fetching user role:", err);
         setUserRole([]);
+        setError("Failed to load user permissions.");
       } finally {
         setLoadingUserRole(false);
       }
@@ -89,8 +120,15 @@ const DashboardOrders: React.FC<DashboardOrdersProps> = ({ user, appId }) => {
 
   // Fetch orders based on user role
   useEffect(() => {
-    // Ensure db, user, and userRole are loaded before attempting to fetch orders
-    if (!db || !user || loadingUserRole) return;
+    // Wait until db, user, and userRole are loaded
+    if (!db || !user || loadingUserRole) {
+      if (!user) {
+        // If no user, set orders to empty and stop loading
+        setOrders([]);
+        setLoadingOrders(false);
+      }
+      return;
+    }
 
     let ordersQuery;
     const ordersCollectionRef = collection(
@@ -109,7 +147,7 @@ const DashboardOrders: React.FC<DashboardOrdersProps> = ({ user, appId }) => {
         orderBy("createdAt", "desc")
       );
     } else {
-      // No recognized role or unauthenticated, show no orders
+      // No recognized role, show no orders
       setOrders([]);
       setLoadingOrders(false);
       return;
@@ -121,103 +159,404 @@ const DashboardOrders: React.FC<DashboardOrdersProps> = ({ user, appId }) => {
         const fetchedOrders: Order[] = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-          // Convert Firestore Timestamps to Date objects if necessary
+          // Convert Firestore Timestamps to Date objects immediately
           createdAt: doc.data().createdAt?.toDate(),
           updatedAt: doc.data().updatedAt?.toDate(),
-          assignedDate: doc.data().assignedDate?.toDate(),
-          dismissedDate: doc.data().dismissedDate?.toDate(),
+          estimatedCompletion: doc.data().estimatedCompletion?.toDate() || null,
+          assignedDate: doc.data().assignedDate?.toDate() || null,
+          dismissedDate: doc.data().dismissedDate?.toDate() || null,
         })) as Order[];
         setOrders(fetchedOrders);
         setLoadingOrders(false);
       },
-      (error) => {
-        console.error("Error fetching orders in DashboardOrders:", error);
+      (err) => {
+        console.error("Error fetching orders:", err);
+        setError(
+          "Failed to load orders. Please check your internet connection and Firebase rules."
+        );
         setLoadingOrders(false);
       }
     );
 
-    return () => unsubscribe(); // Cleanup listener on unmount
+    return () => unsubscribe(); // Clean up the listener when the component unmounts
   }, [db, user, appId, userRole, loadingUserRole]); // Depend on userRole and loadingUserRole
 
+  // Determine if the user has admin or team_member role
+  const hasAdminOrTeamRole =
+    userRole.includes("admin") || userRole.includes("team_member");
+
+  // --- Helper Functions for UI ---
+  const getStatusColor = (status: Order["status"]) => {
+    switch (status) {
+      case "pending":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "accepted":
+        return "bg-blue-100 text-blue-800 border-blue-200";
+      case "completed":
+        return "bg-green-100 text-green-800 border-green-200";
+      case "dismissed":
+        return "bg-red-100 text-red-800 border-red-200";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200";
+    }
+  };
+
+  const getStatusIcon = (status: Order["status"]) => {
+    switch (status) {
+      case "pending":
+        return <Clock className="h-4 w-4" />;
+      case "accepted":
+        return <AlertCircle className="h-4 w-4" />; // Using AlertCircle for accepted, could be different
+      case "completed":
+        return <CheckCircle className="h-4 w-4" />;
+      case "dismissed":
+        return <XCircle className="h-4 w-4" />; // Using XCircle for dismissed
+      default:
+        return <Clock className="h-4 w-4" />;
+    }
+  };
+
+  const formatStatus = (status: Order["status"]) => {
+    return status
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
+
+  const totalOrders = orders.length;
+  const completedOrders = orders.filter((o) => o.status === "completed").length;
+  const activeOrders = orders.filter(
+    (o) => o.status !== "completed" && o.status !== "dismissed"
+  ).length; // Active excludes dismissed
+  const avgProgress =
+    orders.length > 0
+      ? Math.round(
+          orders.reduce((acc, o) => acc + o.progress, 0) / orders.length
+        )
+      : 0;
+
   if (loadingUserRole || loadingOrders) {
+    // Combine loading states
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-10 w-10 text-primary animate-spin" />
-        <p className="ml-4 text-primary">Loading orders...</p>
-      </div>
+      <DashboardLayout>
+        <div className="min-h-[calc(100vh-100px)] flex items-center justify-center p-6">
+          <Loader2 className="h-10 w-10 text-primary animate-spin" />
+          <p className="ml-4 text-primary">Loading your dashboard data...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="min-h-[calc(100vh-100px)] flex flex-col items-center justify-center p-6">
+          <Card className="w-full max-w-md text-center shadow-premium rounded-xl">
+            <CardHeader>
+              <CardTitle className="text-2xl text-red-500">Error</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <p className="text-muted-foreground">{error}</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Please ensure your Firebase Firestore is set up correctly and
+                your security rules allow read access to the 'orders'
+                collection.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background pt-20 pb-20 px-6">
-      <div className="container mx-auto max-w-6xl">
-        <Card className="border-0 shadow-premium rounded-xl">
-          <CardHeader className="border-b border-border">
-            <CardTitle>Your Orders</CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            {orders.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                No orders found.
-                {userRole.includes("customer") && (
-                  <Link
-                    to="/order"
-                    className="text-accent hover:underline ml-1"
-                  >
-                    Start a new request!
-                  </Link>
-                )}
+    <DashboardLayout>
+      <div className="space-y-8">
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-4xl font-bold text-primary mb-2">
+              Dashboard Overview
+            </h1>
+            <p className="text-lg text-muted-foreground">
+              Track your requests, manage settings, and stay connected with our
+              team
+            </p>
+          </div>
+          {hasAdminOrTeamRole && (
+            <Button
+              onClick={() => navigate("/create-dummy-order")}
+              className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-md shadow-sm"
+            >
+              <PlusCircle className="mr-2 h-4 w-4" /> Create Dummy Order
+            </Button>
+          )}
+        </div>
+
+        {/* Enhanced Statistics Cards */}
+        <div className="grid md:grid-cols-4 gap-6 mb-8">
+          <Card className="border-0 shadow-elegant hover:shadow-premium transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Orders</p>
+                  <AnimatedCounter
+                    end={totalOrders}
+                    className="text-2xl font-bold text-primary"
+                    duration={1500}
+                  />
+                </div>
+                <Package className="h-8 w-8 text-accent animate-bounce-subtle" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-elegant hover:shadow-premium transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Active Orders</p>
+                  <AnimatedCounter
+                    end={activeOrders}
+                    className="text-2xl font-bold text-primary"
+                    duration={1500}
+                  />
+                </div>
+                <Clock className="h-8 w-8 text-accent animate-pulse-glow" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-elegant hover:shadow-premium transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Completed</p>
+                  <AnimatedCounter
+                    end={completedOrders}
+                    className="text-2xl font-bold text-primary"
+                    duration={1500}
+                  />
+                </div>
+                <CheckCircle className="h-8 w-8 text-accent" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-elegant hover:shadow-premium transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Avg Progress</p>
+                  <AnimatedCounter
+                    end={avgProgress}
+                    suffix="%"
+                    className="text-2xl font-bold text-primary"
+                    duration={1500}
+                  />
+                </div>
+                <TrendingUp className="h-8 w-8 text-accent" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Gamification Elements */}
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
+          <Card className="border-0 shadow-elegant bg-gradient-gold/10">
+            <CardContent className="p-6 text-center">
+              <Target className="h-12 w-12 text-accent mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Completion Rate</h3>
+              <AnimatedCounter
+                end={92}
+                suffix="%"
+                className="text-3xl font-bold text-accent"
+                duration={2000}
+              />
+              <p className="text-sm text-muted-foreground mt-2">
+                Keep up the great work!
               </p>
-            ) : (
-              <div className="space-y-4">
-                {orders.map((order) => (
-                  <Card key={order.id} className="border shadow-sm">
-                    <CardContent className="p-4 flex justify-between items-center">
-                      <div>
-                        <h3 className="font-semibold text-lg">
-                          {order.title || `Order ${order.ticketNumber}`}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          Status:{" "}
-                          <span
-                            className={`font-medium ${
-                              order.status === "pending"
-                                ? "text-yellow-600"
-                                : order.status === "accepted"
-                                ? "text-blue-600"
-                                : order.status === "completed"
-                                ? "text-green-600"
-                                : "text-red-600"
-                            }`}
-                          >
-                            {order.status.charAt(0).toUpperCase() +
-                              order.status.slice(1)}
-                          </span>
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Created:{" "}
-                          {order.createdAt
-                            ? new Date(order.createdAt).toLocaleDateString()
-                            : "N/A"}
-                        </p>
-                      </div>
-                      <Button
-                        onClick={() => navigate(`/ticket/${order.id}`)}
-                        variant="outline"
-                        size="sm"
-                      >
-                        View Details
-                      </Button>
-                    </CardContent>
-                  </Card>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-elegant bg-gradient-gold/10">
+            <CardContent className="p-6 text-center">
+              <Award className="h-12 w-12 text-accent mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Loyalty Level</h3>
+              <div className="text-3xl font-bold text-accent mb-2">Gold</div>
+              <Progress value={75} className="h-2" />
+              <p className="text-sm text-muted-foreground mt-2">
+                25% to Platinum
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-elegant bg-gradient-gold/10">
+            <CardContent className="p-6 text-center">
+              <Star className="h-12 w-12 text-accent mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Satisfaction Score</h3>
+              <div className="flex justify-center mb-2">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="h-6 w-6 fill-accent text-accent" />
                 ))}
               </div>
+              <p className="text-sm text-muted-foreground">
+                Excellent feedback!
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Tabs for Orders, Notifications, Team Chat */}
+        <Tabs defaultValue="orders" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-3 bg-muted/50 rounded-lg p-1 mb-4">
+            <TabsTrigger
+              value="orders"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-md transition-all duration-200"
+            >
+              <ShoppingCart className="mr-2 h-4 w-4" /> Orders
+            </TabsTrigger>
+            <TabsTrigger
+              value="notifications"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-md transition-all duration-200"
+            >
+              <Bell className="mr-2 h-4 w-4" /> Notifications
+            </TabsTrigger>
+            {hasAdminOrTeamRole && (
+              <TabsTrigger
+                value="team-chat"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-md transition-all duration-200"
+              >
+                <Users className="mr-2 h-4 w-4" /> Team Chat
+              </TabsTrigger>
             )}
-          </CardContent>
-        </Card>
+          </TabsList>
+
+          <TabsContent value="orders" className="mt-6">
+            <Card className="border-0 shadow-premium rounded-xl">
+              <CardHeader className="border-b border-border p-6">
+                <CardTitle className="text-2xl font-semibold text-primary">
+                  Your Recent Orders
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                {loadingOrders ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="mr-2 h-6 w-6 animate-spin text-primary" />
+                    <span className="text-primary">Loading orders...</span>
+                  </div>
+                ) : orders.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">
+                    No orders found.
+                    {userRole.includes("customer") && (
+                      <Link
+                        to="/order"
+                        className="text-accent hover:underline ml-1 font-medium"
+                      >
+                        Start a new request!
+                      </Link>
+                    )}
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Removed .slice(0, 3) to show all orders here */}
+                    {orders.map(
+                      (
+                        order // Display all orders
+                      ) => (
+                        <Card
+                          key={order.id}
+                          className="border shadow-sm rounded-lg"
+                        >
+                          <CardContent className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <div>
+                              <h3 className="font-semibold text-lg text-primary">
+                                {order.title || `Order ${order.ticketNumber}`}
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                Status:{" "}
+                                <span
+                                  className={`font-medium ${getStatusColor(
+                                    order.status
+                                  )}`}
+                                >
+                                  {formatStatus(order.status)}
+                                </span>
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Created:{" "}
+                                {order.createdAt
+                                  ? new Date(
+                                      order.createdAt
+                                    ).toLocaleDateString()
+                                  : "N/A"}
+                              </p>
+                            </div>
+                            <Button
+                              onClick={() => navigate(`/ticket/${order.id}`)}
+                              variant="outline"
+                              size="sm"
+                              className="border-primary text-primary hover:bg-primary/10 rounded-md"
+                            >
+                              View Details
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      )
+                    )}
+                    {/* Always show "View All Orders" button for clarity, or remove if all are shown above */}
+                    <div className="text-center mt-6">
+                      <Button asChild variant="outline">
+                        <Link to="/dashboard/orders">View All Orders</Link>
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="notifications" className="mt-6">
+            <Card className="border-0 shadow-premium rounded-xl">
+              <CardHeader className="border-b border-border p-6">
+                <CardTitle className="text-2xl font-semibold text-primary">
+                  Notifications
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <p className="text-center text-muted-foreground py-8">
+                  No new notifications.
+                </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {hasAdminOrTeamRole && (
+            <TabsContent value="team-chat" className="mt-6">
+              <Card className="border-0 shadow-premium rounded-xl">
+                <CardHeader className="border-b border-border p-6">
+                  <CardTitle className="text-2xl font-semibold text-primary">
+                    Team Communication
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <p className="text-center text-muted-foreground py-8">
+                    Team chat functionality will be available here.
+                    <Link
+                      to="/team-chat"
+                      className="text-accent hover:underline ml-1 font-medium"
+                    >
+                      Go to Team Chat
+                    </Link>
+                  </p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+        </Tabs>
       </div>
-    </div>
+    </DashboardLayout>
   );
 };
 
-export default DashboardOrders;
+export default Dashboard;

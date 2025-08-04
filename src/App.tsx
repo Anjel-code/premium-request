@@ -7,15 +7,24 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from "firebase/auth";
-import { doc, setDoc, getDoc } from "firebase/firestore"; // Import getDoc
+import { doc, setDoc, onSnapshot, getDoc, updateDoc } from "firebase/firestore";
 import { auth, db } from "./firebase"; // Import both auth and db
 
 // Your existing imports for UI components and routing
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  useLocation,
+  Navigate,
+} from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+// Import Loader2 from lucide-react
+import { Loader2 } from "lucide-react";
 
 // Your page components
 import Home from "./pages/Home";
@@ -28,7 +37,10 @@ import About from "./pages/About";
 import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
 import Navigation from "@/components/Navigation";
-import TeamChat from "./pages/TeamChat"; // Import the new TeamChat component
+import AdminPanel from "./components/AdminPanel"; // Ensure this import path is correct
+import OrderQueuePage from "./pages/OrderQueuePage";
+import TeamChat from "./pages/TeamChat";
+import CreateDummyOrder from "./pages/CreateDummyOrder"; // Import CreateDummyOrder
 
 // --- Tailwind-like styles for basic UI (kept for standalone functionality) ---
 const styles = `
@@ -82,9 +94,44 @@ const styles = `
 
 const queryClient = new QueryClient();
 
+// Define UserProfile interface for clarity
+interface UserProfile {
+  uid: string;
+  email: string;
+  displayName: string;
+  roles: string[];
+  photoURL?: string;
+  createdAt?: Date;
+  lastLoginAt?: Date;
+  profilePictureUrl?: string;
+}
+
+// Define props for AppContent to accept userRoles and isRolesLoaded
+interface AppContentProps {
+  user: any; // Use a more specific UserProfile type if available
+  userRoles: string[];
+  isRolesLoaded: boolean; // NEW: Prop to indicate if roles have been loaded
+  setShowAuthModal: (show: boolean) => void;
+  handleSignOut: () => void;
+  setIsLoginView: (isLogin: boolean) => void;
+  showAuthModal: boolean;
+  error: string;
+  email: string;
+  setEmail: (email: string) => void;
+  password: string;
+  setPassword: (password: string) => void;
+  isLoginView: boolean;
+  loading: boolean;
+  handleAuthAction: (isLogin: boolean) => void;
+  handleGoogleSignIn: () => void;
+  appId: string;
+}
+
 // New component to wrap content that needs access to React Router hooks
-const AppContent = ({
+const AppContent: React.FC<AppContentProps> = ({
   user,
+  userRoles,
+  isRolesLoaded,
   setShowAuthModal,
   handleSignOut,
   setIsLoginView,
@@ -100,18 +147,36 @@ const AppContent = ({
   handleGoogleSignIn,
   appId,
 }) => {
-  // Added appId prop
-  const location = useLocation(); // useLocation is now correctly inside BrowserRouter's context
+  const location = useLocation();
   const hideNavbarPaths = [
     "/dashboard",
     "/dashboard/orders",
     "/dashboard/notifications",
-    "/ticket", // Match /ticket/:ticketId
-    "/team-chat", // Hide navbar on team chat page
+    "/ticket",
+    "/admin", // Hide navbar for AdminPanel
+    "/dashboard/queue", // Hide navbar for OrderQueuePage
+    "/team-chat", // Hide navbar for TeamChat
+    "/create-dummy-order", // Hide navbar for CreateDummyOrder
   ];
   const shouldHideNavbar = hideNavbarPaths.some((path) =>
     location.pathname.startsWith(path)
   );
+
+  // Helper to check if user has admin or team_member roles
+  const hasTeamOrAdminRole =
+    userRoles.includes("team_member") || userRoles.includes("admin");
+  const isAdmin = userRoles.includes("admin"); // Specific check for AdminPanel
+
+  // Conditional rendering for routes based on user and roles loading status
+  if (user && !isRolesLoaded) {
+    // If user is logged in but roles are not yet loaded, show a loading screen
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-10 w-10 text-primary animate-spin" />
+        <p className="ml-4 text-primary">Loading user permissions...</p>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -136,36 +201,60 @@ const AppContent = ({
             />
           }
         />
-        {/* Pass user and appId to Order component */}
         <Route path="/order" element={<Order user={user} appId={appId} />} />
-        {/* Pass user and appId to Dashboard component */}
         <Route
           path="/dashboard"
-          element={<Dashboard user={user} appId={appId} />}
+          element={<Dashboard user={user} appId={appId} />} // Pass user and appId
         />
-        {/* Pass user and appId to DashboardOrders component */}
         <Route
           path="/dashboard/orders"
-          element={<DashboardOrders user={user} appId={appId} />}
+          element={
+            <DashboardOrders userRoles={userRoles} user={user} appId={appId} />
+          } // Pass user, appId, and userRoles
         />
-        {/* Pass user and appId to DashboardNotifications component */}
         <Route
           path="/dashboard/notifications"
-          element={<DashboardNotifications user={user} appId={appId} />}
+          element={<DashboardNotifications user={user} appId={appId} />} // Pass user and appId
         />
-        {/* Pass user and appId to TicketView component */}
         <Route
           path="/ticket/:ticketId"
-          element={<TicketView user={user} appId={appId} />}
+          element={<TicketView user={user} appId={appId} />} // Pass user and appId
         />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
-        {/* Pass user and appId to TeamChat component */}
         <Route
           path="/team-chat"
           element={<TeamChat user={user} appId={appId} />}
-        />{" "}
-        {/* TeamChat Route */}
+        />
+        <Route
+          path="/create-dummy-order"
+          element={<CreateDummyOrder user={user} appId={appId} />}
+        />
+
+        {/* Admin Panel Route - Protected */}
+        <Route
+          path="/admin"
+          element={
+            isAdmin ? (
+              <AdminPanel userRoles={userRoles} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+
+        {/* Order Queue Page Route - Protected for Team/Admin */}
+        <Route
+          path="/dashboard/queue"
+          element={
+            hasTeamOrAdminRole ? (
+              <OrderQueuePage userRoles={userRoles} user={user} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
@@ -284,28 +373,28 @@ const AppContent = ({
 };
 
 function App() {
-  const [user, setUser] = useState(null); // The Firebase user object
+  const [user, setUser] = useState(null);
+  const [userRoles, setUserRoles] = useState<string[]>([]);
+  const [isRolesLoaded, setIsRolesLoaded] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoginView, setIsLoginView] = useState(true);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true); // Initial loading state for Firebase Auth
-
-  // NEW: State for showAuthModal, initialized to false
+  const [loading, setLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  // Derive appId from the global variable
   const rawAppId =
     typeof (window as any).__app_id !== "undefined"
       ? (window as any).__app_id
       : "default-app-id-fallback";
   const appId = String(rawAppId);
 
-  // Function to create or update user profile in Firestore
   const createUserProfile = async (user) => {
-    if (!user) return; // Ensure user object exists
+    if (!user || !db) return;
 
     const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+
     const createdAt = user.metadata.creationTime
       ? new Date(user.metadata.creationTime)
       : new Date();
@@ -314,33 +403,25 @@ function App() {
       : new Date();
 
     try {
-      const userSnap = await getDoc(userRef); // Try to get the existing user document
-
-      if (userSnap.exists()) {
-        // If profile exists, update only specific fields (like last login)
-        // without overwriting existing roles.
-        await setDoc(
-          userRef,
-          {
-            email: user.email,
-            displayName: user.displayName || user.email.split("@")[0],
-            lastLoginAt: lastLoginAt,
-            profilePictureUrl: user.photoURL || null,
-          },
-          { merge: true }
-        ); // Merge ensures existing fields like 'roles' are preserved
-        console.log("Existing user profile updated in Firestore:", user.uid);
-      } else {
-        // If profile does NOT exist, create it with default roles
+      if (!userSnap.exists()) {
         await setDoc(userRef, {
           email: user.email,
           displayName: user.displayName || user.email.split("@")[0],
           createdAt: createdAt,
           lastLoginAt: lastLoginAt,
-          roles: ["customer"], // Assign default role only on creation
+          roles: ["customer"],
           profilePictureUrl: user.photoURL || null,
         });
-        console.log("New user profile created in Firestore:", user.uid);
+      } else {
+        await updateDoc(userRef, {
+          lastLoginAt: lastLoginAt,
+          displayName:
+            user.displayName ||
+            userSnap.data().displayName ||
+            user.email.split("@")[0],
+          profilePictureUrl:
+            user.photoURL || userSnap.data().profilePictureUrl || null,
+        });
       }
     } catch (firestoreError) {
       console.error("Error writing user to Firestore:", firestoreError);
@@ -348,23 +429,58 @@ function App() {
     }
   };
 
-  // Use a useEffect hook to set up the onAuthStateChanged listener
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
-      setLoading(false); // Authentication state has been determined
-      // If user logs in, close the modal automatically and create/update profile
+      setIsRolesLoaded(false); // Reset roles loaded status on auth change
+
       if (currentUser) {
         setShowAuthModal(false);
-        await createUserProfile(currentUser); // Call profile creation/update
+        if (db) {
+          await createUserProfile(currentUser);
+
+          const userRef = doc(db, "users", currentUser.uid);
+          const unsubscribeRoles = onSnapshot(
+            userRef,
+            (docSnap) => {
+              if (docSnap.exists()) {
+                const data = docSnap.data();
+                const fetchedRoles = (data.roles || []) as string[];
+                setUserRoles(fetchedRoles);
+              } else {
+                setUserRoles([]); // No user profile, no roles
+              }
+              setIsRolesLoaded(true); // Roles are now loaded (or determined to be empty)
+            },
+            (error) => {
+              console.error(
+                "Error fetching user roles with onSnapshot:",
+                error
+              );
+              setUserRoles([]);
+              setIsRolesLoaded(true); // Mark as loaded even on error
+            }
+          );
+          setLoading(false);
+          return () => {
+            unsubscribeRoles(); // Clean up role listener
+          };
+        } else {
+          setLoading(false);
+          setIsRolesLoaded(true); // If db not ready, mark roles as loaded (empty)
+        }
+      } else {
+        setUserRoles([]); // No user, no roles
+        setLoading(false);
+        setIsRolesLoaded(true); // Roles are loaded (empty)
       }
     });
 
-    return () => unsubscribe(); // Clean up the listener
-  }, []);
+    return () => unsubscribeAuth(); // Clean up auth listener
+  }, [db]); // Re-run effect if db instance changes
 
-  const handleAuthAction = async (isLogin) => {
-    setError(""); // Clear previous errors
+  const handleAuthAction = async (isLogin: boolean) => {
+    setError("");
     setLoading(true);
 
     try {
@@ -384,8 +500,7 @@ function App() {
       }
       setEmail("");
       setPassword("");
-      // createUserProfile will be called by onAuthStateChanged listener
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
       let errorMessage = "An unexpected error occurred.";
       if (e.code) {
@@ -403,9 +518,6 @@ function App() {
           case "auth/wrong-password":
             errorMessage = "Invalid email or password.";
             break;
-          case "auth/popup-closed-by-user":
-            errorMessage = "Authentication popup closed.";
-            break;
           default:
             errorMessage = e.message;
         }
@@ -416,14 +528,12 @@ function App() {
     }
   };
 
-  // Handle Google Sign-in
   const handleGoogleSignIn = async () => {
     setError("");
     setLoading(true);
     try {
       const result = await signInWithPopup(auth, new GoogleAuthProvider());
-      // createUserProfile will be called by onAuthStateChanged listener
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
       let errorMessage = "Failed to sign in with Google.";
       if (e.code === "auth/popup-closed-by-user") {
@@ -446,7 +556,7 @@ function App() {
     setLoading(true);
     try {
       await signOut(auth);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
       setError("Failed to sign out.");
     } finally {
@@ -473,6 +583,8 @@ function App() {
         <BrowserRouter>
           <AppContent
             user={user}
+            userRoles={userRoles}
+            isRolesLoaded={isRolesLoaded}
             setShowAuthModal={setShowAuthModal}
             handleSignOut={handleSignOut}
             setIsLoginView={setIsLoginView}
