@@ -20,7 +20,6 @@ import {
   Loader2, // For loading states
   XCircle, // For dismissed status
 } from "lucide-react";
-// Removed: import Navigation from "@/components/Navigation"; // Navigation is handled in App.jsx
 
 import {
   doc,
@@ -94,21 +93,41 @@ const TicketView: React.FC<TicketViewProps> = ({ user, appId }) => {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  console.log("TicketView component rendered.");
+  console.log(
+    "Props received: user =",
+    user,
+    "appId =",
+    appId,
+    "ticketId =",
+    ticketId
+  );
+
   // --- Fetch User Role ---
   useEffect(() => {
+    console.log("useEffect: Fetching user role...");
     const fetchUserRole = async () => {
       if (!user || !db) {
+        console.log(
+          "User or DB not available for role fetch. User:",
+          user,
+          "DB:",
+          db
+        );
         setLoadingUserRole(false);
         setUserRole([]);
         return;
       }
       try {
+        console.log("Attempting to fetch user profile for UID:", user.uid);
         const userProfileRef = doc(db, `users`, user.uid); // Top-level 'users' collection
         const userSnap = await getDoc(userProfileRef);
         if (userSnap.exists()) {
           const profileData = userSnap.data() as UserProfile;
+          console.log("User profile found:", profileData);
           setUserRole(profileData.roles || []);
         } else {
+          console.log("User profile NOT found. Defaulting to customer role.");
           setUserRole(["customer"]); // Default to customer if profile not found
         }
       } catch (err) {
@@ -117,14 +136,34 @@ const TicketView: React.FC<TicketViewProps> = ({ user, appId }) => {
         setError("Failed to load user permissions.");
       } finally {
         setLoadingUserRole(false);
+        console.log("Finished fetching user role. loadingUserRole =", false);
       }
     };
     fetchUserRole();
-  }, [user, db]);
+  }, [user, db]); // Re-run when user or db instance changes
 
   // --- Fetch Order Details and Chat Messages ---
   useEffect(() => {
-    if (!db || !ticketId || loadingUserRole || !user) return; // Wait for user and role to load
+    console.log("useEffect: Fetching order details and chat messages...");
+    console.log(
+      "Dependencies: db =",
+      db,
+      "ticketId =",
+      ticketId,
+      "loadingUserRole =",
+      loadingUserRole,
+      "user =",
+      user
+    );
+
+    if (!db || !ticketId || loadingUserRole || !user) {
+      console.log("Skipping order/chat fetch due to missing dependencies.");
+      if (!user) {
+        console.log("No user found, setting loading to false for orders.");
+        setLoading(false);
+      }
+      return;
+    }
 
     const orderRef = doc(db, `artifacts/${appId}/public/data/orders`, ticketId);
     const messagesCollectionRef = collection(
@@ -132,13 +171,23 @@ const TicketView: React.FC<TicketViewProps> = ({ user, appId }) => {
       `artifacts/${appId}/public/data/orders/${ticketId}/conversation`
     );
 
+    console.log(
+      "Firestore Order Path:",
+      `artifacts/${appId}/public/data/orders/${ticketId}`
+    );
+    console.log(
+      "Firestore Chat Path:",
+      `artifacts/${appId}/public/data/orders/${ticketId}/conversation`
+    );
+
     // Listener for Order Details
+    console.log("Setting up onSnapshot for order details...");
     const unsubscribeOrder = onSnapshot(
       orderRef,
       (docSnap) => {
+        console.log("Order details snapshot received.");
         if (docSnap.exists()) {
           const data = docSnap.data();
-          // Convert Firestore Timestamps to Date objects
           const order: Order = {
             id: docSnap.id,
             ...data,
@@ -149,37 +198,58 @@ const TicketView: React.FC<TicketViewProps> = ({ user, appId }) => {
             dismissedDate: data.dismissedDate?.toDate() || null,
           } as Order;
 
+          console.log("Fetched Order Data:", order);
+
           // Check if the current user is authorized to view this order
           const isAuthorized =
             userRole.includes("admin") ||
             userRole.includes("team_member") ||
             order.userId === user.uid;
 
+          console.log("User roles:", userRole);
+          console.log(
+            "Order userId:",
+            order.userId,
+            "Current user UID:",
+            user.uid
+          );
+          console.log("Is Authorized to view order?", isAuthorized);
+
           if (isAuthorized) {
             setOrderDetails(order);
             setNewProgress(order.progress); // Initialize progress input
+            console.log("Order details set.");
           } else {
             setError("You do not have permission to view this order.");
             setOrderDetails(null);
+            console.warn("Permission denied for order:", ticketId);
           }
         } else {
           setError("Order not found.");
           setOrderDetails(null);
+          console.warn("Order document does not exist for ID:", ticketId);
         }
         setLoading(false);
+        console.log("Order details loading finished. Loading state =", false);
       },
       (err) => {
         console.error("Error fetching order details:", err);
         setError("Failed to load order details. Please check permissions.");
         setLoading(false);
+        console.log(
+          "Order details loading finished with error. Loading state =",
+          false
+        );
       }
     );
 
     // Listener for Chat Messages (subcollection)
+    console.log("Setting up onSnapshot for chat messages...");
     const q = query(messagesCollectionRef, orderBy("timestamp", "asc"));
     const unsubscribeMessages = onSnapshot(
       q,
       (snapshot) => {
+        console.log("Chat messages snapshot received.");
         const fetchedMessages: ChatMessage[] = [];
         snapshot.forEach((doc) => {
           const data = doc.data();
@@ -192,6 +262,7 @@ const TicketView: React.FC<TicketViewProps> = ({ user, appId }) => {
           } as ChatMessage);
         });
         setChatMessages(fetchedMessages);
+        console.log("Fetched Chat Messages:", fetchedMessages);
       },
       (err) => {
         console.error("Error fetching chat messages:", err);
@@ -200,6 +271,7 @@ const TicketView: React.FC<TicketViewProps> = ({ user, appId }) => {
     );
 
     return () => {
+      console.log("Cleaning up Firestore listeners.");
       unsubscribeOrder();
       unsubscribeMessages();
     }; // Cleanup listeners
@@ -207,25 +279,39 @@ const TicketView: React.FC<TicketViewProps> = ({ user, appId }) => {
 
   // --- Scroll to bottom of chat ---
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (chatMessages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      console.log("Scrolled to bottom of chat.");
+    }
   }, [chatMessages]);
 
   // --- Chat Message Handler ---
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !user || !orderDetails) return;
+    console.log("Attempting to send message...");
+    if (!newMessage.trim() || !user || !orderDetails) {
+      console.warn(
+        "Cannot send message: Missing message text, user, or order details."
+      );
+      return;
+    }
 
     try {
       const messagesCollectionRef = collection(
         db,
         `artifacts/${appId}/public/data/orders/${orderDetails.id}/conversation`
       );
+      console.log(
+        "Sending message to path:",
+        `artifacts/${appId}/public/data/orders/${orderDetails.id}/conversation`
+      );
       await addDoc(messagesCollectionRef, {
         senderId: user.uid,
-        senderName: user.displayName || user.email.split("@")[0], // Use display name or email username
+        senderName: user.displayName || user.email.split("@")[0],
         text: newMessage.trim(),
         timestamp: serverTimestamp(), // Use server timestamp
       });
       setNewMessage("");
+      console.log("Message sent successfully!");
     } catch (err) {
       console.error("Error sending message:", err);
       setError("Failed to send message.");
@@ -234,7 +320,13 @@ const TicketView: React.FC<TicketViewProps> = ({ user, appId }) => {
 
   // --- Order Update Handlers (for team members/admins) ---
   const handleUpdateStatus = async (newStatus: Order["status"]) => {
-    if (!orderDetails || !db || !user || !hasAdminOrTeamRole) return;
+    console.log("Attempting to update status to:", newStatus);
+    if (!orderDetails || !db || !user || !hasAdminOrTeamRole) {
+      console.warn(
+        "Cannot update status: Missing order details, DB, user, or insufficient role."
+      );
+      return;
+    }
     try {
       const orderRef = doc(
         db,
@@ -249,11 +341,19 @@ const TicketView: React.FC<TicketViewProps> = ({ user, appId }) => {
       if (newStatus === "accepted" && !orderDetails.assignedTo) {
         updateData.assignedTo = user.uid;
         updateData.assignedDate = new Date();
+        console.log("Assigning order to current user on acceptance.");
       } else if (newStatus === "dismissed" && !orderDetails.dismissedBy) {
         updateData.dismissedBy = user.uid;
         updateData.dismissedDate = new Date();
+        console.log("Dismissing order by current user.");
       }
 
+      console.log(
+        "Updating order status for ID:",
+        orderDetails.id,
+        "with data:",
+        updateData
+      );
       await updateDoc(orderRef, updateData);
       console.log(`Order ${orderDetails.id} status updated to ${newStatus}`);
     } catch (err) {
@@ -263,26 +363,38 @@ const TicketView: React.FC<TicketViewProps> = ({ user, appId }) => {
   };
 
   const handleUpdateProgress = async () => {
+    console.log("Attempting to update progress to:", newProgress);
     if (
       !orderDetails ||
       !db ||
       !user ||
       !hasAdminOrTeamRole ||
       typeof newProgress !== "number"
-    )
+    ) {
+      console.warn(
+        "Cannot update progress: Missing order details, DB, user, insufficient role, or invalid progress value."
+      );
       return;
+    }
     try {
       const orderRef = doc(
         db,
         `artifacts/${appId}/public/data/orders`,
         orderDetails.id
       );
+      const lastUpdateMessage = `Progress updated to ${newProgress}% by ${
+        user.displayName || user.email.split("@")[0]
+      }`;
+      console.log(
+        "Updating order progress for ID:",
+        orderDetails.id,
+        "with progress:",
+        newProgress
+      );
       await updateDoc(orderRef, {
         progress: newProgress,
         updatedAt: new Date(),
-        lastUpdate: `Progress updated to ${newProgress}% by ${
-          user.displayName || user.email.split("@")[0]
-        }`,
+        lastUpdate: lastUpdateMessage,
       });
       console.log(
         `Order ${orderDetails.id} progress updated to ${newProgress}%`
@@ -334,9 +446,16 @@ const TicketView: React.FC<TicketViewProps> = ({ user, appId }) => {
   // Check if the current user has admin or team_member role
   const hasAdminOrTeamRole =
     userRole.includes("admin") || userRole.includes("team_member");
+  console.log("Current user has Admin/Team role:", hasAdminOrTeamRole);
 
   // --- Render Logic ---
   if (loading || loadingUserRole) {
+    console.log(
+      "Rendering loading state. loading =",
+      loading,
+      "loadingUserRole =",
+      loadingUserRole
+    );
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 text-primary animate-spin" />
@@ -346,6 +465,7 @@ const TicketView: React.FC<TicketViewProps> = ({ user, appId }) => {
   }
 
   if (error) {
+    console.log("Rendering error state. Error:", error);
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md text-center shadow-premium rounded-xl">
@@ -365,6 +485,7 @@ const TicketView: React.FC<TicketViewProps> = ({ user, appId }) => {
   }
 
   if (!orderDetails) {
+    console.log("Rendering 'No order details available' fallback.");
     // This case should ideally be caught by the error state, but as a fallback
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -373,6 +494,7 @@ const TicketView: React.FC<TicketViewProps> = ({ user, appId }) => {
     );
   }
 
+  console.log("Rendering TicketView with order details:", orderDetails);
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation component is now handled in App.jsx */}
