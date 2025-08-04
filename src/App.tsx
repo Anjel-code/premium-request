@@ -7,7 +7,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore"; // Import Firestore functions
+import { doc, setDoc, getDoc } from "firebase/firestore"; // Import getDoc
 import { auth, db } from "./firebase"; // Import both auth and db
 
 // Your existing imports for UI components and routing
@@ -19,7 +19,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Your page components
 import Home from "./pages/Home";
-import Order from "./pages/Order"; // This component now expects 'user' and 'appId' props
+import Order from "./pages/Order";
 import Dashboard from "./pages/Dashboard";
 import DashboardOrders from "./pages/DashboardOrders";
 import DashboardNotifications from "./pages/DashboardNotifications";
@@ -28,6 +28,7 @@ import About from "./pages/About";
 import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
 import Navigation from "@/components/Navigation";
+import TeamChat from "./pages/TeamChat"; // Import the new TeamChat component
 
 // --- Tailwind-like styles for basic UI (kept for standalone functionality) ---
 const styles = `
@@ -106,6 +107,7 @@ const AppContent = ({
     "/dashboard/orders",
     "/dashboard/notifications",
     "/ticket", // Match /ticket/:ticketId
+    "/team-chat", // Hide navbar on team chat page
   ];
   const shouldHideNavbar = hideNavbarPaths.some((path) =>
     location.pathname.startsWith(path)
@@ -134,17 +136,36 @@ const AppContent = ({
             />
           }
         />
-        {/* Pass the 'user' and 'appId' props to the Order component */}
+        {/* Pass user and appId to Order component */}
         <Route path="/order" element={<Order user={user} appId={appId} />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/dashboard/orders" element={<DashboardOrders />} />
+        {/* Pass user and appId to Dashboard component */}
+        <Route
+          path="/dashboard"
+          element={<Dashboard user={user} appId={appId} />}
+        />
+        {/* Pass user and appId to DashboardOrders component */}
+        <Route
+          path="/dashboard/orders"
+          element={<DashboardOrders user={user} appId={appId} />}
+        />
+        {/* Pass user and appId to DashboardNotifications component */}
         <Route
           path="/dashboard/notifications"
-          element={<DashboardNotifications />}
+          element={<DashboardNotifications user={user} appId={appId} />}
         />
-        <Route path="/ticket/:ticketId" element={<TicketView />} />
+        {/* Pass user and appId to TicketView component */}
+        <Route
+          path="/ticket/:ticketId"
+          element={<TicketView user={user} appId={appId} />}
+        />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
+        {/* Pass user and appId to TeamChat component */}
+        <Route
+          path="/team-chat"
+          element={<TeamChat user={user} appId={appId} />}
+        />{" "}
+        {/* TeamChat Route */}
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
@@ -269,22 +290,16 @@ function App() {
   const [isLoginView, setIsLoginView] = useState(true);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true); // Initial loading state for Firebase Auth
-  const [showAuthModal, setShowAuthModal] = useState(false); // New state for modal visibility
 
-  // Retrieve __app_id at the top level of App component and ensure it's a string
-  // THIS IS THE CRUCIAL PART THAT WAS MISSING IN YOUR PREVIOUS COPY
-  // Safely access __app_id from the global window object to avoid reference errors
+  // NEW: State for showAuthModal, initialized to false
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // Derive appId from the global variable
   const rawAppId =
     typeof (window as any).__app_id !== "undefined"
       ? (window as any).__app_id
       : "default-app-id-fallback";
-  console.log(
-    "App.jsx Debug: Type of __app_id:",
-    typeof (window as any).__app_id
-  );
-  console.log("App.jsx Debug: Value of __app_id:", (window as any).__app_id);
-  const appId = String(rawAppId); // Explicitly convert to string to prevent 'undefined' as a segment
-  console.log("App.jsx Debug: Final appId being used:", appId);
+  const appId = String(rawAppId);
 
   // Function to create or update user profile in Firestore
   const createUserProfile = async (user) => {
@@ -299,19 +314,34 @@ function App() {
       : new Date();
 
     try {
-      await setDoc(
-        userRef,
-        {
+      const userSnap = await getDoc(userRef); // Try to get the existing user document
+
+      if (userSnap.exists()) {
+        // If profile exists, update only specific fields (like last login)
+        // without overwriting existing roles.
+        await setDoc(
+          userRef,
+          {
+            email: user.email,
+            displayName: user.displayName || user.email.split("@")[0],
+            lastLoginAt: lastLoginAt,
+            profilePictureUrl: user.photoURL || null,
+          },
+          { merge: true }
+        ); // Merge ensures existing fields like 'roles' are preserved
+        console.log("Existing user profile updated in Firestore:", user.uid);
+      } else {
+        // If profile does NOT exist, create it with default roles
+        await setDoc(userRef, {
           email: user.email,
-          displayName: user.displayName || user.email.split("@")[0], // Use display name or email username
+          displayName: user.displayName || user.email.split("@")[0],
           createdAt: createdAt,
           lastLoginAt: lastLoginAt,
-          roles: ["customer"], // Default role
-          profilePictureUrl: user.photoURL || null, // Store profile picture URL if available (e.g., from Google)
-        },
-        { merge: true }
-      ); // Use merge: true to update if document exists, create if not
-      console.log("User profile updated/created in Firestore:", user.uid);
+          roles: ["customer"], // Assign default role only on creation
+          profilePictureUrl: user.photoURL || null,
+        });
+        console.log("New user profile created in Firestore:", user.uid);
+      }
     } catch (firestoreError) {
       console.error("Error writing user to Firestore:", firestoreError);
       setError("Failed to save user profile.");
@@ -372,6 +402,9 @@ function App() {
           case "auth/user-not-found":
           case "auth/wrong-password":
             errorMessage = "Invalid email or password.";
+            break;
+          case "auth/popup-closed-by-user":
+            errorMessage = "Authentication popup closed.";
             break;
           default:
             errorMessage = e.message;
@@ -453,7 +486,7 @@ function App() {
             loading={loading}
             handleAuthAction={handleAuthAction}
             handleGoogleSignIn={handleGoogleSignIn}
-            appId={appId} // Pass appId to AppContent
+            appId={appId}
           />
         </BrowserRouter>
       </TooltipProvider>

@@ -26,7 +26,8 @@ interface UserProfile {
   uid: string;
   email: string;
   displayName: string;
-  // Add other fields if necessary, e.g., photoURL
+  roles: string[]; // ADDED: Crucial for role-based access consistency
+  photoURL?: string; // Optional, if you store it
 }
 
 // Basic Navigation Component (extracted to allow prop passing)
@@ -122,7 +123,6 @@ interface OrderProps {
 }
 
 const Order: React.FC<OrderProps> = ({ user, appId }) => {
-  // Accept appId here
   const [currentStep, setCurrentStep] = useState<
     "chat" | "processing" | "complete"
   >("chat");
@@ -138,7 +138,6 @@ const Order: React.FC<OrderProps> = ({ user, appId }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [processingStep, setProcessingStep] = useState(0);
   const [generatedSummary, setGeneratedSummary] = useState<string | null>(null);
-  const [awaitingFinalAnswer, setAwaitingFinalAnswer] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -152,25 +151,28 @@ const Order: React.FC<OrderProps> = ({ user, appId }) => {
     "Finalizing your personalized plan...",
   ];
 
+  // Define the system prompt once, outside of functions to avoid re-creation
+  const systemPromptContent =
+    "You are a personal product concierge assistant. Your goal is to gather detailed information about a product or service the user is looking for. Ask one clear, concise follow-up question at a time. Once you have enough information (product, requirements, budget, preferences, timeline), conclude by saying 'Thank you for all the details! Let me process your request and create a personalized procurement plan for you.' Do not generate the plan, just indicate readiness to process.";
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Function to call the OpenRouter API (for Kimi K2) with exponential backoff
+  // Function to call the OpenRouter API (for DeepSeek) with exponential backoff
   const callOpenRouterApi = async (payload: any, retries = 3, delay = 1000) => {
-    const apiKey = import.meta.env.VITE_MOONSHOT_API_KEY || ""; // Use the new API key variable
+    const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY || "";
     const apiUrl = "https://openrouter.ai/api/v1/chat/completions";
 
     if (!apiKey) {
       console.error(
-        "VITE_MOONSHOT_API_KEY environment variable is not set. Please ensure it's defined in your .env file."
+        "VITE_DEEPSEEK_API_KEY environment variable is not set. Please ensure it's defined in your .env file."
       );
-      throw new Error("Moonshot API key is missing.");
+      throw new Error("DeepSeek API key is missing.");
     }
 
-    // Optional: Site URL and title for OpenRouter leaderboards
-    const httpReferer = window.location.origin; // Your site's URL
-    const xTitle = "Quibble Concierge"; // Your application's title
+    const httpReferer = window.location.origin;
+    const xTitle = "Quibble Concierge";
 
     for (let i = 0; i < retries; i++) {
       try {
@@ -192,7 +194,6 @@ const Order: React.FC<OrderProps> = ({ user, appId }) => {
             errorBody
           );
           if (response.status === 429 && i < retries - 1) {
-            // Too Many Requests
             await new Promise((res) => setTimeout(res, delay));
             delay *= 2;
             continue;
@@ -203,9 +204,6 @@ const Order: React.FC<OrderProps> = ({ user, appId }) => {
         }
 
         const result = await response.json();
-        console.log("OpenRouter API raw result:", result);
-
-        // OpenRouter's response structure is OpenAI-compatible
         if (
           result.choices &&
           result.choices.length > 0 &&
@@ -237,24 +235,18 @@ const Order: React.FC<OrderProps> = ({ user, appId }) => {
     throw new Error("OpenRouter API call failed after multiple retries.");
   };
 
-  // Function to generate the summary for the team using Kimi K2
+  // Function to generate the summary for the team using DeepSeek
   const generateSummaryForTeam = async (): Promise<string | null> => {
     let summaryText =
       "Failed to generate summary. Please check the console for errors and ensure the AI model can respond to the summary prompt.";
     try {
-      // Use the entire conversation for summary, or a subset if too long for context window
-      const conversationForSummary: ChatMessage[] = messages.map((msg) => ({
-        role: msg.isBot ? "assistant" : "user",
-        content: msg.text,
-      }));
-
-      const summaryPrompt: ChatMessage[] = [
-        {
-          role: "system",
-          content:
-            "You are an expert summarizer for a product procurement team. Summarize the following conversation concisely, highlighting the key product, requirements, budget, preferences, and timeline. Format it as a clear, actionable summary for the team.",
-        },
-        ...conversationForSummary,
+      // For summary, we still want the full conversation to ensure accuracy
+      const conversationForSummary: ChatMessage[] = [
+        { role: "system", content: systemPromptContent }, // Include system prompt for summary context
+        ...messages.map((msg) => ({
+          role: (msg.isBot ? "assistant" : "user") as "user" | "assistant", // Explicit cast for role
+          content: msg.text,
+        })),
         {
           role: "user",
           content:
@@ -263,10 +255,10 @@ const Order: React.FC<OrderProps> = ({ user, appId }) => {
       ];
 
       const payload = {
-        model: "moonshotai/kimi-k2:free",
-        messages: summaryPrompt,
-        temperature: 0.7, // Keep temperature moderate for summarization
-        max_tokens: 500, // Limit summary length
+        model: "deepseek/deepseek-r1-0528:free",
+        messages: conversationForSummary, // Send full conversation for summarization
+        temperature: 0.7,
+        max_tokens: 500,
       };
 
       const apiResponseText = await callOpenRouterApi(payload);
@@ -305,16 +297,6 @@ const Order: React.FC<OrderProps> = ({ user, appId }) => {
       return;
     }
 
-    // --- NEW: Debugging Logs ---
-    console.log("Attempting to save order to Firestore:");
-    console.log("  appId:", appId);
-    console.log("  userId:", user.uid);
-    console.log("  userEmail:", user.email);
-    console.log("  userName:", user.displayName);
-    console.log("  summary:", summary);
-    console.log("  conversation length:", messages.length);
-    // --- END Debugging Logs ---
-
     try {
       const ordersCollectionRef = collection(
         db,
@@ -331,9 +313,20 @@ const Order: React.FC<OrderProps> = ({ user, appId }) => {
           timestamp: msg.timestamp.toISOString(),
         })),
         summary: summary,
-        status: "pending",
+        status: "pending", // Initial status for new orders
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+        // Add default values for new fields to match Order interface in OrderQueuePage
+        ticketNumber: `TKT-${Date.now().toString().slice(-6)}`, // Simple unique ticket number
+        title: messages[1]?.text.substring(0, 50) || "New Product Request", // Use first user message as title
+        estimatedCompletion: null, // To be set by team member
+        budget: "N/A", // To be refined by AI or team
+        progress: 0, // Initial progress
+        lastUpdate: "New request received",
+        assignedTo: null,
+        assignedDate: null,
+        dismissedBy: null,
+        dismissedDate: null,
       });
       console.log("Order saved to Firestore successfully!");
     } catch (error) {
@@ -352,26 +345,28 @@ const Order: React.FC<OrderProps> = ({ user, appId }) => {
       timestamp: new Date(),
     };
 
+    // Optimistic UI update
     setMessages((prev) => [...prev, userMessage]);
     setCurrentMessage("");
     setIsLoading(true);
 
     try {
-      // Build chat history for the AI in OpenRouter/OpenAI format
-      const chatHistoryForAPI: ChatMessage[] = [];
+      // Prepare chat history for API, starting with the system prompt
+      let chatHistoryForAPI: ChatMessage[] = [
+        { role: "system", content: systemPromptContent },
+      ];
 
-      // Initial prompt to guide the AI's behavior (can be a system message or first user message)
-      const initialPromptContent =
-        "You are a personal product concierge assistant. Your goal is to gather detailed information about a product or service the user is looking for. Ask one clear, concise follow-up question at a time. Once you have enough information (product, requirements, budget, preferences, timeline), conclude by saying 'Thank you for all the details! Let me process your request and create a personalized procurement plan for you.' Do not generate the plan, just indicate readiness to process.";
+      // Append existing messages to history, converting to API format
+      // Implement a simple truncation strategy: keep the last N messages for context
+      // Adjust maxChatHistoryLength based on your desired context window and token budget
+      const maxChatHistoryLength = 10; // This means 10 messages (user/bot pairs) + system prompt
+      const relevantMessages = messages.slice(
+        Math.max(0, messages.length - (maxChatHistoryLength - 1))
+      ); // -1 to account for the new user message that will be added next
 
-      // Add the initial prompt as a system message or first user message
-      // Using 'user' role for initial prompt as per OpenRouter's example for simplicity
-      chatHistoryForAPI.push({ role: "user", content: initialPromptContent });
-
-      // Add previous messages from state to chat history for context
-      messages.forEach((msg) => {
+      relevantMessages.forEach((msg) => {
         chatHistoryForAPI.push({
-          role: msg.isBot ? "assistant" : "user",
+          role: (msg.isBot ? "assistant" : "user") as "user" | "assistant", // Explicit cast for role
           content: msg.text,
         });
       });
@@ -379,10 +374,10 @@ const Order: React.FC<OrderProps> = ({ user, appId }) => {
       chatHistoryForAPI.push({ role: "user", content: userMessage.text });
 
       const payload = {
-        model: "moonshotai/kimi-k2:free", // Specify the model
-        messages: chatHistoryForAPI, // Pass the formatted chat history
-        temperature: 0.9, // Adjust as needed for creativity
-        max_tokens: 1000, // Limit response length
+        model: "deepseek/deepseek-r1-0528:free",
+        messages: chatHistoryForAPI, // Pass the truncated chat history
+        temperature: 0.9,
+        max_tokens: 1000,
       };
 
       const aiResponseText = await callOpenRouterApi(payload);
@@ -396,20 +391,17 @@ const Order: React.FC<OrderProps> = ({ user, appId }) => {
 
       setMessages((prev) => [...prev, botResponse]);
 
-      // Check if the AI's response indicates completion
+      // Check if the AI's response indicates completion and immediately trigger processing
       if (
         aiResponseText.includes("Thank you for all the details!") ||
         aiResponseText.includes("Let me process your request")
       ) {
-        setAwaitingFinalAnswer(true); // Set flag to indicate AI is ready to conclude
-      } else if (awaitingFinalAnswer) {
-        // User just sent their final answer, now generate summary and save order
-        setAwaitingFinalAnswer(false);
-        const finalSummary = await generateSummaryForTeam(); // Get the summary from Kimi K2
+        setIsLoading(true); // Keep loading state true while processing
+        const finalSummary = await generateSummaryForTeam(); // Get the summary from DeepSeek
         if (finalSummary) {
           await saveOrderToFirestore(finalSummary); // Save the order to Firestore
         }
-        setTimeout(() => startProcessing(), 500); // Then start processing animation
+        setTimeout(() => startProcessing(), 500); // Then start processing animation after a short delay
       }
     } catch (error) {
       console.error("Error communicating with AI:", error);
@@ -421,7 +413,10 @@ const Order: React.FC<OrderProps> = ({ user, appId }) => {
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
-      setIsLoading(false);
+      // Only set isLoading to false if not transitioning to processing
+      if (currentStep === "chat") {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -429,6 +424,7 @@ const Order: React.FC<OrderProps> = ({ user, appId }) => {
   const startProcessing = () => {
     setCurrentStep("processing");
     setProcessingStep(0); // Start from the beginning
+    setIsLoading(true); // Ensure isLoading is true during processing animation
 
     let currentStepIndex = 0;
     const interval = setInterval(() => {
@@ -439,6 +435,7 @@ const Order: React.FC<OrderProps> = ({ user, appId }) => {
         clearInterval(interval);
         setTimeout(() => {
           setCurrentStep("complete");
+          setIsLoading(false); // Finally set isLoading to false when complete
         }, 1500); // Delay before showing complete state
       }
     }, 1200); // Interval for each step

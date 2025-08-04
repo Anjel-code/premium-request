@@ -1,121 +1,295 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+// src/pages/Dashboard.tsx
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { 
-  Clock, 
-  CheckCircle, 
-  AlertCircle, 
-  TrendingUp, 
-  Package, 
+import {
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  TrendingUp,
+  Package,
   DollarSign,
   Calendar,
   MessageSquare,
   Target,
   Award,
   Zap,
-  Star
+  Star,
+  Loader2, // Import Loader2 for loading state
+  PlusCircle, // For the "Create Dummy Order" button
+  ShoppingCart, // For Orders tab (from previous shorter version)
+  Bell, // For Notifications tab (from previous shorter version)
+  Users, // For Team Chat tab (from previous shorter version)
+  XCircle, // For dismissed status
 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import AnimatedCounter from "@/components/AnimatedCounter";
 
+// Firebase imports
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+  doc,
+  getDoc,
+} from "firebase/firestore";
+import { db } from "../firebase"; // Ensure this path is correct for your firebase.js
+
+// Define the Order interface to match Firestore data and your display needs
 interface Order {
   id: string;
-  ticketNumber: string;
+  userId: string; // Added userId for filtering
+  userEmail: string; // Added userEmail for context
+  userName: string; // Added userName for context
   title: string;
-  status: 'initial_review' | 'processing' | 'sourcing' | 'completed';
-  dateCreated: Date;
-  estimatedCompletion: Date;
+  summary?: string; // Optional summary field
+  status: "pending" | "accepted" | "completed" | "dismissed"; // Updated status types for consistency
+  createdAt: Date; // Changed to Date as it will be converted on fetch
+  updatedAt: Date; // Changed to Date as it will be converted on fetch
+  ticketNumber: string;
+  estimatedCompletion: Date | null; // Changed to Date or null
   budget: string;
   progress: number;
   lastUpdate: string;
-  timeRemaining?: string;
-  isPaid?: boolean;
+  timeRemaining?: string; // Optional field
+  isPaid?: boolean; // Optional field
+  assignedTo: string | null; // Added assignedTo
+  assignedDate: Date | null; // Added assignedDate
+  dismissedBy: string | null; // Added dismissedBy
+  dismissedDate: Date | null; // Added dismissedDate
+  conversation?: Array<{ text: string; isBot: boolean; timestamp: string }>; // Optional conversation
 }
 
-const Dashboard = () => {
-  const [orders] = useState<Order[]>([
-    {
-      id: 'ORD-001',
-      ticketNumber: 'TKT-2024-001',
-      title: 'Professional Camera Equipment',
-      status: 'processing',
-      dateCreated: new Date('2024-01-15'),
-      estimatedCompletion: new Date('2024-01-25'),
-      budget: '$2,500 - $3,000',
-      progress: 65,
-      lastUpdate: 'Research completed, evaluating top 3 options',
-      timeRemaining: '3 days 12 hours',
-      isPaid: true
-    },
-    {
-      id: 'ORD-002', 
-      ticketNumber: 'TKT-2024-002',
-      title: 'Home Office Furniture Set',
-      status: 'sourcing',
-      dateCreated: new Date('2024-01-20'),
-      estimatedCompletion: new Date('2024-02-05'),
-      budget: '$1,200 - $1,500',
-      progress: 85,
-      lastUpdate: 'Negotiating with suppliers, delivery scheduled',
-      timeRemaining: '12 days 8 hours',
-      isPaid: true
-    },
-    {
-      id: 'ORD-003',
-      ticketNumber: 'TKT-2024-003',
-      title: 'Vintage Watch Collection Item',
-      status: 'initial_review',
-      dateCreated: new Date('2024-01-22'),
-      estimatedCompletion: new Date('2024-02-15'),
-      budget: '$5,000 - $8,000',
-      progress: 25,
-      lastUpdate: 'Authentication research in progress',
-      isPaid: false
-    }
-  ]);
+// Define the UserProfile interface (matching what's stored in Firestore)
+interface UserProfile {
+  uid: string;
+  email: string;
+  displayName: string;
+  roles: string[]; // Crucial for role-based access
+  photoURL?: string; // Optional, if you store it
+}
 
-  const getStatusColor = (status: string) => {
+// Props for the Dashboard component
+interface DashboardProps {
+  user: UserProfile | null;
+  appId: string;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
+  const navigate = useNavigate();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(true);
+  const [userRole, setUserRole] = useState<string[]>([]);
+  const [loadingUserRole, setLoadingUserRole] = useState(true);
+  const [error, setError] = useState<string | null>(null); // State for errors
+
+  // Fetch user's role on component mount or when user changes
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (!user || !db) {
+        setLoadingUserRole(false);
+        setUserRole([]); // No user, no roles
+        return;
+      }
+      try {
+        const userProfileRef = doc(db, `users`, user.uid); // Top-level 'users' collection
+        const userSnap = await getDoc(userProfileRef);
+        if (userSnap.exists()) {
+          const profileData = userSnap.data() as UserProfile;
+          setUserRole(profileData.roles || []);
+        } else {
+          setUserRole(["customer"]); // Default to customer if profile not found
+        }
+      } catch (err) {
+        console.error("Error fetching user role:", err);
+        setUserRole([]);
+        setError("Failed to load user permissions.");
+      } finally {
+        setLoadingUserRole(false);
+      }
+    };
+    fetchUserRole();
+  }, [user, db]); // Re-run when user or db instance changes
+
+  // Fetch orders based on user role
+  useEffect(() => {
+    // Wait until db, user, and userRole are loaded
+    if (!db || !user || loadingUserRole) {
+      if (!user) {
+        // If no user, set orders to empty and stop loading
+        setOrders([]);
+        setLoadingOrders(false);
+      }
+      return;
+    }
+
+    let ordersQuery;
+    const ordersCollectionRef = collection(
+      db,
+      `artifacts/${appId}/public/data/orders`
+    );
+
+    if (userRole.includes("admin") || userRole.includes("team_member")) {
+      // Admins and Team Members can see all orders
+      ordersQuery = query(ordersCollectionRef, orderBy("createdAt", "desc"));
+    } else if (userRole.includes("customer")) {
+      // Customers can only see their own orders
+      ordersQuery = query(
+        ordersCollectionRef,
+        where("userId", "==", user.uid),
+        orderBy("createdAt", "desc")
+      );
+    } else {
+      // No recognized role, show no orders
+      setOrders([]);
+      setLoadingOrders(false);
+      return;
+    }
+
+    const unsubscribe = onSnapshot(
+      ordersQuery,
+      (snapshot) => {
+        const fetchedOrders: Order[] = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          // Convert Firestore Timestamps to Date objects immediately
+          createdAt: doc.data().createdAt?.toDate(),
+          updatedAt: doc.data().updatedAt?.toDate(),
+          estimatedCompletion: doc.data().estimatedCompletion?.toDate() || null,
+          assignedDate: doc.data().assignedDate?.toDate() || null,
+          dismissedDate: doc.data().dismissedDate?.toDate() || null,
+        })) as Order[];
+        setOrders(fetchedOrders);
+        setLoadingOrders(false);
+      },
+      (err) => {
+        console.error("Error fetching orders:", err);
+        setError(
+          "Failed to load orders. Please check your internet connection and Firebase rules."
+        );
+        setLoadingOrders(false);
+      }
+    );
+
+    return () => unsubscribe(); // Clean up the listener when the component unmounts
+  }, [db, user, appId, userRole, loadingUserRole]); // Depend on userRole and loadingUserRole
+
+  // Determine if the user has admin or team_member role
+  const hasAdminOrTeamRole =
+    userRole.includes("admin") || userRole.includes("team_member");
+
+  // --- Helper Functions for UI ---
+  const getStatusColor = (status: Order["status"]) => {
     switch (status) {
-      case 'initial_review': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'processing': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'sourcing': return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'completed': return 'bg-green-100 text-green-800 border-green-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      case "pending":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "accepted":
+        return "bg-blue-100 text-blue-800 border-blue-200";
+      case "completed":
+        return "bg-green-100 text-green-800 border-green-200";
+      case "dismissed":
+        return "bg-red-100 text-red-800 border-red-200";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: Order["status"]) => {
     switch (status) {
-      case 'initial_review': return <Clock className="h-4 w-4" />;
-      case 'processing': return <AlertCircle className="h-4 w-4" />;
-      case 'sourcing': return <Package className="h-4 w-4" />;
-      case 'completed': return <CheckCircle className="h-4 w-4" />;
-      default: return <Clock className="h-4 w-4" />;
+      case "pending":
+        return <Clock className="h-4 w-4" />;
+      case "accepted":
+        return <AlertCircle className="h-4 w-4" />; // Using AlertCircle for accepted, could be different
+      case "completed":
+        return <CheckCircle className="h-4 w-4" />;
+      case "dismissed":
+        return <XCircle className="h-4 w-4" />; // Using XCircle for dismissed
+      default:
+        return <Clock className="h-4 w-4" />;
     }
   };
 
-  const formatStatus = (status: string) => {
-    return status.split('_').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ');
+  const formatStatus = (status: Order["status"]) => {
+    return status
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
   };
 
   const totalOrders = orders.length;
-  const completedOrders = orders.filter(o => o.status === 'completed').length;
-  const activeOrders = orders.filter(o => o.status !== 'completed').length;
-  const avgProgress = Math.round(orders.reduce((acc, o) => acc + o.progress, 0) / orders.length);
+  const completedOrders = orders.filter((o) => o.status === "completed").length;
+  const activeOrders = orders.filter(
+    (o) => o.status !== "completed" && o.status !== "dismissed"
+  ).length; // Active excludes dismissed
+  const avgProgress =
+    orders.length > 0
+      ? Math.round(
+          orders.reduce((acc, o) => acc + o.progress, 0) / orders.length
+        )
+      : 0;
+
+  if (loadingUserRole || loadingOrders) {
+    // Combine loading states
+    return (
+      <DashboardLayout>
+        <div className="min-h-[calc(100vh-100px)] flex items-center justify-center p-6">
+          <Loader2 className="h-10 w-10 text-primary animate-spin" />
+          <p className="ml-4 text-primary">Loading your dashboard data...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="min-h-[calc(100vh-100px)] flex flex-col items-center justify-center p-6">
+          <Card className="w-full max-w-md text-center shadow-premium rounded-xl">
+            <CardHeader>
+              <CardTitle className="text-2xl text-red-500">Error</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <p className="text-muted-foreground">{error}</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Please ensure your Firebase Firestore is set up correctly and
+                your security rules allow read access to the 'orders'
+                collection.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-primary mb-2">Dashboard Overview</h1>
-          <p className="text-lg text-muted-foreground">
-            Track your requests, manage settings, and stay connected with our team
-          </p>
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-4xl font-bold text-primary mb-2">
+              Dashboard Overview
+            </h1>
+            <p className="text-lg text-muted-foreground">
+              Track your requests, manage settings, and stay connected with our
+              team
+            </p>
+          </div>
+          {hasAdminOrTeamRole && (
+            <Button
+              onClick={() => navigate("/create-dummy-order")}
+              className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-md shadow-sm"
+            >
+              <PlusCircle className="mr-2 h-4 w-4" /> Create Dummy Order
+            </Button>
+          )}
         </div>
 
         {/* Enhanced Statistics Cards */}
@@ -125,9 +299,9 @@ const Dashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Orders</p>
-                  <AnimatedCounter 
-                    end={totalOrders} 
-                    className="text-2xl font-bold text-primary" 
+                  <AnimatedCounter
+                    end={totalOrders}
+                    className="text-2xl font-bold text-primary"
                     duration={1500}
                   />
                 </div>
@@ -135,15 +309,15 @@ const Dashboard = () => {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="border-0 shadow-elegant hover:shadow-premium transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Active Orders</p>
-                  <AnimatedCounter 
-                    end={activeOrders} 
-                    className="text-2xl font-bold text-primary" 
+                  <AnimatedCounter
+                    end={activeOrders}
+                    className="text-2xl font-bold text-primary"
                     duration={1500}
                   />
                 </div>
@@ -151,15 +325,15 @@ const Dashboard = () => {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="border-0 shadow-elegant hover:shadow-premium transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Completed</p>
-                  <AnimatedCounter 
-                    end={completedOrders} 
-                    className="text-2xl font-bold text-primary" 
+                  <AnimatedCounter
+                    end={completedOrders}
+                    className="text-2xl font-bold text-primary"
                     duration={1500}
                   />
                 </div>
@@ -167,16 +341,16 @@ const Dashboard = () => {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="border-0 shadow-elegant hover:shadow-premium transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Avg Progress</p>
-                  <AnimatedCounter 
-                    end={avgProgress} 
-                    suffix="%" 
-                    className="text-2xl font-bold text-primary" 
+                  <AnimatedCounter
+                    end={avgProgress}
+                    suffix="%"
+                    className="text-2xl font-bold text-primary"
                     duration={1500}
                   />
                 </div>
@@ -192,26 +366,30 @@ const Dashboard = () => {
             <CardContent className="p-6 text-center">
               <Target className="h-12 w-12 text-accent mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-2">Completion Rate</h3>
-              <AnimatedCounter 
-                end={92} 
-                suffix="%" 
-                className="text-3xl font-bold text-accent" 
+              <AnimatedCounter
+                end={92}
+                suffix="%"
+                className="text-3xl font-bold text-accent"
                 duration={2000}
               />
-              <p className="text-sm text-muted-foreground mt-2">Keep up the great work!</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Keep up the great work!
+              </p>
             </CardContent>
           </Card>
-          
+
           <Card className="border-0 shadow-elegant bg-gradient-gold/10">
             <CardContent className="p-6 text-center">
               <Award className="h-12 w-12 text-accent mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-2">Loyalty Level</h3>
               <div className="text-3xl font-bold text-accent mb-2">Gold</div>
               <Progress value={75} className="h-2" />
-              <p className="text-sm text-muted-foreground mt-2">25% to Platinum</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                25% to Platinum
+              </p>
             </CardContent>
           </Card>
-          
+
           <Card className="border-0 shadow-elegant bg-gradient-gold/10">
             <CardContent className="p-6 text-center">
               <Star className="h-12 w-12 text-accent mx-auto mb-4" />
@@ -221,99 +399,162 @@ const Dashboard = () => {
                   <Star key={i} className="h-6 w-6 fill-accent text-accent" />
                 ))}
               </div>
-              <p className="text-sm text-muted-foreground">Excellent feedback!</p>
+              <p className="text-sm text-muted-foreground">
+                Excellent feedback!
+              </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Recent Orders */}
-        <div className="grid gap-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold text-primary">Recent Orders</h2>
-            <Button asChild variant="premium">
-              <Link to="/order">New Request</Link>
-            </Button>
-          </div>
+        {/* Tabs for Orders, Notifications, Team Chat */}
+        {/* Note: These tabs are visually present but their content is simple placeholders.
+            The actual "All Orders" view is handled by DashboardOrders.tsx via the link. */}
+        <Tabs defaultValue="orders" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-3 bg-muted/50 rounded-lg p-1 mb-4">
+            <TabsTrigger
+              value="orders"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-md transition-all duration-200"
+            >
+              <ShoppingCart className="mr-2 h-4 w-4" /> Orders
+            </TabsTrigger>
+            <TabsTrigger
+              value="notifications"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-md transition-all duration-200"
+            >
+              <Bell className="mr-2 h-4 w-4" /> Notifications
+            </TabsTrigger>
+            {hasAdminOrTeamRole && (
+              <TabsTrigger
+                value="team-chat"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-md transition-all duration-200"
+              >
+                <Users className="mr-2 h-4 w-4" /> Team Chat
+              </TabsTrigger>
+            )}
+          </TabsList>
 
-          {orders.slice(0, 3).map((order) => (
-            <Card key={order.id} className="border-0 shadow-elegant hover:shadow-premium transition-all duration-300 cursor-pointer hover:scale-[1.02]">
-              <Link to={`/ticket/${order.id}`}>
-                <CardHeader className="pb-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-xl mb-2">{order.title}</CardTitle>
-                      <div className="flex gap-4 text-sm text-muted-foreground">
-                        <span>Ticket: {order.ticketNumber}</span>
-                        <span>Order ID: {order.id}</span>
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <Badge className={getStatusColor(order.status)}>
-                        <div className="flex items-center gap-1">
-                          {getStatusIcon(order.status)}
-                          {formatStatus(order.status)}
-                        </div>
-                      </Badge>
-                      {order.isPaid && <Badge variant="outline" className="text-green-600 border-green-600">Paid</Badge>}
-                    </div>
+          <TabsContent value="orders" className="mt-6">
+            <Card className="border-0 shadow-premium rounded-xl">
+              <CardHeader className="border-b border-border p-6">
+                <CardTitle className="text-2xl font-semibold text-primary">
+                  Your Recent Orders
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                {loadingOrders ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="mr-2 h-6 w-6 animate-spin text-primary" />
+                    <span className="text-primary">Loading orders...</span>
                   </div>
-                </CardHeader>
-                
-                <CardContent>
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">Created:</span>
-                        <span>{order.dateCreated.toLocaleDateString()}</span>
+                ) : orders.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">
+                    No orders found.
+                    {userRole.includes("customer") && (
+                      <Link
+                        to="/order"
+                        className="text-accent hover:underline ml-1 font-medium"
+                      >
+                        Start a new request!
+                      </Link>
+                    )}
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {orders.slice(0, 3).map(
+                      (
+                        order // Display only top 3 recent orders
+                      ) => (
+                        <Card
+                          key={order.id}
+                          className="border shadow-sm rounded-lg"
+                        >
+                          <CardContent className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <div>
+                              <h3 className="font-semibold text-lg text-primary">
+                                {order.title || `Order ${order.ticketNumber}`}
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                Status:{" "}
+                                <span
+                                  className={`font-medium ${getStatusColor(
+                                    order.status
+                                  )}`}
+                                >
+                                  {formatStatus(order.status)}
+                                </span>
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Created:{" "}
+                                {order.createdAt
+                                  ? new Date(
+                                      order.createdAt
+                                    ).toLocaleDateString()
+                                  : "N/A"}
+                              </p>
+                            </div>
+                            <Button
+                              onClick={() => navigate(`/ticket/${order.id}`)}
+                              variant="outline"
+                              size="sm"
+                              className="border-primary text-primary hover:bg-primary/10 rounded-md"
+                            >
+                              View Details
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      )
+                    )}
+                    {orders.length > 3 && (
+                      <div className="text-center mt-6">
+                        <Button asChild variant="outline">
+                          <Link to="/dashboard/orders">View All Orders</Link>
+                        </Button>
                       </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">Expected:</span>
-                        <span>{order.estimatedCompletion.toLocaleDateString()}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <DollarSign className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">Budget:</span>
-                        <span>{order.budget}</span>
-                      </div>
-                      {order.timeRemaining && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Zap className="h-4 w-4 text-accent" />
-                          <span className="text-muted-foreground">Time Remaining:</span>
-                          <span className="text-accent font-medium">{order.timeRemaining}</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <div>
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm text-muted-foreground">Progress</span>
-                          <span className="text-sm font-medium">{order.progress}%</span>
-                        </div>
-                        <Progress value={order.progress} className="h-2" />
-                      </div>
-                      <div className="flex items-start gap-2 text-sm">
-                        <MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5" />
-                        <div>
-                          <span className="text-muted-foreground">Last Update:</span>
-                          <p className="text-foreground mt-1">{order.lastUpdate}</p>
-                        </div>
-                      </div>
-                    </div>
+                    )}
                   </div>
-                </CardContent>
-              </Link>
+                )}
+              </CardContent>
             </Card>
-          ))}
-          
-          <div className="text-center">
-            <Button asChild variant="outline">
-              <Link to="/dashboard/orders">View All Orders</Link>
-            </Button>
-          </div>
-        </div>
+          </TabsContent>
+
+          <TabsContent value="notifications" className="mt-6">
+            <Card className="border-0 shadow-premium rounded-xl">
+              <CardHeader className="border-b border-border p-6">
+                <CardTitle className="text-2xl font-semibold text-primary">
+                  Notifications
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <p className="text-center text-muted-foreground py-8">
+                  No new notifications.
+                </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {hasAdminOrTeamRole && (
+            <TabsContent value="team-chat" className="mt-6">
+              <Card className="border-0 shadow-premium rounded-xl">
+                <CardHeader className="border-b border-border p-6">
+                  <CardTitle className="text-2xl font-semibold text-primary">
+                    Team Communication
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <p className="text-center text-muted-foreground py-8">
+                    Team chat functionality will be available here.
+                    <Link
+                      to="/team-chat"
+                      className="text-accent hover:underline ml-1 font-medium"
+                    >
+                      Go to Team Chat
+                    </Link>
+                  </p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+        </Tabs>
       </div>
     </DashboardLayout>
   );

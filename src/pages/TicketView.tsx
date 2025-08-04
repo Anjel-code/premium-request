@@ -1,146 +1,383 @@
-import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+// src/pages/TicketView.tsx
+import { useState, useEffect, useRef } from "react"; // Added useRef for chat scrolling
+import { useParams, Link, useNavigate } from "react-router-dom"; // Added useNavigate
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
-import { 
-  ArrowLeft, 
-  Calendar, 
-  DollarSign, 
-  Package, 
-  Send, 
+import { Input } from "@/components/ui/input"; // For progress input
+import {
+  ArrowLeft,
+  Calendar,
+  DollarSign,
+  Package,
+  Send,
   User,
   Clock,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Loader2, // For loading states
+  XCircle, // For dismissed status
 } from "lucide-react";
-import Navigation from "@/components/Navigation";
+// Removed: import Navigation from "@/components/Navigation"; // Navigation is handled in App.jsx
 
-interface ChatMessage {
-  id: number;
-  sender: 'client' | 'team';
-  senderName: string;
-  message: string;
-  timestamp: Date;
-  attachments?: string[];
+import {
+  doc,
+  collection,
+  query,
+  orderBy,
+  onSnapshot,
+  addDoc,
+  getDoc,
+  updateDoc,
+  serverTimestamp,
+} from "firebase/firestore";
+import { db } from "../firebase"; // Ensure this path is correct for your firebase.js
+
+// Define interfaces to match Firestore data structures
+interface Order {
+  id: string;
+  userId: string;
+  userEmail: string;
+  userName: string;
+  title: string;
+  summary: string;
+  status: "pending" | "accepted" | "completed" | "dismissed";
+  createdAt: Date;
+  updatedAt: Date;
+  ticketNumber: string;
+  estimatedCompletion: Date | null;
+  budget: string;
+  progress: number;
+  lastUpdate: string;
+  assignedTo: string | null;
+  assignedDate: Date | null;
+  dismissedBy: string | null;
+  dismissedDate: Date | null;
+  conversation: Array<{ text: string; isBot: boolean; timestamp: string }>; // This will be the chat messages
 }
 
-const TicketView = () => {
-  const { ticketId } = useParams();
-  const [newMessage, setNewMessage] = useState('');
-  
-  // Mock data - in real app this would come from API
-  const orderDetails = {
-    id: ticketId || 'ORD-001',
-    title: 'Professional Camera Equipment',
-    status: 'processing',
-    dateCreated: new Date('2024-01-15'),
-    estimatedCompletion: new Date('2024-01-25'),
-    budget: '$2,500 - $3,000',
-    progress: 65,
-    description: 'Looking for a professional camera setup for product photography. Need camera body, lenses (macro and standard), lighting equipment, and tripod. Quality is priority over price.',
-    requirements: [
-      'Full-frame camera body (Canon or Sony preferred)',
-      'Macro lens for detailed product shots', 
-      'Standard 24-70mm lens',
-      'Professional lighting kit with softboxes',
-      'Sturdy tripod with adjustable height',
-      'Memory cards and backup battery'
-    ],
-    assignedTeam: 'Photography Equipment Specialists'
-  };
+interface ChatMessage {
+  id?: string; // Firestore document ID
+  senderId: string;
+  senderName: string;
+  text: string;
+  timestamp: Date;
+}
 
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    {
-      id: 1,
-      sender: 'team',
-      senderName: 'Sarah Johnson',
-      message: 'Hi! I\'ve been assigned to your camera equipment request. I\'ve reviewed your requirements and have some excellent options to discuss.',
-      timestamp: new Date('2024-01-16T10:00:00'),
-    },
-    {
-      id: 2,
-      sender: 'team',
-      senderName: 'Sarah Johnson', 
-      message: 'Based on your needs, I\'m recommending the Sony A7R V for the camera body - it excels at product photography with its 61MP sensor. For lenses, I\'ve found the Sony FE 90mm f/2.8 Macro and Sony FE 24-70mm f/2.8 GM II.',
-      timestamp: new Date('2024-01-16T10:15:00'),
-    },
-    {
-      id: 3,
-      sender: 'client',
-      senderName: 'You',
-      message: 'That sounds perfect! What about the lighting setup? I want to make sure the colors are accurate for product shots.',
-      timestamp: new Date('2024-01-16T14:30:00'),
-    },
-    {
-      id: 4,
-      sender: 'team',
-      senderName: 'Sarah Johnson',
-      message: 'Great question! For color accuracy, I\'m recommending the Godox SL-60W LED lights with softboxes. They have excellent CRI ratings (96+) and consistent color temperature. I\'m also including a color checker for calibration.',
-      timestamp: new Date('2024-01-17T09:00:00'),
-    }
-  ]);
+interface UserProfile {
+  uid: string;
+  email: string;
+  displayName: string;
+  roles: string[]; // Crucial for role-based access
+}
 
-  const handleSendMessage = () => {
-    if (!newMessage.trim()) return;
+// Props for the TicketView component
+interface TicketViewProps {
+  user: UserProfile | null; // Pass the authenticated user
+  appId: string; // Pass the appId
+}
 
-    const message: ChatMessage = {
-      id: chatMessages.length + 1,
-      sender: 'client',
-      senderName: 'You',
-      message: newMessage,
-      timestamp: new Date(),
+const TicketView: React.FC<TicketViewProps> = ({ user, appId }) => {
+  const { ticketId } = useParams<{ ticketId: string }>();
+  const navigate = useNavigate();
+
+  const [orderDetails, setOrderDetails] = useState<Order | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string[]>([]);
+  const [loadingUserRole, setLoadingUserRole] = useState(true);
+  const [newProgress, setNewProgress] = useState<number | string>(""); // State for progress input
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // --- Fetch User Role ---
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (!user || !db) {
+        setLoadingUserRole(false);
+        setUserRole([]);
+        return;
+      }
+      try {
+        const userProfileRef = doc(db, `users`, user.uid); // Top-level 'users' collection
+        const userSnap = await getDoc(userProfileRef);
+        if (userSnap.exists()) {
+          const profileData = userSnap.data() as UserProfile;
+          setUserRole(profileData.roles || []);
+        } else {
+          setUserRole(["customer"]); // Default to customer if profile not found
+        }
+      } catch (err) {
+        console.error("Error fetching user role:", err);
+        setUserRole([]);
+        setError("Failed to load user permissions.");
+      } finally {
+        setLoadingUserRole(false);
+      }
     };
+    fetchUserRole();
+  }, [user, db]);
 
-    setChatMessages(prev => [...prev, message]);
-    setNewMessage('');
+  // --- Fetch Order Details and Chat Messages ---
+  useEffect(() => {
+    if (!db || !ticketId || loadingUserRole || !user) return; // Wait for user and role to load
 
-    // Simulate team response
-    setTimeout(() => {
-      const response: ChatMessage = {
-        id: chatMessages.length + 2,
-        sender: 'team',
-        senderName: 'Sarah Johnson',
-        message: 'Thanks for your message! I\'ll review this and get back to you shortly with an update.',
-        timestamp: new Date(),
+    const orderRef = doc(db, `artifacts/${appId}/public/data/orders`, ticketId);
+    const messagesCollectionRef = collection(
+      db,
+      `artifacts/${appId}/public/data/orders/${ticketId}/conversation`
+    );
+
+    // Listener for Order Details
+    const unsubscribeOrder = onSnapshot(
+      orderRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          // Convert Firestore Timestamps to Date objects
+          const order: Order = {
+            id: docSnap.id,
+            ...data,
+            createdAt: data.createdAt?.toDate(),
+            updatedAt: data.updatedAt?.toDate(),
+            estimatedCompletion: data.estimatedCompletion?.toDate() || null,
+            assignedDate: data.assignedDate?.toDate() || null,
+            dismissedDate: data.dismissedDate?.toDate() || null,
+          } as Order;
+
+          // Check if the current user is authorized to view this order
+          const isAuthorized =
+            userRole.includes("admin") ||
+            userRole.includes("team_member") ||
+            order.userId === user.uid;
+
+          if (isAuthorized) {
+            setOrderDetails(order);
+            setNewProgress(order.progress); // Initialize progress input
+          } else {
+            setError("You do not have permission to view this order.");
+            setOrderDetails(null);
+          }
+        } else {
+          setError("Order not found.");
+          setOrderDetails(null);
+        }
+        setLoading(false);
+      },
+      (err) => {
+        console.error("Error fetching order details:", err);
+        setError("Failed to load order details. Please check permissions.");
+        setLoading(false);
+      }
+    );
+
+    // Listener for Chat Messages (subcollection)
+    const q = query(messagesCollectionRef, orderBy("timestamp", "asc"));
+    const unsubscribeMessages = onSnapshot(
+      q,
+      (snapshot) => {
+        const fetchedMessages: ChatMessage[] = [];
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          fetchedMessages.push({
+            id: doc.id,
+            senderId: data.senderId,
+            senderName: data.senderName,
+            text: data.text,
+            timestamp: data.timestamp?.toDate(), // Convert timestamp to Date
+          } as ChatMessage);
+        });
+        setChatMessages(fetchedMessages);
+      },
+      (err) => {
+        console.error("Error fetching chat messages:", err);
+        setError("Failed to load chat messages.");
+      }
+    );
+
+    return () => {
+      unsubscribeOrder();
+      unsubscribeMessages();
+    }; // Cleanup listeners
+  }, [db, ticketId, appId, user, loadingUserRole, userRole]); // Re-run when these dependencies change
+
+  // --- Scroll to bottom of chat ---
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages]);
+
+  // --- Chat Message Handler ---
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !user || !orderDetails) return;
+
+    try {
+      const messagesCollectionRef = collection(
+        db,
+        `artifacts/${appId}/public/data/orders/${orderDetails.id}/conversation`
+      );
+      await addDoc(messagesCollectionRef, {
+        senderId: user.uid,
+        senderName: user.displayName || user.email.split("@")[0], // Use display name or email username
+        text: newMessage.trim(),
+        timestamp: serverTimestamp(), // Use server timestamp
+      });
+      setNewMessage("");
+    } catch (err) {
+      console.error("Error sending message:", err);
+      setError("Failed to send message.");
+    }
+  };
+
+  // --- Order Update Handlers (for team members/admins) ---
+  const handleUpdateStatus = async (newStatus: Order["status"]) => {
+    if (!orderDetails || !db || !user || !hasAdminOrTeamRole) return;
+    try {
+      const orderRef = doc(
+        db,
+        `artifacts/${appId}/public/data/orders`,
+        orderDetails.id
+      );
+      const updateData: Partial<Order> = {
+        status: newStatus,
+        updatedAt: new Date(), // Update local timestamp
       };
-      setChatMessages(prev => [...prev, response]);
-    }, 2000);
-  };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'initial_review': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'processing': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'sourcing': return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'completed': return 'bg-green-100 text-green-800 border-green-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      if (newStatus === "accepted" && !orderDetails.assignedTo) {
+        updateData.assignedTo = user.uid;
+        updateData.assignedDate = new Date();
+      } else if (newStatus === "dismissed" && !orderDetails.dismissedBy) {
+        updateData.dismissedBy = user.uid;
+        updateData.dismissedDate = new Date();
+      }
+
+      await updateDoc(orderRef, updateData);
+      console.log(`Order ${orderDetails.id} status updated to ${newStatus}`);
+    } catch (err) {
+      console.error("Error updating status:", err);
+      setError("Failed to update order status.");
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'initial_review': return <Clock className="h-4 w-4" />;
-      case 'processing': return <AlertCircle className="h-4 w-4" />;
-      case 'sourcing': return <Package className="h-4 w-4" />;
-      case 'completed': return <CheckCircle className="h-4 w-4" />;
-      default: return <Clock className="h-4 w-4" />;
+  const handleUpdateProgress = async () => {
+    if (
+      !orderDetails ||
+      !db ||
+      !user ||
+      !hasAdminOrTeamRole ||
+      typeof newProgress !== "number"
+    )
+      return;
+    try {
+      const orderRef = doc(
+        db,
+        `artifacts/${appId}/public/data/orders`,
+        orderDetails.id
+      );
+      await updateDoc(orderRef, {
+        progress: newProgress,
+        updatedAt: new Date(),
+        lastUpdate: `Progress updated to ${newProgress}% by ${
+          user.displayName || user.email.split("@")[0]
+        }`,
+      });
+      console.log(
+        `Order ${orderDetails.id} progress updated to ${newProgress}%`
+      );
+    } catch (err) {
+      console.error("Error updating progress:", err);
+      setError("Failed to update order progress.");
     }
   };
 
-  const formatStatus = (status: string) => {
-    return status.split('_').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ');
+  // --- Helper Functions for UI ---
+  const getStatusColor = (status: Order["status"]) => {
+    switch (status) {
+      case "pending":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "accepted":
+        return "bg-blue-100 text-blue-800 border-blue-200";
+      case "completed":
+        return "bg-green-100 text-green-800 border-green-200";
+      case "dismissed":
+        return "bg-red-100 text-red-800 border-red-200";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200";
+    }
   };
+
+  const getStatusIcon = (status: Order["status"]) => {
+    switch (status) {
+      case "pending":
+        return <Clock className="h-4 w-4" />;
+      case "accepted":
+        return <AlertCircle className="h-4 w-4" />;
+      case "completed":
+        return <CheckCircle className="h-4 w-4" />;
+      case "dismissed":
+        return <XCircle className="h-4 w-4" />;
+      default:
+        return <Clock className="h-4 w-4" />;
+    }
+  };
+
+  const formatStatus = (status: Order["status"]) => {
+    return status
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
+
+  // Check if the current user has admin or team_member role
+  const hasAdminOrTeamRole =
+    userRole.includes("admin") || userRole.includes("team_member");
+
+  // --- Render Logic ---
+  if (loading || loadingUserRole) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-10 w-10 text-primary animate-spin" />
+        <p className="ml-4 text-primary">Loading ticket details...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md text-center shadow-premium rounded-xl">
+          <CardHeader>
+            <CardTitle className="text-2xl text-red-500">Error</CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <p className="text-muted-foreground">{error}</p>
+            <Button onClick={() => navigate("/dashboard")} className="mt-4">
+              Back to Dashboard
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!orderDetails) {
+    // This case should ideally be caught by the error state, but as a fallback
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <p className="text-primary">No order details available.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
-      
-      <div className="pt-32 pb-20 px-6">
+      {/* Navigation component is now handled in App.jsx */}
+
+      <div className="pt-24 pb-20 px-6">
         <div className="container mx-auto max-w-6xl">
           <div className="mb-6">
             <Button asChild variant="outline" className="mb-4">
@@ -149,8 +386,12 @@ const TicketView = () => {
                 Back to Dashboard
               </Link>
             </Button>
-            <h1 className="text-4xl font-bold text-primary mb-2">{orderDetails.title}</h1>
-            <p className="text-lg text-muted-foreground">Order ID: {orderDetails.id}</p>
+            <h1 className="text-4xl font-bold text-primary mb-2">
+              {orderDetails.title}
+            </h1>
+            <p className="text-lg text-muted-foreground">
+              Order ID: {orderDetails.id}
+            </p>
           </div>
 
           <div className="grid lg:grid-cols-3 gap-8">
@@ -167,14 +408,78 @@ const TicketView = () => {
                       {formatStatus(orderDetails.status)}
                     </div>
                   </Badge>
-                  
+
                   <div>
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm text-muted-foreground">Progress</span>
-                      <span className="text-sm font-medium">{orderDetails.progress}%</span>
+                      <span className="text-sm text-muted-foreground">
+                        Progress
+                      </span>
+                      <span className="text-sm font-medium">
+                        {orderDetails.progress}%
+                      </span>
                     </div>
                     <Progress value={orderDetails.progress} className="h-2" />
                   </div>
+
+                  {/* Status & Progress Update for Team/Admin */}
+                  {hasAdminOrTeamRole && (
+                    <div className="space-y-4 pt-4 border-t border-border mt-4">
+                      <h3 className="font-semibold text-md text-primary">
+                        Update Order
+                      </h3>
+                      <div className="flex flex-col gap-2">
+                        <label
+                          htmlFor="status-select"
+                          className="text-sm text-muted-foreground"
+                        >
+                          Change Status:
+                        </label>
+                        <select
+                          id="status-select"
+                          value={orderDetails.status}
+                          onChange={(e) =>
+                            handleUpdateStatus(
+                              e.target.value as Order["status"]
+                            )
+                          }
+                          className="p-2 border rounded-md bg-background text-foreground"
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="accepted">Accepted</option>
+                          <option value="processing">Processing</option>
+                          <option value="completed">Completed</option>
+                          <option value="dismissed">Dismissed</option>
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <label
+                          htmlFor="progress-input"
+                          className="text-sm text-muted-foreground"
+                        >
+                          Update Progress (%):
+                        </label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="progress-input"
+                            type="number"
+                            value={newProgress}
+                            onChange={(e) =>
+                              setNewProgress(Number(e.target.value))
+                            }
+                            min={0}
+                            max={100}
+                            className="flex-1 rounded-md"
+                          />
+                          <Button
+                            onClick={handleUpdateProgress}
+                            className="rounded-md"
+                          >
+                            Save
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -186,12 +491,20 @@ const TicketView = () => {
                   <div className="flex items-center gap-2 text-sm">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <span className="text-muted-foreground">Created:</span>
-                    <span>{orderDetails.dateCreated.toLocaleDateString()}</span>
+                    <span>
+                      {orderDetails.createdAt
+                        ? orderDetails.createdAt.toLocaleDateString()
+                        : "N/A"}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Clock className="h-4 w-4 text-muted-foreground" />
                     <span className="text-muted-foreground">Expected:</span>
-                    <span>{orderDetails.estimatedCompletion.toLocaleDateString()}</span>
+                    <span>
+                      {orderDetails.estimatedCompletion
+                        ? orderDetails.estimatedCompletion.toLocaleDateString()
+                        : "N/A"}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
@@ -200,29 +513,42 @@ const TicketView = () => {
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Team:</span>
-                    <span>{orderDetails.assignedTeam}</span>
+                    <span className="text-muted-foreground">Assigned To:</span>
+                    <span>
+                      {orderDetails.assignedTo ? (
+                        // In a real app, you'd fetch the user's displayName by assignedTo UID
+                        <span className="font-medium">
+                          {orderDetails.assignedTo === user?.uid
+                            ? `You (${
+                                user?.displayName || user?.email.split("@")[0]
+                              })`
+                            : orderDetails.assignedTo}
+                        </span>
+                      ) : (
+                        "Not Assigned"
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">Client:</span>
+                    <span>
+                      {orderDetails.userName ||
+                        orderDetails.userEmail ||
+                        orderDetails.userId}
+                    </span>
                   </div>
                 </CardContent>
               </Card>
 
               <Card className="border-0 shadow-elegant">
                 <CardHeader>
-                  <CardTitle>Original Request</CardTitle>
+                  <CardTitle>Original Request Summary</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">{orderDetails.description}</p>
-                  <div>
-                    <h4 className="font-medium mb-2">Requirements:</h4>
-                    <ul className="text-sm space-y-1">
-                      {orderDetails.requirements.map((req, index) => (
-                        <li key={index} className="flex items-start gap-2">
-                          <CheckCircle className="h-3 w-3 text-accent mt-1 flex-shrink-0" />
-                          <span className="text-muted-foreground">{req}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {orderDetails.summary || "No summary provided."}
+                  </p>
                 </CardContent>
               </Card>
             </div>
@@ -233,28 +559,60 @@ const TicketView = () => {
                 <CardHeader className="border-b border-border">
                   <CardTitle>Team Communication</CardTitle>
                 </CardHeader>
-                
+
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                  {chatMessages.map((message) => (
-                    <div key={message.id} className={`flex ${message.sender === 'client' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[70%] ${message.sender === 'client' ? 'order-2' : 'order-1'}`}>
-                        <div className={`px-4 py-3 rounded-lg ${
-                          message.sender === 'client' 
-                            ? 'bg-accent text-accent-foreground' 
-                            : 'bg-muted text-foreground'
-                        }`}>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-medium">{message.senderName}</span>
-                            <span className="text-xs opacity-70">
-                              {message.timestamp.toLocaleDateString()} {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
+                <div
+                  className="flex-1 overflow-y-auto p-6 space-y-4"
+                  ref={messagesEndRef}
+                >
+                  {chatMessages.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">
+                      No messages yet. Start the conversation!
+                    </p>
+                  ) : (
+                    chatMessages.map((message) => (
+                      <div
+                        key={message.id}
+                        className={`flex ${
+                          message.senderId === user?.uid
+                            ? "justify-end"
+                            : "justify-start"
+                        }`}
+                      >
+                        <div
+                          className={`max-w-[70%] ${
+                            message.senderId === user?.uid
+                              ? "order-2"
+                              : "order-1"
+                          }`}
+                        >
+                          <div
+                            className={`px-4 py-3 rounded-lg ${
+                              message.senderId === user?.uid
+                                ? "bg-accent text-accent-foreground"
+                                : "bg-muted text-foreground"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-medium">
+                                {message.senderName}
+                              </span>
+                              <span className="text-xs opacity-70">
+                                {message.timestamp.toLocaleDateString()}{" "}
+                                {message.timestamp.toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                            </div>
+                            <p className="text-sm leading-relaxed">
+                              {message.text}
+                            </p>
                           </div>
-                          <p className="text-sm leading-relaxed">{message.message}</p>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
 
                 {/* Message Input */}
@@ -264,18 +622,18 @@ const TicketView = () => {
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
                       placeholder="Type your message to the team..."
-                      className="flex-1 min-h-[80px] resize-none"
+                      className="flex-1 min-h-[80px] resize-none rounded-md"
                       onKeyPress={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
+                        if (e.key === "Enter" && !e.shiftKey) {
                           e.preventDefault();
                           handleSendMessage();
                         }
                       }}
                     />
-                    <Button 
+                    <Button
                       onClick={handleSendMessage}
                       size="lg"
-                      className="bg-accent hover:bg-accent/90 text-accent-foreground px-4 self-end"
+                      className="bg-accent hover:bg-accent/90 text-accent-foreground px-4 self-end rounded-md"
                       disabled={!newMessage.trim()}
                     >
                       <Send className="h-4 w-4" />
