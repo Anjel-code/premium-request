@@ -34,7 +34,7 @@ import {
   UserCheck,
   Trash2,
   Info,
-  AlertCircle, // <--- ADDED THIS IMPORT
+  AlertCircle,
 } from "lucide-react";
 
 // Define the Order interface to match Firestore data
@@ -46,8 +46,9 @@ interface Order {
   ticketNumber: string;
   title: string;
   status: "pending" | "accepted" | "dismissed" | "completed"; // Updated statuses
-  dateCreated: { toDate: () => Date }; // Firestore Timestamp has a toDate method
-  estimatedCompletion: { toDate: () => Date }; // Firestore Timestamp has a toDate method
+  createdAt: Date; // Changed to Date as it will be converted on fetch
+  updatedAt: Date; // Changed to Date as it will be converted on fetch
+  estimatedCompletion: Date | null; // Changed to Date or null
   budget: string;
   progress: number;
   lastUpdate: string;
@@ -55,10 +56,10 @@ interface Order {
   isPaid?: boolean;
   summary: string; // Detailed description of the order
   conversation: Array<{ text: string; isBot: boolean; timestamp: string }>; // Chat history
-  assignedTo?: string | null; // UID of the worker, null if in queue
-  assignedDate?: { toDate: () => Date } | null; // Timestamp when assigned
-  dismissedBy?: string | null; // UID of the user who dismissed it
-  dismissedDate?: { toDate: () => Date } | null; // Timestamp when dismissed
+  assignedTo: string | null; // UID of the worker, null if in queue
+  assignedDate: Date | null; // Changed to Date or null
+  dismissedBy: string | null; // UID of the user who dismissed it
+  dismissedDate: Date | null; // Changed to Date or null
 }
 
 interface OrderQueuePageProps {
@@ -108,16 +109,22 @@ const OrderQueuePage: React.FC<OrderQueuePageProps> = ({ userRoles, user }) => {
       ordersCollectionRef,
       where("status", "==", "pending"),
       where("assignedTo", "==", null), // Only show unassigned orders
-      orderBy("dateCreated", "asc") // Oldest orders first
+      orderBy("createdAt", "asc") // <--- CHANGED: Use 'createdAt'
     );
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const fetchedOrders: Order[] = [];
-        snapshot.forEach((doc) => {
-          fetchedOrders.push({ id: doc.id, ...doc.data() } as Order);
-        });
+        const fetchedOrders: Order[] = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          // Convert Firestore Timestamps to Date objects immediately
+          createdAt: doc.data().createdAt?.toDate(),
+          updatedAt: doc.data().updatedAt?.toDate(),
+          estimatedCompletion: doc.data().estimatedCompletion?.toDate() || null,
+          assignedDate: doc.data().assignedDate?.toDate() || null,
+          dismissedDate: doc.data().dismissedDate?.toDate() || null,
+        })) as Order[];
         setOrders(fetchedOrders);
         setIsLoading(false);
       },
@@ -357,7 +364,7 @@ const OrderQueuePage: React.FC<OrderQueuePageProps> = ({ userRoles, user }) => {
                     <span className="font-medium text-foreground">
                       Created:
                     </span>{" "}
-                    {order.dateCreated.toDate().toLocaleDateString()}
+                    {order.createdAt.toLocaleDateString()}
                   </p>
                   <p className="text-muted-foreground">
                     <span className="font-medium text-foreground">Budget:</span>{" "}
@@ -419,15 +426,13 @@ const OrderQueuePage: React.FC<OrderQueuePageProps> = ({ userRoles, user }) => {
               <div>
                 <p className="text-muted-foreground">Date Created:</p>
                 <p className="font-medium text-foreground">
-                  {selectedOrder?.dateCreated?.toDate().toLocaleString()}
+                  {selectedOrder?.createdAt?.toLocaleString()}
                 </p>
               </div>
               <div>
                 <p className="text-muted-foreground">Estimated Completion:</p>
                 <p className="font-medium text-foreground">
-                  {selectedOrder?.estimatedCompletion
-                    ?.toDate()
-                    .toLocaleDateString()}
+                  {selectedOrder?.estimatedCompletion?.toLocaleDateString()}
                 </p>
               </div>
             </div>
