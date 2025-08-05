@@ -6,6 +6,7 @@ import {
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithPopup,
+  User, // Import User type from firebase/auth
 } from "firebase/auth";
 import { doc, setDoc, onSnapshot, getDoc, updateDoc } from "firebase/firestore";
 import { auth, db } from "./firebase"; // Import both auth and db
@@ -41,6 +42,8 @@ import AdminPanel from "./components/AdminPanel"; // Ensure this import path is 
 import OrderQueuePage from "./pages/OrderQueuePage";
 import TeamChat from "./pages/TeamChat";
 import CreateDummyOrder from "./pages/CreateDummyOrder"; // Import CreateDummyOrder
+import PaymentPortalPage from "./pages/PaymentPortalPage"; // Import PaymentPortalPage
+import SuccessPage from "./pages/SuccessPage"; // Import the new SuccessPage component
 
 // --- Tailwind-like styles for basic UI (kept for standalone functionality) ---
 const styles = `
@@ -94,23 +97,20 @@ const styles = `
 
 const queryClient = new QueryClient();
 
-// Define UserProfile interface for clarity
-interface UserProfile {
-  uid: string;
-  email: string;
-  displayName: string;
-  roles: string[];
-  photoURL?: string;
-  createdAt?: Date;
-  lastLoginAt?: Date;
-  profilePictureUrl?: string;
+// Define UserProfile interface for clarity, now EXTENDING Firebase's User type
+// This ensures all properties of Firebase's User object are included,
+// and 'roles' is added as an optional custom field.
+interface UserProfile extends User {
+  roles?: string[]; // Optional roles field
+  profilePictureUrl?: string; // This can be removed if photoURL from User is sufficient
+  photoURL: string | null;
 }
 
 // Define props for AppContent to accept userRoles and isRolesLoaded
 interface AppContentProps {
-  user: any; // Use a more specific UserProfile type if available
+  user: User | null; // Changed to Firebase's User type
   userRoles: string[];
-  isRolesLoaded: boolean; // NEW: Prop to indicate if roles have been loaded
+  isRolesLoaded: boolean; // Prop to indicate if roles have been loaded
   setShowAuthModal: (show: boolean) => void;
   handleSignOut: () => void;
   setIsLoginView: (isLogin: boolean) => void;
@@ -157,6 +157,8 @@ const AppContent: React.FC<AppContentProps> = ({
     "/dashboard/queue", // Hide navbar for OrderQueuePage
     "/team-chat", // Hide navbar for TeamChat
     "/create-dummy-order", // Hide navbar for CreateDummyOrder
+    "/payment-portal", // Hide navbar on payment portal page
+    "/success", // HIDE NAVBAR FOR THE SUCCESS PAGE
   ];
   const shouldHideNavbar = hideNavbarPaths.some((path) =>
     location.pathname.startsWith(path)
@@ -201,15 +203,62 @@ const AppContent: React.FC<AppContentProps> = ({
             />
           }
         />
-        <Route path="/order" element={<Order user={user} appId={appId} />} />
+        <Route
+          path="/order"
+          element={
+            <Order
+              user={
+                user
+                  ? {
+                      uid: user.uid,
+                      email: user.email ?? "",
+                      displayName: user.displayName ?? user.email ?? "",
+                      roles: userRoles,
+                      photoURL: user.photoURL ?? undefined, // photoURL is now correctly recognized
+                    }
+                  : null
+              }
+              appId={appId}
+            />
+          }
+        />
         <Route
           path="/dashboard"
-          element={<Dashboard user={user} appId={appId} />} // Pass user and appId
+          element={
+            <Dashboard
+              user={
+                user
+                  ? {
+                      uid: user.uid,
+                      email: user.email ?? "",
+                      displayName: user.displayName ?? user.email ?? "",
+                      roles: userRoles,
+                      photoURL: user.photoURL ?? undefined, // photoURL is now correctly recognized
+                    }
+                  : null
+              }
+              appId={appId}
+            />
+          } // Pass user as UserProfile and appId
         />
         <Route
           path="/dashboard/orders"
           element={
-            <DashboardOrders userRoles={userRoles} user={user} appId={appId} />
+            <DashboardOrders
+              user={
+                user
+                  ? {
+                      uid: user.uid,
+                      email: user.email ?? "",
+                      displayName: user.displayName ?? user.email ?? "",
+                      roles: userRoles,
+                      photoURL: user.photoURL ?? undefined, // photoURL is now correctly recognized
+                    }
+                  : null
+              }
+              userRoles={userRoles}
+              appId={appId}
+            />
           } // Pass user, appId, and userRoles
         />
         <Route
@@ -218,7 +267,22 @@ const AppContent: React.FC<AppContentProps> = ({
         />
         <Route
           path="/ticket/:ticketId"
-          element={<TicketView user={user} appId={appId} />} // Pass user and appId
+          element={
+            <TicketView
+              user={
+                user
+                  ? {
+                      uid: user.uid,
+                      email: user.email ?? "",
+                      displayName: user.displayName ?? user.email ?? "",
+                      roles: userRoles,
+                      photoURL: user.photoURL ?? undefined, // photoURL is now correctly recognized
+                    }
+                  : null
+              }
+              appId={appId}
+            />
+          } // Pass user as UserProfile and appId
         />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
@@ -228,9 +292,23 @@ const AppContent: React.FC<AppContentProps> = ({
         />
         <Route
           path="/create-dummy-order"
-          element={<CreateDummyOrder user={user} appId={appId} />}
+          element={
+            <CreateDummyOrder
+              user={
+                user
+                  ? {
+                      uid: user.uid,
+                      email: user.email ?? "",
+                      displayName: user.displayName ?? user.email ?? "",
+                      roles: userRoles,
+                      photoURL: user.photoURL ?? undefined, // photoURL is now correctly recognized
+                    }
+                  : null
+              }
+              appId={appId}
+            />
+          }
         />
-
         {/* Admin Panel Route - Protected */}
         <Route
           path="/admin"
@@ -242,7 +320,6 @@ const AppContent: React.FC<AppContentProps> = ({
             )
           }
         />
-
         {/* Order Queue Page Route - Protected for Team/Admin */}
         <Route
           path="/dashboard/queue"
@@ -254,7 +331,29 @@ const AppContent: React.FC<AppContentProps> = ({
             )
           }
         />
-
+        {/* Payment Portal Route */}
+        <Route
+          path="/payment-portal/:ticketId"
+          element={
+            <PaymentPortalPage
+              user={
+                user
+                  ? {
+                      uid: user.uid,
+                      email: user.email ?? "",
+                      displayName: user.displayName ?? user.email ?? "",
+                      roles: userRoles,
+                      photoURL: user.photoURL ?? undefined, // photoURL is now correctly recognized
+                    }
+                  : null
+              }
+              appId={appId}
+            />
+          }
+        />{" "}
+        {/* Payment Portal Route - Ensure user prop is passed */}
+        {/* New Success Route */}
+        <Route path="/success" element={<SuccessPage />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
@@ -373,7 +472,7 @@ const AppContent: React.FC<AppContentProps> = ({
 };
 
 function App() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null); // Still Firebase's User type
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const [isRolesLoaded, setIsRolesLoaded] = useState(false);
   const [email, setEmail] = useState("");
@@ -389,7 +488,8 @@ function App() {
       : "default-app-id-fallback";
   const appId = String(rawAppId);
 
-  const createUserProfile = async (user) => {
+  // createUserProfile now accepts Firebase's User type
+  const createUserProfile = async (user: User) => {
     if (!user || !db) return;
 
     const userRef = doc(db, "users", user.uid);
@@ -406,21 +506,21 @@ function App() {
       if (!userSnap.exists()) {
         await setDoc(userRef, {
           email: user.email,
-          displayName: user.displayName || user.email.split("@")[0],
+          displayName: user.displayName || user.email?.split("@")[0] || null,
           createdAt: createdAt,
           lastLoginAt: lastLoginAt,
-          roles: ["customer"],
-          profilePictureUrl: user.photoURL || null,
+          roles: ["customer"], // Initialize roles for new users
+          photoURL: user.photoURL || null,
         });
       } else {
         await updateDoc(userRef, {
           lastLoginAt: lastLoginAt,
           displayName:
             user.displayName ||
-            userSnap.data().displayName ||
-            user.email.split("@")[0],
-          profilePictureUrl:
-            user.photoURL || userSnap.data().profilePictureUrl || null,
+            userSnap.data()?.displayName ||
+            user.email?.split("@")[0] ||
+            null,
+          photoURL: user.photoURL || userSnap.data()?.photoURL || null,
         });
       }
     } catch (firestoreError) {
@@ -431,13 +531,13 @@ function App() {
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
+      setUser(currentUser); // currentUser is already of type User | null
       setIsRolesLoaded(false); // Reset roles loaded status on auth change
 
       if (currentUser) {
         setShowAuthModal(false);
         if (db) {
-          await createUserProfile(currentUser);
+          await createUserProfile(currentUser); // currentUser is already User type
 
           const userRef = doc(db, "users", currentUser.uid);
           const unsubscribeRoles = onSnapshot(
@@ -445,7 +545,7 @@ function App() {
             (docSnap) => {
               if (docSnap.exists()) {
                 const data = docSnap.data();
-                const fetchedRoles = (data.roles || []) as string[];
+                const fetchedRoles = (data?.roles || []) as string[];
                 setUserRoles(fetchedRoles);
               } else {
                 setUserRoles([]); // No user profile, no roles
@@ -517,6 +617,9 @@ function App() {
           case "auth/user-not-found":
           case "auth/wrong-password":
             errorMessage = "Invalid email or password.";
+            break;
+          case "auth/popup-closed-by-user":
+            errorMessage = "Authentication popup closed.";
             break;
           default:
             errorMessage = e.message;

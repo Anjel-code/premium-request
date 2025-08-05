@@ -19,9 +19,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Send, LogOut, Users, PlusCircle, Loader2, Bot } from "lucide-react";
+import {
+  Send,
+  LogOut,
+  Users,
+  PlusCircle,
+  Loader2,
+  Bot,
+  LayoutDashboard,
+} from "lucide-react";
 import { auth, db } from "../firebase"; // Import global auth and db instances
 import { signOut, User as FirebaseUser } from "firebase/auth"; // Import signOut and User type
+import { Navigate, useNavigate } from "react-router-dom";
+import Dashboard from "./Dashboard";
 
 // Declare global variables for TypeScript (no longer needed here, but kept for context if other files use them)
 // declare const __app_id: string;
@@ -68,6 +78,7 @@ const TeamChat: React.FC<TeamChatProps> = ({ user, appId }) => {
   const [teamName, setTeamName] = useState("");
   const [joinTeamId, setJoinTeamId] = useState("");
   const [showTeamModal, setShowTeamModal] = useState(false);
+  const navigate = useNavigate();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -279,11 +290,11 @@ const TeamChat: React.FC<TeamChatProps> = ({ user, appId }) => {
       {/* Navbar - now part of TeamChat */}
       <nav className="fixed top-0 left-0 w-full bg-white bg-opacity-90 backdrop-blur-sm z-50 shadow-sm">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="text-2xl font-bold text-primary">Team Concierge</div>
+          <div className="text-2xl font-bold text-primary">Quibble</div>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">
-              Welcome, {user.displayName || user.email}!
-            </span>
+            <Button onClick={() => navigate("../dashboard")}>
+              <LayoutDashboard className="h-4 w-4 mr-2" /> Dashboard
+            </Button>
             <Button
               onClick={handleSignOut}
               variant="ghost"

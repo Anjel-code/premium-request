@@ -1,6 +1,6 @@
 // src/pages/TicketView.tsx
-import { useState, useEffect, useRef } from "react"; // Added useRef for chat scrolling
-import { useParams, Link, useNavigate } from "react-router-dom"; // Added useNavigate
+import { useState, useEffect, useRef } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,18 @@ import {
   XCircle, // For dismissed status
 } from "lucide-react";
 
+// Shadcn UI Dialog components for the payment modal
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label"; // For form labels
+
 import {
   doc,
   collection,
@@ -31,6 +43,7 @@ import {
   getDoc,
   updateDoc,
   serverTimestamp,
+  Timestamp, // Import Timestamp type from firebase/firestore
 } from "firebase/firestore";
 import { db } from "../firebase"; // Ensure this path is correct for your firebase.js
 
@@ -54,7 +67,17 @@ interface Order {
   assignedDate: Date | null;
   dismissedBy: string | null;
   dismissedDate: Date | null;
-  conversation: Array<{ text: string; isBot: boolean; timestamp: string }>; // This will be the chat messages
+  conversation?: Array<{
+    text: string;
+    senderId: string;
+    senderName: string;
+    timestamp: Date | null;
+  }>; // Chat messages are now only text
+  // New payment fields directly on the Order
+  paymentStatus?: "none" | "requested" | "paid" | "refunded";
+  finalPaymentAmount?: number | null;
+  paymentRequestNotes?: string | null;
+  paymentPortalUrl?: string | null;
 }
 
 interface ChatMessage {
@@ -62,7 +85,7 @@ interface ChatMessage {
   senderId: string;
   senderName: string;
   text: string;
-  timestamp: Date;
+  timestamp: Date | null; // Changed to Date | null to handle potential invalid dates
 }
 
 interface UserProfile {
@@ -70,6 +93,7 @@ interface UserProfile {
   email: string;
   displayName: string;
   roles: string[]; // Crucial for role-based access
+  photoURL?: string;
 }
 
 // Props for the TicketView component
@@ -77,6 +101,29 @@ interface TicketViewProps {
   user: UserProfile | null; // Pass the authenticated user
   appId: string; // Pass the appId
 }
+
+// Helper function to safely convert Firestore timestamp or string to Date
+const parseFirestoreTimestamp = (timestamp: any): Date | null => {
+  if (timestamp instanceof Date) {
+    return timestamp; // Already a Date object
+  }
+  // Check if it's a Firestore Timestamp object
+  if (timestamp && typeof timestamp.toDate === "function") {
+    const date = timestamp.toDate();
+    // Ensure the date is valid after conversion
+    return !isNaN(date.getTime()) ? date : null;
+  }
+  // Check if it's a string that can be parsed by Date
+  if (typeof timestamp === "string") {
+    const date = new Date(timestamp);
+    // Check if the parsed date is valid
+    if (!isNaN(date.getTime())) {
+      return date;
+    }
+  }
+  // Fallback for null, undefined, or unparseable values
+  return null;
+};
 
 const TicketView: React.FC<TicketViewProps> = ({ user, appId }) => {
   const { ticketId } = useParams<{ ticketId: string }>();
@@ -90,6 +137,12 @@ const TicketView: React.FC<TicketViewProps> = ({ user, appId }) => {
   const [userRole, setUserRole] = useState<string[]>([]);
   const [loadingUserRole, setLoadingUserRole] = useState(true);
   const [newProgress, setNewProgress] = useState<number | string>(""); // State for progress input
+  const [assignedToName, setAssignedToName] = useState<string | null>(null); // New state for assigned user's name
+
+  // Payment Modal States
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState<string>("");
+  const [paymentNotes, setPaymentNotes] = useState<string>("");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -184,7 +237,7 @@ const TicketView: React.FC<TicketViewProps> = ({ user, appId }) => {
     console.log("Setting up onSnapshot for order details...");
     const unsubscribeOrder = onSnapshot(
       orderRef,
-      (docSnap) => {
+      async (docSnap) => {
         console.log("Order details snapshot received.");
         if (docSnap.exists()) {
           const data = docSnap.data();
@@ -196,6 +249,11 @@ const TicketView: React.FC<TicketViewProps> = ({ user, appId }) => {
             estimatedCompletion: data.estimatedCompletion?.toDate() || null,
             assignedDate: data.assignedDate?.toDate() || null,
             dismissedDate: data.dismissedDate?.toDate() || null,
+            // Payment fields
+            paymentStatus: data.paymentStatus || "none",
+            finalPaymentAmount: data.finalPaymentAmount || null,
+            paymentRequestNotes: data.paymentRequestNotes || null,
+            paymentPortalUrl: data.paymentPortalUrl || null,
           } as Order;
 
           console.log("Fetched Order Data:", order);
@@ -218,6 +276,42 @@ const TicketView: React.FC<TicketViewProps> = ({ user, appId }) => {
           if (isAuthorized) {
             setOrderDetails(order);
             setNewProgress(order.progress); // Initialize progress input
+
+            // --- Fetch assigned team member's name ---
+            if (order.assignedTo) {
+              try {
+                const assignedUserRef = doc(db, "users", order.assignedTo);
+                const assignedUserSnap = await getDoc(assignedUserRef);
+                if (assignedUserSnap.exists()) {
+                  const assignedUserData =
+                    assignedUserSnap.data() as UserProfile;
+                  setAssignedToName(
+                    assignedUserData.displayName ||
+                      assignedUserData.email.split("@")[0]
+                  );
+                  console.log(
+                    "Fetched assigned user name:",
+                    assignedUserData.displayName ||
+                      assignedUserData.email.split("@")[0]
+                  );
+                } else {
+                  setAssignedToName("Unknown Team Member");
+                  console.warn(
+                    "Assigned user profile not found for UID:",
+                    order.assignedTo
+                  );
+                }
+              } catch (fetchErr) {
+                console.error(
+                  "Error fetching assigned user profile:",
+                  fetchErr
+                );
+                setAssignedToName("Error fetching name");
+              }
+            } else {
+              setAssignedToName(null); // No one assigned
+            }
+
             console.log("Order details set.");
           } else {
             setError("You do not have permission to view this order.");
@@ -258,8 +352,8 @@ const TicketView: React.FC<TicketViewProps> = ({ user, appId }) => {
             senderId: data.senderId,
             senderName: data.senderName,
             text: data.text,
-            timestamp: data.timestamp?.toDate(), // Convert timestamp to Date
-          } as ChatMessage);
+            timestamp: parseFirestoreTimestamp(data.timestamp),
+          } as ChatMessage); // Removed type and paymentDetails from chat messages
         });
         setChatMessages(fetchedMessages);
         console.log("Fetched Chat Messages:", fetchedMessages);
@@ -315,6 +409,62 @@ const TicketView: React.FC<TicketViewProps> = ({ user, appId }) => {
     } catch (err) {
       console.error("Error sending message:", err);
       setError("Failed to send message.");
+    }
+  };
+
+  // --- Payment Request Handler ---
+  const handleSendPaymentRequest = async () => {
+    console.log("Attempting to send payment request...");
+    const amount = parseFloat(paymentAmount);
+    if (isNaN(amount) || amount <= 0 || !user || !orderDetails) {
+      console.warn("Invalid payment amount or missing user/order details.");
+      setError("Please enter a valid payment amount.");
+      return;
+    }
+
+    try {
+      const orderRef = doc(
+        db,
+        `artifacts/${appId}/public/data/orders`,
+        orderDetails.id
+      );
+
+      // Simulate a payment portal URL (replace with actual integration later)
+      const paymentUrl = `/payment-portal/${
+        orderDetails.id
+      }?amount=${amount.toFixed(2)}`;
+
+      const updateData: Partial<Order> = {
+        paymentStatus: "requested",
+        finalPaymentAmount: amount,
+        paymentRequestNotes: paymentNotes,
+        paymentPortalUrl: paymentUrl,
+        updatedAt: new Date(), // Update the order's last updated time
+      };
+
+      await updateDoc(orderRef, updateData);
+
+      // Optionally, send a regular chat message to notify both parties
+      const messagesCollectionRef = collection(
+        db,
+        `artifacts/${appId}/public/data/orders/${orderDetails.id}/conversation`
+      );
+      await addDoc(messagesCollectionRef, {
+        senderId: user.uid,
+        senderName: user.displayName || user.email.split("@")[0],
+        text: `A payment request for $${amount.toFixed(2)} has been sent. ${
+          paymentNotes ? `Notes: ${paymentNotes}` : ""
+        }`,
+        timestamp: serverTimestamp(),
+      });
+
+      setPaymentAmount("");
+      setPaymentNotes("");
+      setShowPaymentModal(false); // Close the modal
+      console.log("Payment request sent successfully and order updated!");
+    } catch (err) {
+      console.error("Error sending payment request:", err);
+      setError("Failed to send payment request.");
     }
   };
 
@@ -638,13 +788,12 @@ const TicketView: React.FC<TicketViewProps> = ({ user, appId }) => {
                     <span className="text-muted-foreground">Assigned To:</span>
                     <span>
                       {orderDetails.assignedTo ? (
-                        // In a real app, you'd fetch the user's displayName by assignedTo UID
                         <span className="font-medium">
                           {orderDetails.assignedTo === user?.uid
                             ? `You (${
                                 user?.displayName || user?.email.split("@")[0]
                               })`
-                            : orderDetails.assignedTo}
+                            : assignedToName || "Loading..."}
                         </span>
                       ) : (
                         "Not Assigned"
@@ -660,6 +809,171 @@ const TicketView: React.FC<TicketViewProps> = ({ user, appId }) => {
                         orderDetails.userId}
                     </span>
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* NEW: Payment Details Card */}
+              <Card className="border-0 shadow-elegant">
+                <CardHeader>
+                  <CardTitle>Payment Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {orderDetails.paymentStatus === "none" && (
+                    <p className="text-sm text-muted-foreground">
+                      No payment request has been sent yet.
+                    </p>
+                  )}
+
+                  {orderDetails.paymentStatus === "requested" && (
+                    <>
+                      <div className="flex items-center gap-2 text-sm">
+                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">Amount:</span>
+                        <span className="font-bold text-primary text-lg">
+                          $
+                          {orderDetails.finalPaymentAmount?.toFixed(2) || "N/A"}
+                        </span>
+                      </div>
+                      {orderDetails.paymentRequestNotes && (
+                        <p className="text-sm text-muted-foreground">
+                          Notes: {orderDetails.paymentRequestNotes}
+                        </p>
+                      )}
+                      <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                        Payment Requested
+                      </Badge>
+                    </>
+                  )}
+
+                  {orderDetails.paymentStatus === "paid" && (
+                    <>
+                      <div className="flex items-center gap-2 text-sm">
+                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">Amount:</span>
+                        <span className="font-bold text-primary text-lg">
+                          $
+                          {orderDetails.finalPaymentAmount?.toFixed(2) || "N/A"}
+                        </span>
+                      </div>
+                      <Badge className="bg-green-100 text-green-800 border-green-200">
+                        Payment Received
+                      </Badge>
+                    </>
+                  )}
+
+                  {orderDetails.paymentStatus === "refunded" && (
+                    <>
+                      <div className="flex items-center gap-2 text-sm">
+                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">Amount:</span>
+                        <span className="font-bold text-primary text-lg">
+                          $
+                          {orderDetails.finalPaymentAmount?.toFixed(2) || "N/A"}
+                        </span>
+                      </div>
+                      <Badge className="bg-orange-100 text-orange-800 border-orange-200">
+                        Refunded
+                      </Badge>
+                    </>
+                  )}
+
+                  {/* Payment Action Button (Conditional based on role and status) */}
+                  {hasAdminOrTeamRole && (
+                    <Dialog
+                      open={showPaymentModal}
+                      onOpenChange={setShowPaymentModal}
+                    >
+                      <DialogTrigger asChild>
+                        <Button
+                          className="w-full mt-4 bg-green-600 hover:bg-green-700 text-white rounded-md shadow-sm"
+                          disabled={
+                            orderDetails.paymentStatus === "paid" ||
+                            orderDetails.paymentStatus === "requested"
+                          }
+                        >
+                          {orderDetails.paymentStatus === "requested"
+                            ? "Payment Request Sent"
+                            : orderDetails.paymentStatus === "paid"
+                            ? "Payment Received"
+                            : "Finalize Payment"}
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[425px] bg-background text-foreground p-6 rounded-lg shadow-lg">
+                        <DialogHeader>
+                          <DialogTitle className="text-2xl font-bold">
+                            Finalize Payment
+                          </DialogTitle>
+                          <DialogDescription className="text-muted-foreground">
+                            Set the final price and any notes for the customer.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="amount" className="text-right">
+                              Amount ($)
+                            </Label>
+                            <Input
+                              id="amount"
+                              type="number"
+                              value={paymentAmount}
+                              onChange={(e) => setPaymentAmount(e.target.value)}
+                              className="col-span-3 rounded-md"
+                              placeholder="e.g., 150.00"
+                              min="0.01"
+                              step="0.01"
+                            />
+                          </div>
+                          <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="notes" className="text-right">
+                              Notes
+                            </Label>
+                            <Textarea
+                              id="notes"
+                              value={paymentNotes}
+                              onChange={(e) => setPaymentNotes(e.target.value)}
+                              className="col-span-3 rounded-md resize-none"
+                              placeholder="e.g., For design services rendered."
+                            />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button
+                            variant="outline"
+                            onClick={() => setShowPaymentModal(false)}
+                            className="rounded-md"
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            onClick={handleSendPaymentRequest}
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-md"
+                            disabled={
+                              !paymentAmount || parseFloat(paymentAmount) <= 0
+                            }
+                          >
+                            Send Payment Request
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+
+                  {/* Make Payment Button (Visible to ALL roles if payment requested) */}
+                  {orderDetails.paymentStatus === "requested" &&
+                    orderDetails.paymentPortalUrl && (
+                      <Button
+                        asChild
+                        className="w-full mt-4 bg-accent hover:bg-accent/90 text-accent-foreground rounded-md shadow-sm"
+                      >
+                        <a
+                          href={orderDetails.paymentPortalUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Make Payment Now
+                        </a>
+                      </Button>
+                    )}
                 </CardContent>
               </Card>
 
@@ -720,11 +1034,15 @@ const TicketView: React.FC<TicketViewProps> = ({ user, appId }) => {
                                 {message.senderName}
                               </span>
                               <span className="text-xs opacity-70">
-                                {message.timestamp.toLocaleDateString()}{" "}
-                                {message.timestamp.toLocaleTimeString([], {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
+                                {message.timestamp
+                                  ? `${message.timestamp.toLocaleDateString()} ${message.timestamp.toLocaleTimeString(
+                                      [],
+                                      {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      }
+                                    )}`
+                                  : "N/A"}
                               </span>
                             </div>
                             <p className="text-sm leading-relaxed">
