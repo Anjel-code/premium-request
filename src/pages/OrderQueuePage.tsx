@@ -80,12 +80,9 @@ const OrderQueuePage: React.FC<OrderQueuePageProps> = ({ userRoles, user }) => {
   const hasAccess =
     userRoles.includes("team_member") || userRoles.includes("admin");
 
-  // Derive appId from the global variable
-  const rawAppId =
-    typeof (window as any).__app_id !== "undefined"
-      ? (window as any).__app_id
-      : "default-app-id-fallback";
-  const appId = String(rawAppId);
+  // Get appId from environment variable
+  const appId =
+    import.meta.env.VITE_FIREBASE_PROJECT_ID || "default-app-id-fallback";
 
   useEffect(() => {
     if (!db) {

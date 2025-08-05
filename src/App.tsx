@@ -482,11 +482,8 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  const rawAppId =
-    typeof (window as any).__app_id !== "undefined"
-      ? (window as any).__app_id
-      : "default-app-id-fallback";
-  const appId = String(rawAppId);
+  const appId =
+    import.meta.env.VITE_FIREBASE_PROJECT_ID || "default-app-id-fallback";
 
   // createUserProfile now accepts Firebase's User type
   const createUserProfile = async (user: User) => {
