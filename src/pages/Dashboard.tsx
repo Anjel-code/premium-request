@@ -23,6 +23,7 @@ import {
   Bell, // For Notifications tab (from previous shorter version)
   Users, // For Team Chat tab (from previous shorter version)
   XCircle, // For dismissed status
+  User, // For Settings button
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -39,6 +40,7 @@ import {
   getDoc,
 } from "firebase/firestore";
 import { db } from "../firebase"; // Ensure this path is correct for your firebase.js
+import { getUnreadNotificationCount } from "../lib/notificationUtils";
 
 // Define the Order interface to match Firestore data and your display needs
 interface Order {
@@ -87,6 +89,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
   const [userRole, setUserRole] = useState<string[]>([]);
   const [loadingUserRole, setLoadingUserRole] = useState(true);
   const [error, setError] = useState<string | null>(null); // State for errors
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   // Fetch user's role on component mount or when user changes
   useEffect(() => {
@@ -182,6 +185,22 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
 
     return () => unsubscribe(); // Clean up the listener when the component unmounts
   }, [db, user, appId, userRole, loadingUserRole]); // Depend on userRole and loadingUserRole
+
+  // Fetch unread notification count
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      if (!user || !appId) return;
+
+      try {
+        const count = await getUnreadNotificationCount(appId, user.uid);
+        setUnreadNotifications(count);
+      } catch (err) {
+        console.error("Error fetching unread notification count:", err);
+      }
+    };
+
+    fetchUnreadCount();
+  }, [user, appId]);
 
   // Determine if the user has admin or team_member role
   const hasAdminOrTeamRole =
@@ -285,19 +304,25 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
               team
             </p>
           </div>
-          {hasAdminOrTeamRole && (
-            <div className="flex flex-col sm:flex-row">
-              <Button className="mr-2" onClick={() => navigate("queue")}>
-                See the Queue
-              </Button>
-              <Button
-                onClick={() => navigate("/create-dummy-order")}
-                className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-md shadow-sm"
-              >
-                <PlusCircle className="mr-2 h-4 w-4" /> Create Dummy Order
-              </Button>
-            </div>
-          )}
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button asChild variant="outline">
+              <Link to="/dashboard/settings">
+                <User className="mr-2 h-4 w-4" />
+                Settings
+              </Link>
+            </Button>
+            {hasAdminOrTeamRole && (
+              <>
+                <Button onClick={() => navigate("queue")}>See the Queue</Button>
+                <Button
+                  onClick={() => navigate("/create-dummy-order")}
+                  className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-md shadow-sm"
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" /> Create Dummy Order
+                </Button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Enhanced Statistics Cards */}
@@ -430,6 +455,14 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
               className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-md transition-all duration-200"
             >
               <Bell className="mr-2 h-4 w-4" /> Notifications
+              {unreadNotifications > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="ml-2 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
+                >
+                  {unreadNotifications}
+                </Badge>
+              )}
             </TabsTrigger>
             {hasAdminOrTeamRole && (
               <TabsTrigger
@@ -529,13 +562,24 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
             <Card className="border-0 shadow-premium rounded-xl">
               <CardHeader className="border-b border-border p-6">
                 <CardTitle className="text-2xl font-semibold text-primary">
-                  Notifications
+                  Recent Notifications
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
-                <p className="text-center text-muted-foreground py-8">
-                  No new notifications.
-                </p>
+                <div className="text-center py-8">
+                  <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-muted-foreground mb-2">
+                    Notifications
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    View all your notifications and updates here.
+                  </p>
+                  <Button asChild variant="outline">
+                    <Link to="/dashboard/notifications">
+                      View All Notifications
+                    </Link>
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

@@ -1,8 +1,5 @@
 // src/pages/TeamChat.tsx
 import React, { useState, useEffect, useRef } from "react";
-// We no longer need these imports from firebase as we use the global instances
-// import { initializeApp } from "firebase/app";
-// import { getAuth, ... } from "firebase/auth";
 import {
   doc,
   collection,
@@ -13,12 +10,17 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   arrayUnion,
+  arrayRemove,
+  getDocs,
+  where,
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   Send,
   LogOut,
@@ -27,16 +29,18 @@ import {
   Loader2,
   Bot,
   LayoutDashboard,
+  Crown,
+  UserPlus,
+  UserMinus,
+  Search,
+  Eye,
+  EyeOff,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
-import { auth, db } from "../firebase"; // Import global auth and db instances
-import { signOut, User as FirebaseUser } from "firebase/auth"; // Import signOut and User type
+import { auth, db } from "../firebase";
+import { signOut, User as FirebaseUser } from "firebase/auth";
 import { Navigate, useNavigate } from "react-router-dom";
-import Dashboard from "./Dashboard";
-
-// Declare global variables for TypeScript (no longer needed here, but kept for context if other files use them)
-// declare const __app_id: string;
-// declare const __firebase_config: string;
-// declare const __initial_auth_token: string;
 
 // Define interfaces for data structures
 interface UserProfile {
@@ -73,25 +77,64 @@ const TeamChat: React.FC<TeamChatProps> = ({ user, appId }) => {
   const [currentTeam, setCurrentTeam] = useState<Team | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  const [loading, setLoading] = useState(false); // Local loading state for chat actions
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [teamName, setTeamName] = useState("");
   const [joinTeamId, setJoinTeamId] = useState("");
   const [showTeamModal, setShowTeamModal] = useState(false);
+  const [allTeams, setAllTeams] = useState<Team[]>([]);
+  const [userRoles, setUserRoles] = useState<string[]>([]);
+  const [showAllTeams, setShowAllTeams] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [teamToDelete, setTeamToDelete] = useState<Team | null>(null);
   const navigate = useNavigate();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // --- Fetch Team Data and Chat Messages ---
+  // Fetch user roles
   useEffect(() => {
-    // Only proceed if a user and a valid appId exist
+    if (!user || !db) return;
+
+    const userProfileRef = doc(db, "users", user.uid);
+    const unsubscribeUserProfile = onSnapshot(userProfileRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const profileData = docSnap.data() as UserProfile;
+        setUserRoles(profileData.roles || []);
+      }
+    });
+
+    return () => unsubscribeUserProfile();
+  }, [user]);
+
+  // Fetch all teams for admins
+  useEffect(() => {
+    if (!user || !appId || !userRoles.includes("admin")) return;
+
+    const teamsRef = collection(db, `artifacts/${appId}/public/data/teams`);
+    const unsubscribeTeams = onSnapshot(teamsRef, (snapshot) => {
+      const teams: Team[] = [];
+      snapshot.forEach((doc) => {
+        teams.push({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate() || new Date(),
+        } as Team);
+      });
+      setAllTeams(teams);
+    });
+
+    return () => unsubscribeTeams();
+  }, [user, appId, userRoles]);
+
+  // Fetch current team data
+  useEffect(() => {
     if (!user || !appId) {
       setCurrentTeam(null);
       setMessages([]);
       return;
     }
 
-    // Listener for user profile changes (e.g., teamId update)
     const userProfileRef = doc(db, `users`, user.uid);
     const unsubscribeUserProfile = onSnapshot(userProfileRef, (docSnap) => {
       if (docSnap.exists()) {
@@ -115,7 +158,6 @@ const TeamChat: React.FC<TeamChatProps> = ({ user, appId }) => {
           setCurrentTeam(null);
         }
       } else {
-        // Handle case where user profile might not exist (e.g., new user)
         setCurrentTeam(null);
       }
     });
@@ -123,13 +165,13 @@ const TeamChat: React.FC<TeamChatProps> = ({ user, appId }) => {
     return () => unsubscribeUserProfile();
   }, [user, appId]);
 
+  // Fetch messages for current team
   useEffect(() => {
     if (!currentTeam) {
-      setMessages([]); // Clear messages if there is no team
+      setMessages([]);
       return;
     }
 
-    // Listener for chat messages
     const messagesRef = collection(
       db,
       `artifacts/${appId}/public/data/teams/${currentTeam.id}/messages`
@@ -157,17 +199,18 @@ const TeamChat: React.FC<TeamChatProps> = ({ user, appId }) => {
     return () => unsubscribeMessages();
   }, [currentTeam, appId]);
 
-  // --- Scroll to bottom of chat ---
+  // Scroll to bottom of chat
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // --- Authentication and Team Management Handlers ---
+  const isAdmin = userRoles.includes("admin");
+  const isTeamMember = userRoles.includes("team_member");
+
   const handleSignOut = async () => {
     try {
       setLoading(true);
       await signOut(auth);
-      // The onAuthStateChanged listener in App.jsx will handle state update
     } catch (e: any) {
       console.error("Sign out error:", e);
       setError(`Sign out failed: ${e.message}`);
@@ -180,6 +223,7 @@ const TeamChat: React.FC<TeamChatProps> = ({ user, appId }) => {
     if (!user || !appId || !teamName) return;
     try {
       setLoading(true);
+      setError(null);
       const teamsCollectionRef = collection(
         db,
         `artifacts/${appId}/public/data/teams`
@@ -194,6 +238,7 @@ const TeamChat: React.FC<TeamChatProps> = ({ user, appId }) => {
       await updateDoc(userProfileRef, { teamId: newTeamRef.id });
       setTeamName("");
       setShowTeamModal(false);
+      setSuccess("Team created successfully!");
     } catch (e: any) {
       console.error("Error creating team:", e);
       setError(`Failed to create team: ${e.message}`);
@@ -206,6 +251,7 @@ const TeamChat: React.FC<TeamChatProps> = ({ user, appId }) => {
     if (!user || !appId || !joinTeamId) return;
     try {
       setLoading(true);
+      setError(null);
       const teamRef = doc(
         db,
         `artifacts/${appId}/public/data/teams/${joinTeamId}`
@@ -226,6 +272,39 @@ const TeamChat: React.FC<TeamChatProps> = ({ user, appId }) => {
         await updateDoc(userProfileRef, { teamId: joinTeamId });
         setJoinTeamId("");
         setShowTeamModal(false);
+        setSuccess("Successfully joined team!");
+      } else {
+        setError("Team not found.");
+      }
+    } catch (e: any) {
+      console.error("Error joining team:", e);
+      setError(`Failed to join team: ${e.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleJoinTeamById = async (teamId: string) => {
+    if (!user || !appId) return;
+    try {
+      setLoading(true);
+      setError(null);
+      const teamRef = doc(db, `artifacts/${appId}/public/data/teams/${teamId}`);
+      const teamSnap = await getDoc(teamRef);
+
+      if (teamSnap.exists()) {
+        const teamData = teamSnap.data();
+        if (teamData?.memberIds.includes(user.uid)) {
+          setError("You are already a member of this team.");
+          return;
+        }
+
+        await updateDoc(teamRef, {
+          memberIds: arrayUnion(user.uid),
+        });
+        const userProfileRef = doc(db, `users`, user.uid);
+        await updateDoc(userProfileRef, { teamId });
+        setSuccess("Successfully joined team!");
       } else {
         setError("Team not found.");
       }
@@ -241,12 +320,52 @@ const TeamChat: React.FC<TeamChatProps> = ({ user, appId }) => {
     if (!user || !appId || !currentTeam) return;
     try {
       setLoading(true);
+      setError(null);
       const userProfileRef = doc(db, `users`, user.uid);
       await updateDoc(userProfileRef, { teamId: null });
-      // The listener will automatically update the state
+      setSuccess("Successfully left team!");
     } catch (e: any) {
       console.error("Error leaving team:", e);
       setError(`Failed to leave team: ${e.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemoveFromTeam = async (teamId: string, memberId: string) => {
+    if (!appId) return;
+    try {
+      setLoading(true);
+      setError(null);
+      const teamRef = doc(db, `artifacts/${appId}/public/data/teams/${teamId}`);
+      await updateDoc(teamRef, {
+        memberIds: arrayRemove(memberId),
+      });
+      setSuccess("Member removed from team!");
+    } catch (e: any) {
+      console.error("Error removing member:", e);
+      setError(`Failed to remove member: ${e.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteTeam = async () => {
+    if (!appId || !teamToDelete) return;
+    try {
+      setLoading(true);
+      setError(null);
+      const teamRef = doc(
+        db,
+        `artifacts/${appId}/public/data/teams/${teamToDelete.id}`
+      );
+      await deleteDoc(teamRef);
+      setSuccess("Team deleted successfully!");
+      setShowDeleteConfirm(false);
+      setTeamToDelete(null);
+    } catch (e: any) {
+      console.error("Error deleting team:", e);
+      setError(`Failed to delete team: ${e.message}`);
     } finally {
       setLoading(false);
     }
@@ -272,9 +391,29 @@ const TeamChat: React.FC<TeamChatProps> = ({ user, appId }) => {
     }
   };
 
-  // --- Render Logic ---
-  // The parent App.jsx now handles the initial loading and authentication state,
-  // so we can simplify the render logic here.
+  const formatDate = (date: Date | any) => {
+    if (!date) return "Unknown";
+
+    // Handle Firestore Timestamp
+    if (date && typeof date.toDate === "function") {
+      return date.toDate().toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    }
+
+    // Handle regular Date object or timestamp
+    const dateObj = new Date(date);
+    if (isNaN(dateObj.getTime())) return "Invalid Date";
+
+    return dateObj.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -287,7 +426,7 @@ const TeamChat: React.FC<TeamChatProps> = ({ user, appId }) => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Navbar - now part of TeamChat */}
+      {/* Navbar */}
       <nav className="fixed top-0 left-0 w-full bg-white bg-opacity-90 backdrop-blur-sm z-50 shadow-sm">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <div className="text-2xl font-bold text-primary">Quibble</div>
@@ -308,14 +447,60 @@ const TeamChat: React.FC<TeamChatProps> = ({ user, appId }) => {
 
       <div className="pt-24 pb-4 px-6 flex-1 flex flex-col">
         <div className="container mx-auto max-w-4xl flex-1 flex flex-col">
+          {/* Error/Success Messages */}
+          {error && (
+            <Card className="mb-4 border-red-200 bg-red-50">
+              <CardContent className="p-4">
+                <p className="text-red-800">{error}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {success && (
+            <Card className="mb-4 border-green-200 bg-green-50">
+              <CardContent className="p-4">
+                <p className="text-green-800">{success}</p>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Team Selection/Display */}
           <Card className="mb-6 shadow-premium rounded-xl">
             <CardHeader className="border-b border-border flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5 text-primary" />
-                {currentTeam ? `Team: ${currentTeam.name}` : "No Team Selected"}
+                {currentTeam ? (
+                  <div className="flex flex-col">
+                    <span>Team: {currentTeam.name}</span>
+                    <span className="text-sm text-muted-foreground font-normal">
+                      ID: {currentTeam.id}
+                    </span>
+                  </div>
+                ) : (
+                  "No Team Selected"
+                )}
+                {currentTeam && currentTeam.adminId === user.uid && (
+                  <Badge variant="outline" className="ml-2">
+                    <Crown className="h-3 w-3 mr-1" />
+                    Admin
+                  </Badge>
+                )}
               </CardTitle>
-              <div>
+              <div className="flex gap-2">
+                {isAdmin && (
+                  <Button
+                    onClick={() => setShowAllTeams(!showAllTeams)}
+                    variant="outline"
+                    className="rounded-md"
+                  >
+                    {showAllTeams ? (
+                      <EyeOff className="h-4 w-4 mr-2" />
+                    ) : (
+                      <Eye className="h-4 w-4 mr-2" />
+                    )}
+                    {showAllTeams ? "Hide" : "View"} All Teams
+                  </Button>
+                )}
                 {!currentTeam ? (
                   <Button
                     onClick={() => setShowTeamModal(true)}
@@ -328,6 +513,7 @@ const TeamChat: React.FC<TeamChatProps> = ({ user, appId }) => {
                     onClick={handleLeaveTeam}
                     variant="outline"
                     className="border-red-500 text-red-500 hover:bg-red-500/10 rounded-md"
+                    disabled={loading}
                   >
                     Leave Team
                   </Button>
@@ -337,9 +523,110 @@ const TeamChat: React.FC<TeamChatProps> = ({ user, appId }) => {
             {currentTeam && (
               <CardContent className="p-4 text-sm text-muted-foreground">
                 <p>Members: {currentTeam.memberIds.length}</p>
+                <p>Created: {formatDate(currentTeam.createdAt)}</p>
               </CardContent>
             )}
           </Card>
+
+          {/* All Teams View (Admin Only) */}
+          {isAdmin && showAllTeams && (
+            <Card className="mb-6 shadow-premium rounded-xl">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Crown className="h-5 w-5 text-primary" />
+                  All Teams (Admin View)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {allTeams.length === 0 ? (
+                  <p className="text-muted-foreground">No teams found.</p>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {allTeams.map((team) => (
+                      <Card key={team.id} className="p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex flex-col">
+                            <h3 className="font-semibold">{team.name}</h3>
+                            <span className="text-xs text-muted-foreground">
+                              ID: {team.id}
+                            </span>
+                          </div>
+                          <Badge variant="outline">
+                            {team.memberIds.length} members
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Created: {formatDate(team.createdAt)}
+                        </p>
+                        <div className="flex gap-2">
+                          {!team.memberIds.includes(user.uid) ? (
+                            <Button
+                              onClick={() => handleJoinTeamById(team.id)}
+                              size="sm"
+                              className="flex-1"
+                              disabled={loading}
+                            >
+                              <UserPlus className="h-3 w-3 mr-1" />
+                              Join
+                            </Button>
+                          ) : (
+                            <>
+                              <Button
+                                onClick={() => {
+                                  // Set the current team to this team
+                                  const userProfileRef = doc(
+                                    db,
+                                    `users`,
+                                    user.uid
+                                  );
+                                  updateDoc(userProfileRef, {
+                                    teamId: team.id,
+                                  });
+                                }}
+                                size="sm"
+                                className="flex-1"
+                                disabled={loading}
+                              >
+                                <Bot className="h-3 w-3 mr-1" />
+                                Join Chat
+                              </Button>
+                              <Button
+                                onClick={() =>
+                                  handleRemoveFromTeam(team.id, user.uid)
+                                }
+                                size="sm"
+                                variant="outline"
+                                className="flex-1"
+                                disabled={loading}
+                              >
+                                <UserMinus className="h-3 w-3 mr-1" />
+                                Leave
+                              </Button>
+                            </>
+                          )}
+                          {isAdmin && (
+                            <Button
+                              onClick={() => {
+                                setTeamToDelete(team);
+                                setShowDeleteConfirm(true);
+                              }}
+                              size="sm"
+                              variant="destructive"
+                              className="flex-1"
+                              disabled={loading}
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              Delete
+                            </Button>
+                          )}
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Team Management Modal */}
           {showTeamModal && (
@@ -360,8 +647,13 @@ const TeamChat: React.FC<TeamChatProps> = ({ user, appId }) => {
                     <Button
                       onClick={handleCreateTeam}
                       className="w-full rounded-md"
-                      disabled={loading}
+                      disabled={loading || !teamName.trim()}
                     >
+                      {loading ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <PlusCircle className="h-4 w-4 mr-2" />
+                      )}
                       Create Team
                     </Button>
                   </div>
@@ -377,19 +669,84 @@ const TeamChat: React.FC<TeamChatProps> = ({ user, appId }) => {
                       onClick={handleJoinTeam}
                       variant="outline"
                       className="w-full border-primary text-primary rounded-md"
-                      disabled={loading}
+                      disabled={loading || !joinTeamId.trim()}
                     >
+                      {loading ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <UserPlus className="h-4 w-4 mr-2" />
+                      )}
                       Join Team
                     </Button>
                   </div>
-                  {error && <p className="text-red-500 text-sm">{error}</p>}
                   <Button
-                    onClick={() => setShowTeamModal(false)}
+                    onClick={() => {
+                      setShowTeamModal(false);
+                      setError(null);
+                      setSuccess(null);
+                    }}
                     variant="ghost"
                     className="w-full rounded-md"
                   >
                     Close
                   </Button>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Delete Team Confirmation Modal */}
+          {showDeleteConfirm && teamToDelete && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <Card className="w-full max-w-md shadow-premium rounded-xl">
+                <CardHeader>
+                  <CardTitle className="text-center flex items-center justify-center gap-2 text-red-600">
+                    <AlertTriangle className="h-5 w-5" />
+                    Delete Team
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="text-center">
+                    <p className="text-lg font-semibold mb-2">
+                      Are you sure you want to delete "{teamToDelete.name}"?
+                    </p>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      This action cannot be undone. All team messages and data
+                      will be permanently deleted.
+                    </p>
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                      <p className="text-sm text-red-800 font-medium">
+                        ⚠️ Warning: This will permanently delete the team and
+                        all its messages.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleDeleteTeam}
+                      variant="destructive"
+                      className="flex-1"
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Trash2 className="h-4 w-4 mr-2" />
+                      )}
+                      Yes, Delete Team
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setShowDeleteConfirm(false);
+                        setTeamToDelete(null);
+                      }}
+                      variant="outline"
+                      className="flex-1"
+                      disabled={loading}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </div>

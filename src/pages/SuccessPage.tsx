@@ -13,6 +13,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Loader2, AlertCircle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { auth, db } from "../firebase"; // Import the existing Firebase instances
+import { createPaymentNotification } from "../lib/notificationUtils";
 
 const SuccessPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -120,6 +121,22 @@ const SuccessPage: React.FC = () => {
         text: "Payment has been successfully received for this order.",
         timestamp: serverTimestamp(),
       });
+
+      // Create a notification for the payment
+      try {
+        await createPaymentNotification(
+          appId,
+          currentUserId,
+          currentTicketId,
+          currentTicketId // Using ticketId as ticketNumber for now
+        );
+      } catch (notificationError) {
+        console.error(
+          "Error creating payment notification:",
+          notificationError
+        );
+        // Don't fail the payment confirmation if notification fails
+      }
 
       setLoading(false);
     } catch (err) {

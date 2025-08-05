@@ -261,7 +261,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
                             ? new Date(order.createdAt).toLocaleDateString()
                             : "N/A"}
                         </p>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                        <div className="text-sm text-muted-foreground flex items-center gap-1">
                           <AlertCircle className="h-3 w-3 inline-block" />{" "}
                           Status:{" "}
                           <Badge className={getStatusColor(order.status)}>
@@ -270,14 +270,14 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
                               {formatStatus(order.status)}
                             </div>
                           </Badge>
-                        </p>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                        </div>
+                        <div className="text-sm text-muted-foreground flex items-center gap-1">
                           <Progress
                             value={order.progress}
                             className="h-2 w-24 inline-block mr-2"
                           />{" "}
                           Progress: {order.progress}%
-                        </p>
+                        </div>
                       </div>
                       <Button
                         onClick={() => navigate(`/ticket/${order.id}`)}

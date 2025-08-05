@@ -9,7 +9,11 @@ import {
   updateDoc,
   deleteDoc,
 } from "firebase/firestore";
-import { db } from "../firebase"; // Ensure this path is correct
+import { db } from "../firebase";
+import {
+  createAssignmentNotification,
+  createOrderStatusNotification,
+} from "../lib/notificationUtils"; // Ensure this path is correct
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -213,6 +217,24 @@ const OrderQueuePage: React.FC<OrderQueuePageProps> = ({ userRoles, user }) => {
         dismissedBy: user.uid,
         dismissedDate: new Date(),
       });
+
+      // Create notification for order dismissal
+      try {
+        await createOrderStatusNotification(
+          appId,
+          orderToActOn.userId, // Notify the order owner
+          orderToActOn.id,
+          orderToActOn.ticketNumber,
+          "pending",
+          "dismissed"
+        );
+      } catch (notificationError) {
+        console.error(
+          "Error creating dismissal notification:",
+          notificationError
+        );
+      }
+
       setShowDismissConfirm(false);
       setOrderToActOn(null);
       setSelectedOrder(null); // Close expanded view if it was open
@@ -245,6 +267,22 @@ const OrderQueuePage: React.FC<OrderQueuePageProps> = ({ userRoles, user }) => {
         assignedTo: user.uid,
         assignedDate: new Date(),
       });
+
+      // Create notification for assignment
+      try {
+        await createAssignmentNotification(
+          appId,
+          orderToActOn.userId, // Notify the order owner
+          orderToActOn.id,
+          orderToActOn.ticketNumber
+        );
+      } catch (notificationError) {
+        console.error(
+          "Error creating assignment notification:",
+          notificationError
+        );
+      }
+
       setShowAcceptConfirm(false);
       setOrderToActOn(null);
       setSelectedOrder(null); // Close expanded view if it was open

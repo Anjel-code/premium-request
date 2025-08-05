@@ -33,6 +33,7 @@ import Order from "./pages/Order";
 import Dashboard from "./pages/Dashboard";
 import DashboardOrders from "./pages/DashboardOrders";
 import DashboardNotifications from "./pages/DashboardNotifications";
+import DashboardSettings from "./pages/DashboardSettings";
 import TicketView from "./pages/TicketView";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
@@ -264,6 +265,27 @@ const AppContent: React.FC<AppContentProps> = ({
         <Route
           path="/dashboard/notifications"
           element={<DashboardNotifications user={user} appId={appId} />} // Pass user and appId
+        />
+        <Route
+          path="/dashboard/settings"
+          element={
+            <DashboardSettings
+              user={
+                user
+                  ? {
+                      uid: user.uid,
+                      email: user.email ?? "",
+                      displayName: user.displayName ?? user.email ?? "",
+                      roles: userRoles,
+                      photoURL: user.photoURL ?? undefined,
+                    }
+                  : null
+              }
+              userRoles={userRoles}
+              appId={appId}
+              onSignOut={handleSignOut}
+            />
+          }
         />
         <Route
           path="/ticket/:ticketId"
