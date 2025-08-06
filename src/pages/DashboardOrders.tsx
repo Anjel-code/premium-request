@@ -5,6 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Clock,
   CheckCircle,
@@ -12,6 +22,8 @@ import {
   Loader2,
   XCircle,
   ArrowLeft, // Added for back button
+  Trash2,
+  Eye,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 
@@ -22,6 +34,8 @@ import {
   orderBy,
   onSnapshot,
   where, // Added for potential filtering in the future
+  deleteDoc,
+  doc,
 } from "firebase/firestore";
 import { db } from "../firebase"; // Ensure this path is correct for your firebase.js
 
@@ -69,6 +83,13 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Delete order state
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!db || !user || userRoles.length === 0) {
@@ -180,10 +201,60 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
   };
 
   const formatStatus = (status: Order["status"]) => {
-    return status
-      .split("_")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
+    switch (status) {
+      case "pending":
+        return "Pending";
+      case "accepted":
+        return "Accepted";
+      case "completed":
+        return "Payment Completed";
+      case "dismissed":
+        return "Dismissed";
+      default:
+        return status as string;
+    }
+  };
+
+  const handleDeleteClick = (order: Order) => {
+    setOrderToDelete(order);
+    setDeletePassword("");
+    setDeleteError(null);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteOrder = async () => {
+    if (!orderToDelete || deletePassword !== "oublydbv") {
+      setDeleteError("Incorrect password");
+      return;
+    }
+
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    try {
+      const orderRef = doc(
+        db,
+        `artifacts/${appId}/public/data/store-orders`,
+        orderToDelete.id
+      );
+      await deleteDoc(orderRef);
+
+      setIsDeleteDialogOpen(false);
+      setOrderToDelete(null);
+      setDeletePassword("");
+    } catch (error) {
+      console.error("Error deleting order:", error);
+      setDeleteError("Failed to delete order. Please try again.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setIsDeleteDialogOpen(false);
+    setOrderToDelete(null);
+    setDeletePassword("");
+    setDeleteError(null);
   };
 
   if (loadingOrders) {
@@ -293,16 +364,28 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
                           Progress: {order.progress}%
                         </div>
                       </div>
-                      <Button
-                        asChild
-                        variant="outline"
-                        size="sm"
-                        className="border-primary text-primary hover:bg-primary/10 rounded-md"
-                      >
-                        <Link to={`/dashboard/store-orders/${order.id}`}>
-                          View Details
-                        </Link>
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          asChild
+                          variant="outline"
+                          size="sm"
+                          className="border-primary text-primary hover:bg-primary/10 rounded-md"
+                        >
+                          <Link to={`/dashboard/store-orders/${order.id}`}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Details
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-red-600 text-red-600 hover:bg-red-50 rounded-md"
+                          onClick={() => handleDeleteClick(order)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
@@ -311,6 +394,66 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-600">Delete Order</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this order? This action cannot be
+              undone.
+              <br />
+              <br />
+              <strong>Order:</strong>{" "}
+              {orderToDelete?.title || `Order ${orderToDelete?.ticketNumber}`}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="deletePassword">
+                Enter password to confirm deletion:
+              </Label>
+              <Input
+                id="deletePassword"
+                type="password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                placeholder="Enter password"
+                className="mt-2"
+              />
+              {deleteError && (
+                <p className="text-sm text-red-600 mt-2">{deleteError}</p>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleCancelDelete}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteOrder}
+              disabled={isDeleting || !deletePassword}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Order"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };

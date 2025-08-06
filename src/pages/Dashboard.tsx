@@ -257,10 +257,18 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
   };
 
   const formatStatus = (status: Order["status"]) => {
-    return status
-      .split("_")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
+    switch (status) {
+      case "pending":
+        return "Pending";
+      case "accepted":
+        return "Accepted";
+      case "completed":
+        return "Payment Completed";
+      case "dismissed":
+        return "Dismissed";
+      default:
+        return status as string;
+    }
   };
 
   const totalOrders = orders.length;
@@ -390,7 +398,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Completed</p>
+                  <p className="text-sm text-muted-foreground">
+                    Payment Completed
+                  </p>
                   <AnimatedCounter
                     end={completedOrders}
                     className="text-2xl font-bold text-primary"

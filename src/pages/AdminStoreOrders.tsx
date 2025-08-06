@@ -168,7 +168,22 @@ const AdminStoreOrders: React.FC<AdminStoreOrdersProps> = ({ user, appId }) => {
   };
 
   const formatStatus = (status: string) => {
-    return status.charAt(0).toUpperCase() + status.slice(1);
+    switch (status) {
+      case "pending":
+        return "Pending";
+      case "paid":
+        return "Payment Completed";
+      case "shipped":
+        return "Shipped";
+      case "delivered":
+        return "Delivered";
+      case "cancelled":
+        return "Cancelled";
+      case "failed":
+        return "Failed";
+      default:
+        return status.charAt(0).toUpperCase() + status.slice(1);
+    }
   };
 
   const handleUpdateOrder = async () => {
@@ -233,6 +248,40 @@ const AdminStoreOrders: React.FC<AdminStoreOrdersProps> = ({ user, appId }) => {
         selectedOrder.id
       );
 
+      // Create initial tracking history if this is the first time adding tracking
+      const isFirstTimeTracking = !selectedOrder.trackingInfo;
+      const initialTrackingHistory: TrackingEvent[] = isFirstTimeTracking
+        ? [
+            {
+              id: "1",
+              timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
+              location: "Quibble",
+              status: "Order Processed",
+              description: "Order has been processed and is ready for shipment",
+            },
+            {
+              id: "2",
+              timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
+              location: "Distribution Center",
+              status: "In Transit",
+              description: "Package is in transit to destination",
+            },
+            {
+              id: "3",
+              timestamp: trackingStatus === "delivered" ? new Date() : null,
+              location: "Customer",
+              status:
+                trackingStatus === "delivered"
+                  ? "Delivered"
+                  : "To Be Delivered",
+              description:
+                trackingStatus === "delivered"
+                  ? "Package has been delivered successfully"
+                  : "Awaiting delivery confirmation",
+            },
+          ]
+        : selectedOrder.trackingInfo.trackingHistory || [];
+
       const trackingData = {
         trackingNumber,
         carrier,
@@ -241,6 +290,7 @@ const AdminStoreOrders: React.FC<AdminStoreOrdersProps> = ({ user, appId }) => {
           ? new Date(estimatedDelivery)
           : null,
         currentLocation,
+        trackingHistory: initialTrackingHistory,
         updatedAt: serverTimestamp(),
       };
 

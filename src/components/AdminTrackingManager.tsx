@@ -19,15 +19,73 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Plus,
-  Edit,
-  Trash2,
-  GripVertical,
-  MapPin,
-  Clock,
-} from "lucide-react";
+import { Plus, Edit, Trash2, GripVertical, MapPin, Clock } from "lucide-react";
 import { TrackingEvent } from "@/lib/storeUtils";
+
+// Drag and drop functionality
+const useDragAndDrop = (
+  items: TrackingEvent[],
+  onReorder: (items: TrackingEvent[]) => void
+) => {
+  const [draggedItem, setDraggedItem] = useState<number | null>(null);
+  const [dragOverItem, setDragOverItem] = useState<number | null>(null);
+
+  const handleDragStart = (index: number) => {
+    setDraggedItem(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverItem(index);
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (draggedItem === null || draggedItem === dropIndex) return;
+
+    const draggedEvent = items[draggedItem];
+    const dropEvent = items[dropIndex];
+
+    // Don't allow dropping if it would break the required order
+    if (
+      draggedEvent.location === "Quibble" ||
+      draggedEvent.location === "Customer"
+    ) {
+      return;
+    }
+
+    // Don't allow dropping before Quibble or after Customer
+    if (dropEvent.location === "Quibble" && dropIndex === 0) {
+      return; // Can't drop before Quibble
+    }
+
+    if (dropEvent.location === "Customer" && dropIndex === items.length - 1) {
+      return; // Can't drop after Customer
+    }
+
+    const newItems = [...items];
+    const [draggedElement] = newItems.splice(draggedItem, 1);
+    newItems.splice(dropIndex, 0, draggedElement);
+
+    onReorder(newItems);
+    setDraggedItem(null);
+    setDragOverItem(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItem(null);
+    setDragOverItem(null);
+  };
+
+  return {
+    draggedItem,
+    dragOverItem,
+    handleDragStart,
+    handleDragOver,
+    handleDrop,
+    handleDragEnd,
+  };
+};
 
 interface AdminTrackingManagerProps {
   trackingHistory: TrackingEvent[];
@@ -47,8 +105,22 @@ const AdminTrackingManager: React.FC<AdminTrackingManagerProps> = ({
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const handleReorder = (newEvents: TrackingEvent[]) => {
+    setEvents(newEvents);
+  };
+
+  const {
+    draggedItem,
+    dragOverItem,
+    handleDragStart,
+    handleDragOver,
+    handleDrop,
+    handleDragEnd,
+  } = useDragAndDrop(events, handleReorder);
+
   // Form states for editing
   const [eventLocation, setEventLocation] = useState("");
+  const [customLocation, setCustomLocation] = useState("");
   const [eventStatus, setEventStatus] = useState("");
   const [eventDescription, setEventDescription] = useState("");
   const [eventTimestamp, setEventTimestamp] = useState("");
@@ -63,6 +135,7 @@ const AdminTrackingManager: React.FC<AdminTrackingManagerProps> = ({
     };
     setEditingEvent(newEvent);
     setEventLocation(newEvent.location);
+    setCustomLocation("");
     setEventStatus(newEvent.status);
     setEventDescription(newEvent.description);
     setEventTimestamp(newEvent.timestamp.toISOString().slice(0, 16));
@@ -72,6 +145,7 @@ const AdminTrackingManager: React.FC<AdminTrackingManagerProps> = ({
   const handleEditEvent = (event: TrackingEvent) => {
     setEditingEvent(event);
     setEventLocation(event.location);
+    setCustomLocation("");
     setEventStatus(event.status);
     setEventDescription(event.description);
     setEventTimestamp(event.timestamp.toISOString().slice(0, 16));
@@ -79,28 +153,31 @@ const AdminTrackingManager: React.FC<AdminTrackingManagerProps> = ({
   };
 
   const handleDeleteEvent = (eventId: string) => {
-    setEvents(events.filter(event => event.id !== eventId));
+    setEvents(events.filter((event) => event.id !== eventId));
   };
 
   const handleSaveEvent = () => {
-    if (!editingEvent || !eventLocation || !eventStatus || !eventDescription) return;
+    if (!editingEvent || !eventLocation || !eventStatus || !eventDescription)
+      return;
 
     const updatedEvent: TrackingEvent = {
       ...editingEvent,
-      location: eventLocation,
+      location: eventLocation === "Custom" ? customLocation : eventLocation,
       status: eventStatus,
       description: eventDescription,
-      timestamp: new Date(eventTimestamp),
+      timestamp: new Date(eventTimestamp || Date.now()),
     };
 
-    if (editingEvent.id.startsWith('event_')) {
+    if (editingEvent.id.startsWith("event_")) {
       // New event
       setEvents([...events, updatedEvent]);
     } else {
       // Existing event
-      setEvents(events.map(event => 
-        event.id === editingEvent.id ? updatedEvent : event
-      ));
+      setEvents(
+        events.map((event) =>
+          event.id === editingEvent.id ? updatedEvent : event
+        )
+      );
     }
 
     setIsEditDialogOpen(false);
@@ -110,8 +187,23 @@ const AdminTrackingManager: React.FC<AdminTrackingManagerProps> = ({
   const handleSaveAll = async () => {
     setSaving(true);
     try {
-      // Sort events by timestamp
-      const sortedEvents = [...events].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+      // Sort events to ensure proper order: Quibble -> Distribution Center -> Customer
+      const sortedEvents = [...events].sort((a, b) => {
+        // Customer should always be last
+        if (a.location === "Customer") return 1;
+        if (b.location === "Customer") return -1;
+
+        // Quibble should always be first
+        if (a.location === "Quibble") return -1;
+        if (b.location === "Quibble") return 1;
+
+        // Distribution Center should be second
+        if (a.location === "Distribution Center") return -1;
+        if (b.location === "Distribution Center") return 1;
+
+        // For other events, sort by timestamp (oldest first for timeline)
+        return a.timestamp.getTime() - b.timestamp.getTime();
+      });
       await onSaveTrackingHistory(sortedEvents);
       onClose();
     } catch (error) {
@@ -150,15 +242,39 @@ const AdminTrackingManager: React.FC<AdminTrackingManagerProps> = ({
             {events.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <MapPin className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No tracking events yet. Add your first event to get started.</p>
+                <p>
+                  No tracking events yet. Add your first event to get started.
+                </p>
               </div>
             ) : (
               events.map((event, index) => (
-                <Card key={event.id} className="border shadow-sm">
+                <Card
+                  key={event.id}
+                  className={`border shadow-sm transition-all ${
+                    draggedItem === index ? "opacity-50 scale-95" : ""
+                  } ${
+                    dragOverItem === index ? "border-primary bg-primary/5" : ""
+                  }`}
+                  draggable={
+                    event.location !== "Quibble" &&
+                    event.location !== "Customer"
+                  }
+                  onDragStart={() => handleDragStart(index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDrop={(e) => handleDrop(e, index)}
+                  onDragEnd={handleDragEnd}
+                >
                   <CardContent className="p-4">
                     <div className="flex items-center gap-3">
                       {/* Drag Handle */}
-                      <div className="cursor-move text-muted-foreground hover:text-primary">
+                      <div
+                        className={`text-muted-foreground ${
+                          event.location !== "Quibble" &&
+                          event.location !== "Customer"
+                            ? "cursor-move hover:text-primary"
+                            : "cursor-not-allowed opacity-50"
+                        }`}
+                      >
                         <GripVertical className="h-4 w-4" />
                       </div>
 
@@ -169,11 +285,21 @@ const AdminTrackingManager: React.FC<AdminTrackingManagerProps> = ({
                             {event.location}
                           </span>
                           <span className="text-sm text-muted-foreground">
-                            {event.timestamp.toLocaleDateString()} {event.timestamp.toLocaleTimeString()}
+                            {event.location === "Customer" &&
+                            event.status !== "Delivered" ? (
+                              "Pending"
+                            ) : (
+                              <>
+                                {event.timestamp.toLocaleDateString()}{" "}
+                                {event.timestamp.toLocaleTimeString()}
+                              </>
+                            )}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">{event.status}</span>
+                          <span className="text-sm font-medium">
+                            {event.status}
+                          </span>
                           <span className="text-sm text-muted-foreground">
                             {event.description}
                           </span>
@@ -220,18 +346,36 @@ const AdminTrackingManager: React.FC<AdminTrackingManagerProps> = ({
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>
-                {editingEvent?.id.startsWith('event_') ? 'Add New Event' : 'Edit Event'}
+                {editingEvent?.id.startsWith("event_")
+                  ? "Add New Event"
+                  : "Edit Event"}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
                 <Label htmlFor="location">Location</Label>
-                <Input
-                  id="location"
-                  value={eventLocation}
-                  onChange={(e) => setEventLocation(e.target.value)}
-                  placeholder="e.g., Memphis, TN"
-                />
+                <Select value={eventLocation} onValueChange={setEventLocation}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Quibble">Quibble</SelectItem>
+                    <SelectItem value="Distribution Center">
+                      Distribution Center
+                    </SelectItem>
+                    <SelectItem value="Customer">Customer</SelectItem>
+                    <SelectItem value="Custom">Custom Location</SelectItem>
+                  </SelectContent>
+                </Select>
+                {eventLocation === "Custom" && (
+                  <Input
+                    id="customLocation"
+                    value={customLocation}
+                    onChange={(e) => setCustomLocation(e.target.value)}
+                    placeholder="Enter custom location"
+                    className="mt-2"
+                  />
+                )}
               </div>
               <div>
                 <Label htmlFor="status">Status</Label>
@@ -240,9 +384,19 @@ const AdminTrackingManager: React.FC<AdminTrackingManagerProps> = ({
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Package Picked Up">Package Picked Up</SelectItem>
+                    <SelectItem value="Order Processed">
+                      Order Processed
+                    </SelectItem>
+                    <SelectItem value="Package Picked Up">
+                      Package Picked Up
+                    </SelectItem>
                     <SelectItem value="In Transit">In Transit</SelectItem>
-                    <SelectItem value="Out for Delivery">Out for Delivery</SelectItem>
+                    <SelectItem value="Out for Delivery">
+                      Out for Delivery
+                    </SelectItem>
+                    <SelectItem value="To Be Delivered">
+                      To Be Delivered
+                    </SelectItem>
                     <SelectItem value="Delivered">Delivered</SelectItem>
                     <SelectItem value="Custom">Custom</SelectItem>
                   </SelectContent>
@@ -274,9 +428,7 @@ const AdminTrackingManager: React.FC<AdminTrackingManagerProps> = ({
               >
                 Cancel
               </Button>
-              <Button onClick={handleSaveEvent}>
-                Save Event
-              </Button>
+              <Button onClick={handleSaveEvent}>Save Event</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -285,4 +437,4 @@ const AdminTrackingManager: React.FC<AdminTrackingManagerProps> = ({
   );
 };
 
-export default AdminTrackingManager; 
+export default AdminTrackingManager;

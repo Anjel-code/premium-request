@@ -130,17 +130,61 @@ const StoreOrderDetail: React.FC<StoreOrderDetailProps> = ({ user, appId }) => {
 
         // Use actual tracking info from database or generate mock if not available
         if (orderData.trackingInfo) {
+          // Convert tracking history timestamps to Date objects
+          const convertedTrackingHistory =
+            orderData.trackingInfo.trackingHistory?.map((event) => ({
+              ...event,
+              timestamp:
+                event.timestamp instanceof Timestamp
+                  ? event.timestamp.toDate()
+                  : event.timestamp instanceof Date
+                  ? event.timestamp
+                  : new Date(event.timestamp),
+            })) || [];
+
           setTrackingInfo({
             ...orderData.trackingInfo,
             estimatedDelivery:
               orderData.trackingInfo.estimatedDelivery instanceof Timestamp
                 ? orderData.trackingInfo.estimatedDelivery.toDate()
                 : orderData.trackingInfo.estimatedDelivery || new Date(),
+            trackingHistory: convertedTrackingHistory,
           });
         } else if (
           orderData.status === "shipped" ||
           orderData.status === "delivered"
         ) {
+          // Create initial tracking history with Quibble as start and Customer as end
+          const initialTrackingHistory: TrackingEvent[] = [
+            {
+              id: "1",
+              timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
+              location: "Quibble",
+              status: "Order Processed",
+              description: "Order has been processed and is ready for shipment",
+            },
+            {
+              id: "2",
+              timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
+              location: "Distribution Center",
+              status: "In Transit",
+              description: "Package is in transit to destination",
+            },
+            {
+              id: "3",
+              timestamp: orderData.status === "delivered" ? new Date() : null,
+              location: "Customer",
+              status:
+                orderData.status === "delivered"
+                  ? "Delivered"
+                  : "To Be Delivered",
+              description:
+                orderData.status === "delivered"
+                  ? "Package has been delivered successfully"
+                  : "Awaiting delivery confirmation",
+            },
+          ];
+
           setTrackingInfo({
             trackingNumber: `TRK${orderSnap.id.slice(-8).toUpperCase()}`,
             carrier: "FedEx",
@@ -148,6 +192,7 @@ const StoreOrderDetail: React.FC<StoreOrderDetailProps> = ({ user, appId }) => {
               orderData.status === "delivered" ? "delivered" : "in_transit",
             estimatedDelivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
             currentLocation: "Memphis, TN",
+            trackingHistory: initialTrackingHistory,
           });
         }
 
@@ -321,7 +366,7 @@ const StoreOrderDetail: React.FC<StoreOrderDetailProps> = ({ user, appId }) => {
                   <p className="text-sm font-medium">Payment</p>
                   <p className="text-xs text-muted-foreground">
                     {order.paymentStatus === "completed"
-                      ? "Completed"
+                      ? "Payment Completed"
                       : "Pending"}
                   </p>
                 </div>
@@ -342,7 +387,7 @@ const StoreOrderDetail: React.FC<StoreOrderDetailProps> = ({ user, appId }) => {
                   </div>
                   <p className="text-sm font-medium">Delivered</p>
                   <p className="text-xs text-muted-foreground">
-                    {order.status === "delivered" ? "Completed" : "Pending"}
+                    {order.status === "delivered" ? "Delivered" : "Pending"}
                   </p>
                 </div>
               </div>

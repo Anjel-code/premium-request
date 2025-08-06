@@ -135,10 +135,25 @@ const DashboardStoreOrders: React.FC<DashboardStoreOrdersProps> = ({
   };
 
   const formatStatus = (status: string) => {
-    return status
-      .split("_")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
+    switch (status) {
+      case "pending":
+        return "Pending";
+      case "paid":
+        return "Payment Completed";
+      case "shipped":
+        return "Shipped";
+      case "delivered":
+        return "Delivered";
+      case "cancelled":
+        return "Cancelled";
+      case "failed":
+        return "Failed";
+      default:
+        return status
+          .split("_")
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(" ");
+    }
   };
 
   if (loadingOrders) {
