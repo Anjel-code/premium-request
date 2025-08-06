@@ -11,6 +11,7 @@ import {
   Settings,
   HelpCircle,
   Shield,
+  MessageSquare,
   Users,
 } from "lucide-react";
 
@@ -23,7 +24,7 @@ const userMenuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Orders", url: "/dashboard/orders", icon: Package },
   { title: "Notifications", url: "/dashboard/notifications", icon: Bell },
-  { title: "Support", url: "/dashboard/support", icon: HelpCircle },
+  { title: "Support", url: "/dashboard/support", icon: MessageSquare },
   { title: "Settings", url: "/dashboard/settings", icon: Settings },
 ];
 

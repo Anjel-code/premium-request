@@ -152,4 +152,37 @@
           transparent
         );
   }
+
+  /* Markdown styling for chat messages */
+  .prose {
+    @apply text-foreground;
+  }
+
+  .prose strong {
+    @apply font-semibold text-foreground;
+  }
+
+  .prose em {
+    @apply italic text-foreground;
+  }
+
+  .prose code {
+    @apply bg-muted px-1 py-0.5 rounded text-xs font-mono;
+  }
+
+  .prose ul {
+    @apply list-disc list-inside space-y-1 my-2;
+  }
+
+  .prose li {
+    @apply text-foreground;
+  }
+
+  .prose p {
+    @apply text-foreground mb-2;
+  }
+
+  .prose p:last-child {
+    @apply mb-0;
+  }
 }

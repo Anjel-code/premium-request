@@ -19,16 +19,9 @@ import AnimatedCounter from "@/components/AnimatedCounter";
 const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
   const navigate = useNavigate(); // Initialize useNavigate hook
 
-  // Function to handle "Start Your Request" button click
-  const handleStartRequestClick = () => {
-    if (!user) {
-      // If user is not logged in, show the auth modal
-      setShowAuthModal(true);
-      setIsLoginView(true); // Default to login view when opening from "Start Request"
-    } else {
-      // If user is logged in, navigate to the order page
-      navigate("/order");
-    }
+  // Function to handle "Shop Now" button click
+  const handleShopNowClick = () => {
+    navigate("/store");
   };
 
   return (
@@ -40,22 +33,22 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
         <div className="absolute inset-0 z-0 bg-black/35"></div>
         <div className="relative container mx-auto text-center pt-36 pb-36 z-10">
           <h1 className="text-5xl md:text-7xl font-bold text-stone-100 mb-6 animate-fade-in">
-            Your Personal Product
-            <span className="block text-accent">Concierge</span>
+            Premium Wireless
+            <span className="block text-accent">Headphones</span>
           </h1>
           <p className="text-xl md:text-2xl text-stone-300 mb-8 max-w-3xl mx-auto animate-slide-up">
-            From concept to delivery, we handle every aspect of finding,
-            sourcing, and acquiring any product you need. Experience the luxury
-            of having a dedicated team work exclusively for you.
+            Experience crystal-clear sound with our premium wireless headphones
+            featuring active noise cancellation, 30-hour battery life, and
+            premium comfort for all-day wear.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-scale-in">
             <Button
               variant="premium"
               size="lg"
               className="text-lg px-8 py-6"
-              onClick={handleStartRequestClick} // Use the new handler
+              onClick={handleShopNowClick}
             >
-              <span className="relative z-10">Start Your Request</span>{" "}
+              <span className="relative z-10">Shop Now</span>{" "}
               <ArrowRight className="ml-2 h-5 w-5 z-10" />
             </Button>
             <Button
@@ -110,50 +103,50 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
         </div>
       </section>
 
-      {/* How It Works */}
+      {/* Why Choose Our Product */}
       <section className="py-20 px-6 bg-gradient-subtle">
         <div className="container mx-auto">
           <h2 className="text-4xl font-bold text-center text-primary mb-16">
-            How It Works
+            Why Choose Our Headphones
           </h2>
           <div className="grid md:grid-cols-3 gap-8">
             <Card className="border-0 shadow-elegant">
               <CardContent className="p-8 text-center">
                 <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <span className="text-2xl font-bold text-accent">1</span>
+                  <Shield className="h-8 w-8 text-accent" />
                 </div>
-                <h3 className="text-xl font-semibold mb-4">
-                  Tell Us What You Need
-                </h3>
+                <h3 className="text-xl font-semibold mb-4">Premium Quality</h3>
                 <p className="text-muted-foreground">
-                  Describe your product requirements through our intelligent
-                  conversation system. No detail is too small.
+                  Built with premium materials and advanced technology for
+                  exceptional sound quality and durability.
                 </p>
               </CardContent>
             </Card>
             <Card className="border-0 shadow-elegant">
               <CardContent className="p-8 text-center">
                 <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <span className="text-2xl font-bold text-accent">2</span>
+                  <Clock className="h-8 w-8 text-accent" />
                 </div>
                 <h3 className="text-xl font-semibold mb-4">
-                  We Research & Source
+                  Long Battery Life
                 </h3>
                 <p className="text-muted-foreground">
-                  Our experts analyze your needs, research options, negotiate
-                  prices, and handle all procurement logistics.
+                  Enjoy up to 30 hours of continuous playback with quick charge
+                  technology for convenience.
                 </p>
               </CardContent>
             </Card>
             <Card className="border-0 shadow-elegant">
               <CardContent className="p-8 text-center">
                 <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <span className="text-2xl font-bold text-accent">3</span>
+                  <CheckCircle className="h-8 w-8 text-accent" />
                 </div>
-                <h3 className="text-xl font-semibold mb-4">Receive & Enjoy</h3>
+                <h3 className="text-xl font-semibold mb-4">
+                  Active Noise Cancellation
+                </h3>
                 <p className="text-muted-foreground">
-                  Track progress in real-time and receive your perfectly sourced
-                  products with complete documentation.
+                  Immerse yourself in music with advanced noise cancellation
+                  technology that blocks out distractions.
                 </p>
               </CardContent>
             </Card>
@@ -161,24 +154,24 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
         </div>
       </section>
 
-      {/* Value Proposition */}
+      {/* Product Features */}
       <section className="py-20 px-6">
         <div className="container mx-auto">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
               <h2 className="text-4xl font-bold text-primary mb-8">
-                Why Choose Our Service
+                Premium Features
               </h2>
               <div className="space-y-6">
                 <div className="flex items-start gap-4">
                   <CheckCircle className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
                   <div>
                     <h3 className="font-semibold text-lg mb-2">
-                      Expert Research & Analysis
+                      Active Noise Cancellation
                     </h3>
                     <p className="text-muted-foreground">
-                      Our team conducts comprehensive market research to find
-                      the best products at optimal prices.
+                      Advanced technology that blocks out ambient noise for an
+                      immersive listening experience.
                     </p>
                   </div>
                 </div>
@@ -186,11 +179,11 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
                   <Clock className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
                   <div>
                     <h3 className="font-semibold text-lg mb-2">
-                      Time-Saving Convenience
+                      30-Hour Battery Life
                     </h3>
                     <p className="text-muted-foreground">
-                      Focus on what matters while we handle all the
-                      time-consuming research and procurement processes.
+                      Extended playback time with quick charge capability for
+                      uninterrupted listening sessions.
                     </p>
                   </div>
                 </div>
@@ -198,11 +191,11 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
                   <Shield className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
                   <div>
                     <h3 className="font-semibold text-lg mb-2">
-                      Quality Assurance
+                      Premium Comfort
                     </h3>
                     <p className="text-muted-foreground">
-                      Every product is thoroughly vetted for quality,
-                      authenticity, and value before recommendation.
+                      Memory foam ear cushions and adjustable headband for
+                      all-day comfort without fatigue.
                     </p>
                   </div>
                 </div>
@@ -212,32 +205,32 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
               <Card className="p-8 border-0 shadow-premium">
                 <CardContent className="p-0">
                   <h3 className="text-2xl text-center font-bold text-primary mb-6">
-                    <span className="text-[#737373] mr-1">Before</span> vs.{" "}
-                    <span className="text-[#FBBD23] ml-1">After</span>
+                    <span className="text-[#737373] mr-1">Regular</span> vs.{" "}
+                    <span className="text-[#FBBD23] ml-1">Premium</span>
                   </h3>
                   <div className="space-y-6">
                     <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
                       <span className="text-muted-foreground">
-                        Hours of research
+                        Basic sound quality
                       </span>
                       <span className="text-accent font-semibold">
-                        → Expert analysis
+                        → Crystal clear audio
                       </span>
                     </div>
                     <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
                       <span className="text-muted-foreground">
-                        Uncertain choices
+                        Background noise
                       </span>
                       <span className="text-accent font-semibold">
-                        → Confident decisions
+                        → Active cancellation
                       </span>
                     </div>
                     <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
                       <span className="text-muted-foreground">
-                        Scattered purchases
+                        Short battery life
                       </span>
                       <span className="text-accent font-semibold">
-                        → Streamlined process
+                        → 30-hour playback
                       </span>
                     </div>
                   </div>
@@ -262,19 +255,19 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
       <section className="py-20 px-6">
         <div className="container mx-auto text-center">
           <h2 className="text-4xl font-bold text-primary mb-6">
-            Ready to Experience Premium Service?
+            Ready to Experience Premium Sound?
           </h2>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join hundreds of satisfied clients who trust us with their most
-            important product needs.
+            Join thousands of satisfied customers who trust our premium wireless
+            headphones for their daily listening needs.
           </p>
           <Button
             variant="glow"
             size="lg"
             className="text-lg px-8 py-6"
-            onClick={handleStartRequestClick} // Use the new handler here too
+            onClick={handleShopNowClick}
           >
-            Start Your Request Today <ArrowRight className="ml-2 h-5 w-5" />
+            Shop Now <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
         </div>
       </section>
@@ -284,18 +277,19 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
         <div className="container mx-auto">
           <div className="grid md:grid-cols-4 gap-8">
             <div>
-              <h3 className="text-xl font-bold mb-4">Quibble</h3>
+              <h3 className="text-xl font-bold mb-4">Premium Audio</h3>
               <p className="text-primary-foreground/80">
-                Premium personal shopping and product sourcing services.
+                Premium wireless headphones for the ultimate listening
+                experience.
               </p>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Services</h4>
+              <h4 className="font-semibold mb-4">Features</h4>
               <ul className="space-y-2 text-primary-foreground/80">
-                <li>Product Research</li>
-                <li>Price Negotiation</li>
-                <li>Quality Assurance</li>
-                <li>Logistics Management</li>
+                <li>Active Noise Cancellation</li>
+                <li>30-Hour Battery Life</li>
+                <li>Premium Comfort</li>
+                <li>Bluetooth 5.0</li>
               </ul>
             </div>
             <div>

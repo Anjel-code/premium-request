@@ -26,13 +26,14 @@ app.use(express.json()); // To parse JSON request bodies
 
 // Your existing /api/create-checkout-session endpoint
 app.post("/api/create-checkout-session", async (req, res) => {
-  const { amount, ticketId, orderTitle, customerEmail } = req.body;
+  const { amount, ticketId, orderTitle, customerEmail, isStoreOrder } =
+    req.body;
 
   // Basic validation for required fields
-  if (!amount || !ticketId || !orderTitle || !customerEmail) {
+  if (!amount || !ticketId || !orderTitle) {
     return res.status(400).json({
       error:
-        "Missing required fields: amount, ticketId, orderTitle, customerEmail",
+        "Missing required fields: amount, ticketId (or orderId), orderTitle",
     });
   }
 
@@ -52,11 +53,16 @@ app.post("/api/create-checkout-session", async (req, res) => {
         },
       ],
       mode: "payment",
-      success_url: `http://localhost:8080/success?ticketId=${ticketId}`, // Adjust success URL to your frontend
-      cancel_url: `http://localhost:8080/cancel?ticketId=${ticketId}`, // Adjust cancel URL to your frontend
+      success_url: `http://localhost:8080/success?${
+        isStoreOrder ? "orderId" : "ticketId"
+      }=${ticketId}`, // Adjust success URL to your frontend
+      cancel_url: `http://localhost:8080/cancel?${
+        isStoreOrder ? "orderId" : "ticketId"
+      }=${ticketId}`, // Adjust cancel URL to your frontend
       customer_email: customerEmail, // Pre-fill customer email if available
       metadata: {
         ticketId: ticketId, // Attach metadata to the session
+        isStoreOrder: isStoreOrder || false, // Add flag to metadata
       },
     });
 

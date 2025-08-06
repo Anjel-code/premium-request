@@ -13,14 +13,13 @@ const About = () => {
       <section className="pt-36 pb-20 px-6">
         <div className="container mx-auto text-center">
           <h1 className="text-5xl md:text-6xl font-bold text-primary mb-6 animate-fade-in">
-            About The Product
-            <span className="block text-accent">Concierge</span>
+            About Our
+            <span className="block text-accent">Brand</span>
           </h1>
           <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-4xl mx-auto animate-slide-up">
-            We are a premium personal shopping service that transforms the way
-            discerning clients acquire products. Our team of specialists handle
-            every aspect of research, sourcing, and procurement with unmatched
-            attention to detail.
+            We are dedicated to finding and providing innovative,
+            problem-solving products that enhance your daily life. Our mission
+            is to bring you premium quality items that make a real difference.
           </p>
         </div>
       </section>
@@ -34,16 +33,15 @@ const About = () => {
                 Our Mission
               </h2>
               <p className="text-lg text-muted-foreground mb-6">
-                We believe that finding the perfect product shouldn't require
-                countless hours of research, comparison shopping, and
-                uncertainty. Our mission is to provide a seamless, professional
-                service that delivers exactly what you need, when you need it.
+                We believe that everyone deserves access to premium quality
+                products that solve real problems and enhance daily life. Our
+                mission is to curate and provide innovative solutions that make
+                a meaningful difference.
               </p>
               <p className="text-lg text-muted-foreground mb-8">
-                Every client deserves access to expert knowledge, industry
-                connections, and personalized attention. We make luxury-level
-                service accessible to anyone who values their time and demands
-                quality results.
+                Every product we offer is carefully selected for its quality,
+                functionality, and value. We're committed to bringing you items
+                that exceed expectations and deliver genuine benefits.
               </p>
               <div className="grid grid-cols-2 gap-6">
                 <div className="text-center">
@@ -166,45 +164,27 @@ const About = () => {
       <section className="py-20 px-6 bg-gradient-subtle">
         <div className="container mx-auto">
           <h2 className="text-4xl font-bold text-center text-primary mb-8">
-            Our Expert Team
+            Our Commitment
           </h2>
           <p className="text-lg text-center text-muted-foreground mb-16 max-w-3xl mx-auto">
-            Our team consists of industry specialists, procurement experts, and
-            relationship managers who bring decades of combined experience in
-            sourcing and acquiring products across every category imaginable.
+            We're committed to providing exceptional products and outstanding
+            customer service. Our team works tirelessly to ensure every
+            interaction exceeds your expectations.
           </p>
 
           <div className="grid md:grid-cols-3 gap-8">
             <Card className="border-0 shadow-elegant text-center">
               <CardContent className="p-8">
                 <div className="w-20 h-20 bg-accent/10 rounded-full mx-auto mb-6 flex items-center justify-center">
-                  <span className="text-2xl font-bold text-accent">SC</span>
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Sarah Chen</h3>
-                <p className="text-accent font-medium mb-4">
-                  Technology & Electronics
-                </p>
-                <p className="text-muted-foreground text-sm">
-                  15+ years in tech procurement, specializing in cutting-edge
-                  electronics and enterprise solutions.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-elegant text-center">
-              <CardContent className="p-8">
-                <div className="w-20 h-20 bg-accent/10 rounded-full mx-auto mb-6 flex items-center justify-center">
-                  <span className="text-2xl font-bold text-accent">MR</span>
+                  <CheckCircle className="h-10 w-10 text-accent" />
                 </div>
                 <h3 className="text-xl font-semibold mb-2">
-                  Michael Rodriguez
+                  Quality Assurance
                 </h3>
-                <p className="text-accent font-medium mb-4">
-                  Luxury Goods & Collectibles
-                </p>
+                <p className="text-accent font-medium mb-4">Rigorous Testing</p>
                 <p className="text-muted-foreground text-sm">
-                  Expert in high-value items, authentication, and exclusive
-                  product acquisition.
+                  Every product undergoes thorough quality testing to ensure it
+                  meets our high standards before reaching you.
                 </p>
               </CardContent>
             </Card>
@@ -212,13 +192,29 @@ const About = () => {
             <Card className="border-0 shadow-elegant text-center">
               <CardContent className="p-8">
                 <div className="w-20 h-20 bg-accent/10 rounded-full mx-auto mb-6 flex items-center justify-center">
-                  <span className="text-2xl font-bold text-accent">EW</span>
+                  <Shield className="h-10 w-10 text-accent" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Emily Watson</h3>
-                <p className="text-accent font-medium mb-4">Home & Lifestyle</p>
+                <h3 className="text-xl font-semibold mb-2">
+                  Customer Satisfaction
+                </h3>
+                <p className="text-accent font-medium mb-4">Your Success</p>
                 <p className="text-muted-foreground text-sm">
-                  Specializes in furniture, home decor, and lifestyle products
-                  with an eye for design and quality.
+                  We're committed to your complete satisfaction with every
+                  product and every interaction.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-elegant text-center">
+              <CardContent className="p-8">
+                <div className="w-20 h-20 bg-accent/10 rounded-full mx-auto mb-6 flex items-center justify-center">
+                  <Clock className="h-10 w-10 text-accent" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Fast Delivery</h3>
+                <p className="text-accent font-medium mb-4">Quick & Reliable</p>
+                <p className="text-muted-foreground text-sm">
+                  Fast, reliable shipping ensures your products arrive quickly
+                  and in perfect condition.
                 </p>
               </CardContent>
             </Card>
@@ -230,12 +226,12 @@ const About = () => {
       <section className="py-20 px-6">
         <div className="container mx-auto text-center">
           <h2 className="text-4xl font-bold text-primary mb-6">
-            Experience the Difference
+            Experience Premium Quality
           </h2>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Ready to transform your product acquisition experience? Let our team
-            of experts handle your next purchase with the care and attention it
-            deserves.
+            Ready to discover products that make a real difference? Browse our
+            carefully curated selection and find the perfect solution for your
+            needs.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
@@ -243,7 +239,7 @@ const About = () => {
               size="lg"
               className="bg-accent hover:bg-accent/90 text-accent-foreground text-lg px-8 py-6"
             >
-              <Link to="/order">Start Your Request</Link>
+              <Link to="/store">Shop Now</Link>
             </Button>
             <Button
               asChild

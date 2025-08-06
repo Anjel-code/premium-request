@@ -119,7 +119,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
     fetchUserRole();
   }, [user, db]); // Re-run when user or db instance changes
 
-  // Fetch orders based on user role
+  // Fetch store orders instead of regular orders
   useEffect(() => {
     // Wait until db, user, and userRole are loaded
     if (!db || !user || loadingUserRole) {
@@ -131,53 +131,72 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
       return;
     }
 
-    let ordersQuery;
-    const ordersCollectionRef = collection(
+    // For now, we'll use the same Order interface but fetch from store-orders
+    // In the future, we can create a separate interface for store orders
+    const storeOrdersCollectionRef = collection(
       db,
-      `artifacts/${appId}/public/data/orders`
+      `artifacts/${appId}/public/data/store-orders`
     );
 
-    if (userRole.includes("admin") || userRole.includes("team_member")) {
-      // Admins and Team Members now only see orders assigned to them
-      ordersQuery = query(
-        ordersCollectionRef,
-        where("assignedTo", "==", user.uid), // <--- KEY CHANGE: Filter by assignedTo current user
-        orderBy("createdAt", "desc")
-      );
-    } else if (userRole.includes("customer")) {
-      // Customers can only see their own orders
-      ordersQuery = query(
-        ordersCollectionRef,
-        where("userId", "==", user.uid),
-        orderBy("createdAt", "desc")
-      );
-    } else {
-      // No recognized role, show no orders
-      setOrders([]);
-      setLoadingOrders(false);
-      return;
-    }
+    // All users can see their own store orders
+    const storeOrdersQuery = query(
+      storeOrdersCollectionRef,
+      where("userId", "==", user.uid),
+      orderBy("createdAt", "desc")
+    );
 
     const unsubscribe = onSnapshot(
-      ordersQuery,
+      storeOrdersQuery,
       (snapshot) => {
-        const fetchedOrders: Order[] = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-          // Convert Firestore Timestamps to Date objects immediately
-          createdAt: doc.data().createdAt?.toDate(),
-          updatedAt: doc.data().updatedAt?.toDate(),
-          estimatedCompletion: doc.data().estimatedCompletion?.toDate() || null,
-          assignedDate: doc.data().assignedDate?.toDate() || null,
-          dismissedDate: doc.data().dismissedDate?.toDate() || null,
-        })) as Order[];
+        const fetchedOrders: Order[] = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            userId: data.userId,
+            userEmail: data.userEmail,
+            userName: data.userName,
+            title: data.productName, // Use productName as title
+            summary: `Quantity: ${data.quantity}`, // Use quantity as summary
+            status:
+              data.status === "paid"
+                ? "accepted"
+                : data.status === "shipped"
+                ? "completed"
+                : data.status === "delivered"
+                ? "completed"
+                : data.status === "cancelled"
+                ? "dismissed"
+                : "pending",
+            createdAt: data.createdAt?.toDate(),
+            updatedAt: data.updatedAt?.toDate(),
+            ticketNumber: doc.id.slice(-8).toUpperCase(), // Use order ID as ticket number
+            estimatedCompletion: null,
+            budget: `$${data.totalAmount.toFixed(2)}`,
+            progress:
+              data.status === "pending"
+                ? 25
+                : data.status === "paid"
+                ? 50
+                : data.status === "shipped"
+                ? 75
+                : data.status === "delivered"
+                ? 100
+                : 0,
+            lastUpdate: data.updatedAt?.toDate().toLocaleDateString() || "N/A",
+            isPaid: data.paymentStatus === "completed",
+            assignedTo: null,
+            assignedDate: null,
+            dismissedBy: null,
+            dismissedDate: null,
+          };
+        }) as Order[];
         setOrders(fetchedOrders);
         setLoadingOrders(false);
       },
       (err) => {
-        console.error("Error fetching orders:", err);
+        console.error("Error fetching store orders:", err);
         setError(
-          "Failed to load orders. Please check your internet connection and Firebase rules."
+          "Failed to load store orders. Please check your internet connection and Firebase rules."
         );
         setLoadingOrders(false);
       }
@@ -300,8 +319,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
               Dashboard Overview
             </h1>
             <p className="text-lg text-muted-foreground">
-              Track your requests, manage settings, and stay connected with our
-              team
+              Track your product orders, manage settings, and stay updated on
+              your purchases
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
@@ -314,6 +333,14 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
             {hasAdminOrTeamRole && (
               <>
                 <Button onClick={() => navigate("queue")}>See the Queue</Button>
+                <Button
+                  asChild
+                  className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-md shadow-sm"
+                >
+                  <Link to="/dashboard/admin/store-orders">
+                    <Package className="mr-2 h-4 w-4" /> Manage Store Orders
+                  </Link>
+                </Button>
                 <Button
                   onClick={() => navigate("/create-dummy-order")}
                   className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-md shadow-sm"
@@ -443,12 +470,18 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
         {/* Note: These tabs are visually present but their content is simple placeholders.
             The actual "All Orders" view is handled by DashboardOrders.tsx via the link. */}
         <Tabs defaultValue="orders" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-3 bg-muted/50 rounded-lg p-1 mb-4">
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 bg-muted/50 rounded-lg p-1 mb-4">
             <TabsTrigger
               value="orders"
               className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-md transition-all duration-200"
             >
               <ShoppingCart className="mr-2 h-4 w-4" /> Orders
+            </TabsTrigger>
+            <TabsTrigger
+              value="store-orders"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-md transition-all duration-200"
+            >
+              <Package className="mr-2 h-4 w-4" /> Store Orders
             </TabsTrigger>
             <TabsTrigger
               value="notifications"
@@ -478,7 +511,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
             <Card className="border-0 shadow-premium rounded-xl">
               <CardHeader className="border-b border-border p-6">
                 <CardTitle className="text-2xl font-semibold text-primary">
-                  Your Recent Orders
+                  Your Recent Store Orders
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
@@ -490,14 +523,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
                 ) : orders.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">
                     No orders found.
-                    {userRole.includes("customer") && (
-                      <Link
-                        to="/order"
-                        className="text-accent hover:underline ml-1 font-medium"
-                      >
-                        Start a new request!
-                      </Link>
-                    )}
+                    <Link
+                      to="/store"
+                      className="text-accent hover:underline ml-1 font-medium"
+                    >
+                      Start shopping!
+                    </Link>
                   </p>
                 ) : (
                   <div className="space-y-4">
@@ -534,12 +565,14 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
                               </p>
                             </div>
                             <Button
-                              onClick={() => navigate(`/ticket/${order.id}`)}
+                              asChild
                               variant="outline"
                               size="sm"
                               className="border-primary text-primary hover:bg-primary/10 rounded-md"
                             >
-                              View Details
+                              <Link to={`/dashboard/store-orders/${order.id}`}>
+                                View Details
+                              </Link>
                             </Button>
                           </CardContent>
                         </Card>
@@ -548,12 +581,51 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
                     {orders.length > 3 && (
                       <div className="text-center mt-6">
                         <Button asChild variant="outline">
-                          <Link to="/dashboard/orders">View All Orders</Link>
+                          <Link to="/dashboard/store-orders">
+                            View All Orders
+                          </Link>
                         </Button>
                       </div>
                     )}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="store-orders" className="mt-6">
+            <Card className="border-0 shadow-premium rounded-xl">
+              <CardHeader className="border-b border-border p-6">
+                <CardTitle className="text-2xl font-semibold text-primary">
+                  Store Orders
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="text-center py-8">
+                  <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-muted-foreground mb-2">
+                    Product Purchases
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Track your product purchases and delivery status.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                    <Button asChild variant="outline">
+                      <Link to="/dashboard/store-orders">
+                        View Store Orders
+                      </Link>
+                    </Button>
+                    <Button
+                      asChild
+                      className="bg-accent hover:bg-accent/90 text-accent-foreground"
+                    >
+                      <Link to="/store">
+                        <ShoppingCart className="mr-2 h-4 w-4" />
+                        Shop Now
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

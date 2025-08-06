@@ -49,6 +49,16 @@ const Navigation = ({
               Home
             </Link>
             <Link
+              to="/store"
+              className={`transition-colors ${
+                isActive("/store")
+                  ? "text-accent"
+                  : "text-foreground hover:text-accent"
+              }`}
+            >
+              Store
+            </Link>
+            <Link
               to="/about"
               className={`transition-colors ${
                 isActive("/about")

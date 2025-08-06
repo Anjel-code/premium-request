@@ -4,6 +4,7 @@ import { loadStripe, Stripe } from "@stripe/stripe-js";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { handleStorePaymentSuccess } from "@/lib/storeUtils";
 
 // Define the UserProfile interface (matching what's stored in Firestore)
 interface UserProfile {
@@ -31,6 +32,7 @@ const PaymentPortalPage: React.FC<PaymentPortalPageProps> = ({
   const [searchParams] = useSearchParams(); // Get query parameters
   const amount = searchParams.get("amount"); // Get amount from query params
   const orderTitle = searchParams.get("title") || "Product Request"; // Get title for line item
+  const orderId = searchParams.get("orderId"); // Get orderId for store orders
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +65,12 @@ const PaymentPortalPage: React.FC<PaymentPortalPageProps> = ({
 
   // Simulate a backend call to create a Stripe Checkout Session
   const createCheckoutSession = async () => {
-    if (!stripeInstance || !ticketId || !amount || isRedirecting) {
+    if (
+      !stripeInstance ||
+      (!ticketId && !orderId) ||
+      !amount ||
+      isRedirecting
+    ) {
       setError("Payment system not ready or already redirecting.");
       return;
     }
@@ -80,14 +87,30 @@ const PaymentPortalPage: React.FC<PaymentPortalPageProps> = ({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             amount: parseFloat(amount),
-            ticketId,
+            ticketId: ticketId || orderId, // Use orderId for store orders
             orderTitle,
             customerEmail: user?.email,
+            isStoreOrder: !!orderId, // Flag to indicate this is a store order
           }),
         }
       );
       const session = await response.json();
       if (session.url) {
+        // Store order info in sessionStorage for success page
+        if (orderId && user) {
+          sessionStorage.setItem(
+            "storeOrderInfo",
+            JSON.stringify({
+              orderId,
+              productName: orderTitle,
+              amount: parseFloat(amount),
+              userId: user.uid,
+              userEmail: user.email,
+              userName: user.displayName,
+              appId,
+            })
+          );
+        }
         window.location.href = session.url;
       } else {
         setError("Failed to get checkout session URL from the server.");
@@ -134,8 +157,8 @@ const PaymentPortalPage: React.FC<PaymentPortalPageProps> = ({
     );
   }
 
-  // Ensure ticketId and amount are available
-  if (!ticketId || !amount) {
+  // Ensure either ticketId (for regular orders) or orderId (for store orders) and amount are available
+  if ((!ticketId && !orderId) || !amount) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-6">
         <Card className="w-full max-w-md text-center shadow-premium rounded-xl">
@@ -146,7 +169,7 @@ const PaymentPortalPage: React.FC<PaymentPortalPageProps> = ({
           </CardHeader>
           <CardContent className="p-6">
             <p className="text-muted-foreground">
-              Ticket ID or amount is missing. Please ensure you navigate here
+              Order ID or amount is missing. Please ensure you navigate here
               from a valid order.
             </p>
           </CardContent>

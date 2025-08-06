@@ -26,5 +26,9 @@ const auth = getAuth(app);
 // Initialize Cloud Firestore and get a reference to the service
 const db = getFirestore(app); // Initialize Firestore
 
+// Debug: Log Firebase configuration (without sensitive data)
+console.log("Firebase initialized with project:", firebaseConfig.projectId);
+console.log("Firebase auth domain:", firebaseConfig.authDomain);
+
 // Export both auth and db instances so they can be imported and used in other files
 export { auth, db };

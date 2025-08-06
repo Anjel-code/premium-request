@@ -46,6 +46,23 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // --- Store Orders Collection ---
+      match /store-orders/{orderId} {
+        allow read: if request.auth != null && (
+          getUserRoles(request.auth.uid).hasAny(['admin', 'team_member']) ||
+          resource.data.userId == request.auth.uid
+        );
+        allow create: if request.auth != null;
+        allow update: if request.auth != null && (
+          getUserRoles(request.auth.uid).hasAny(['admin', 'team_member']) ||
+          (
+            request.auth.uid == resource.data.userId &&
+            request.resource.data.keys().hasOnly(['paymentStatus', 'status', 'updatedAt'])
+          )
+        );
+        allow delete: if false;
+      }
+
       // --- Order Conversations Subcollection ---
       match /orders/{orderId}/conversation/{messageId} {
         // Allow read if:

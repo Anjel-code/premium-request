@@ -26,6 +26,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Import Loader2 from lucide-react
 import { Loader2 } from "lucide-react";
+import {
+  checkEnvironmentVariables,
+  testFirebaseConnection,
+} from "./lib/firebaseTest";
 
 // Your page components
 import Home from "./pages/Home";
@@ -43,8 +47,13 @@ import AdminPanel from "./components/AdminPanel"; // Ensure this import path is 
 import OrderQueuePage from "./pages/OrderQueuePage";
 import TeamChat from "./pages/TeamChat";
 import CreateDummyOrder from "./pages/CreateDummyOrder"; // Import CreateDummyOrder
+import DashboardSupport from "./pages/DashboardSupport";
 import PaymentPortalPage from "./pages/PaymentPortalPage"; // Import PaymentPortalPage
 import SuccessPage from "./pages/SuccessPage"; // Import the new SuccessPage component
+import Store from "./pages/Store"; // Import the new Store component
+import DashboardStoreOrders from "./pages/DashboardStoreOrders"; // Import DashboardStoreOrders
+import StoreOrderDetail from "./pages/StoreOrderDetail"; // Import StoreOrderDetail
+import AdminStoreOrders from "./pages/AdminStoreOrders"; // Import AdminStoreOrders
 
 // --- Tailwind-like styles for basic UI (kept for standalone functionality) ---
 const styles = `
@@ -158,6 +167,7 @@ const AppContent: React.FC<AppContentProps> = ({
     "/dashboard/queue", // Hide navbar for OrderQueuePage
     "/team-chat", // Hide navbar for TeamChat
     "/create-dummy-order", // Hide navbar for CreateDummyOrder
+    "/dashboard/support",
     "/payment-portal", // Hide navbar on payment portal page
     "/success", // HIDE NAVBAR FOR THE SUCCESS PAGE
   ];
@@ -263,6 +273,67 @@ const AppContent: React.FC<AppContentProps> = ({
           } // Pass user, appId, and userRoles
         />
         <Route
+          path="/dashboard/store-orders"
+          element={
+            <DashboardStoreOrders
+              user={
+                user
+                  ? {
+                      uid: user.uid,
+                      email: user.email ?? "",
+                      displayName: user.displayName ?? user.email ?? "",
+                      roles: userRoles,
+                      photoURL: user.photoURL ?? undefined,
+                    }
+                  : null
+              }
+              appId={appId}
+            />
+          }
+        />
+        <Route
+          path="/dashboard/store-orders/:orderId"
+          element={
+            <StoreOrderDetail
+              user={
+                user
+                  ? {
+                      uid: user.uid,
+                      email: user.email ?? "",
+                      displayName: user.displayName ?? user.email ?? "",
+                      roles: userRoles,
+                      photoURL: user.photoURL ?? undefined,
+                    }
+                  : null
+              }
+              appId={appId}
+            />
+          }
+        />
+        <Route
+          path="/dashboard/admin/store-orders"
+          element={
+            hasTeamOrAdminRole ? (
+              <AdminStoreOrders
+                user={
+                  user
+                    ? {
+                        uid: user.uid,
+                        email: user.email ?? "",
+                        displayName: user.displayName ?? user.email ?? "",
+                        roles: userRoles,
+                        photoURL: user.photoURL ?? undefined,
+                      }
+                    : null
+                }
+                appId={appId}
+              />
+            ) : (
+              <Navigate to="/dashboard" replace />
+            )
+          }
+        />
+        <Route
           path="/dashboard/notifications"
           element={<DashboardNotifications user={user} appId={appId} />} // Pass user and appId
         />
@@ -309,6 +380,23 @@ const AppContent: React.FC<AppContentProps> = ({
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
         <Route
+          path="/store"
+          element={
+            <Store
+              user={
+                user
+                  ? {
+                      uid: user.uid,
+                      email: user.email ?? "",
+                      displayName: user.displayName ?? user.email ?? "",
+                    }
+                  : null
+              }
+              appId={appId}
+            />
+          }
+        />
+        <Route
           path="/team-chat"
           element={<TeamChat user={user} appId={appId} />}
         />
@@ -324,6 +412,25 @@ const AppContent: React.FC<AppContentProps> = ({
                       displayName: user.displayName ?? user.email ?? "",
                       roles: userRoles,
                       photoURL: user.photoURL ?? undefined, // photoURL is now correctly recognized
+                    }
+                  : null
+              }
+              appId={appId}
+            />
+          }
+        />
+        <Route
+          path="/dashboard/support"
+          element={
+            <DashboardSupport
+              user={
+                user
+                  ? {
+                      uid: user.uid,
+                      email: user.email ?? "",
+                      displayName: user.displayName ?? user.email ?? "",
+                      roles: userRoles,
+                      photoURL: user.photoURL ?? undefined,
                     }
                   : null
               }
@@ -372,8 +479,27 @@ const AppContent: React.FC<AppContentProps> = ({
               appId={appId}
             />
           }
-        />{" "}
-        {/* Payment Portal Route - Ensure user prop is passed */}
+        />
+        {/* Store Payment Route */}
+        <Route
+          path="/payment-portal/store-order"
+          element={
+            <PaymentPortalPage
+              user={
+                user
+                  ? {
+                      uid: user.uid,
+                      email: user.email ?? "",
+                      displayName: user.displayName ?? user.email ?? "",
+                      roles: userRoles,
+                      photoURL: user.photoURL ?? undefined,
+                    }
+                  : null
+              }
+              appId={appId}
+            />
+          }
+        />
         {/* New Success Route */}
         <Route path="/success" element={<SuccessPage />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
@@ -503,6 +629,25 @@ function App() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // Check environment variables on app start
+  useEffect(() => {
+    const envCheck = checkEnvironmentVariables();
+    if (!envCheck) {
+      console.error(
+        "Firebase environment variables are not properly configured. Please check your .env file."
+      );
+    } else {
+      // Test Firebase connection if env vars are set
+      testFirebaseConnection().then((success) => {
+        if (success) {
+          console.log("🎉 Firebase connection test passed!");
+        } else {
+          console.error("❌ Firebase connection test failed!");
+        }
+      });
+    }
+  }, []);
 
   const appId =
     import.meta.env.VITE_FIREBASE_PROJECT_ID || "default-app-id-fallback";

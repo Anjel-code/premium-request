@@ -76,55 +76,70 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
       return;
     }
 
-    let ordersQuery;
-    const ordersCollectionRef = collection(
+    // Fetch store orders instead of regular orders
+    const storeOrdersCollectionRef = collection(
       db,
-      `artifacts/${appId}/public/data/orders`
+      `artifacts/${appId}/public/data/store-orders`
     );
 
-    // Determine the query based on user roles
-    if (userRoles.includes("admin")) {
-      ordersQuery = query(ordersCollectionRef, orderBy("createdAt", "desc"));
-    } else if (userRoles.includes("team_member")) {
-      ordersQuery = query(
-        ordersCollectionRef,
-        where("assignedTo", "==", user.uid),
-        orderBy("createdAt", "desc")
-      );
-    } else if (userRoles.includes("customer")) {
-      ordersQuery = query(
-        ordersCollectionRef,
-        where("userId", "==", user.uid),
-        orderBy("createdAt", "desc")
-      );
-    } else {
-      // No recognized role, show no orders
-      setOrders([]);
-      setLoadingOrders(false);
-      return;
-    }
+    // All users can see their own store orders
+    const storeOrdersQuery = query(
+      storeOrdersCollectionRef,
+      where("userId", "==", user.uid),
+      orderBy("createdAt", "desc")
+    );
 
     const unsubscribe = onSnapshot(
-      ordersQuery,
+      storeOrdersQuery,
       (snapshot) => {
-        const fetchedOrders: Order[] = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate(),
-          updatedAt: doc.data().updatedAt?.toDate(),
-          estimatedCompletion: doc.data().estimatedCompletion?.toDate() || null,
-          assignedTo: doc.data().assignedTo || null,
-          assignedDate: doc.data().assignedDate?.toDate() || null,
-          dismissedBy: doc.data().dismissedBy || null,
-          dismissedDate: doc.data().dismissedDate?.toDate() || null,
-        })) as Order[];
+        const fetchedOrders: Order[] = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            userId: data.userId,
+            userEmail: data.userEmail,
+            userName: data.userName,
+            title: data.productName, // Use productName as title
+            summary: `Quantity: ${data.quantity}`, // Use quantity as summary
+            status:
+              data.status === "paid"
+                ? "accepted"
+                : data.status === "shipped"
+                ? "completed"
+                : data.status === "delivered"
+                ? "completed"
+                : data.status === "cancelled"
+                ? "dismissed"
+                : "pending",
+            createdAt: data.createdAt?.toDate(),
+            updatedAt: data.updatedAt?.toDate(),
+            ticketNumber: doc.id.slice(-8).toUpperCase(), // Use order ID as ticket number
+            estimatedCompletion: null,
+            budget: `$${data.totalAmount.toFixed(2)}`,
+            progress:
+              data.status === "pending"
+                ? 25
+                : data.status === "paid"
+                ? 50
+                : data.status === "shipped"
+                ? 75
+                : data.status === "delivered"
+                ? 100
+                : 0,
+            lastUpdate: data.updatedAt?.toDate().toLocaleDateString() || "N/A",
+            assignedTo: null,
+            assignedDate: null,
+            dismissedBy: null,
+            dismissedDate: null,
+          };
+        }) as Order[];
         setOrders(fetchedOrders);
         setLoadingOrders(false);
       },
       (err) => {
-        console.error("Error fetching orders:", err);
+        console.error("Error fetching store orders:", err);
         setError(
-          "Failed to load orders. Please check your internet connection and Firebase rules."
+          "Failed to load store orders. Please check your internet connection and Firebase rules."
         );
         setLoadingOrders(false);
       }
@@ -176,7 +191,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
       <DashboardLayout>
         <div className="min-h-[calc(100vh-100px)] flex items-center justify-center p-6">
           <Loader2 className="h-10 w-10 text-primary animate-spin" />
-          <p className="ml-4 text-primary">Loading all orders...</p>
+          <p className="ml-4 text-primary">Loading store orders...</p>
         </div>
       </DashboardLayout>
     );
@@ -195,7 +210,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
               <p className="text-muted-foreground">{error}</p>
               <p className="text-sm text-muted-foreground mt-2">
                 Please ensure your Firebase Firestore is set up correctly and
-                your security rules allow read access to the 'orders'
+                your security rules allow read access to the 'store-orders'
                 collection.
               </p>
             </CardContent>
@@ -216,10 +231,11 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
                 Back to Dashboard
               </Link>
             </Button>
-            <h1 className="text-4xl font-bold text-primary mb-2">All Orders</h1>
+            <h1 className="text-4xl font-bold text-primary mb-2">
+              All Store Orders
+            </h1>
             <p className="text-lg text-muted-foreground">
-              A comprehensive list of all{" "}
-              {userRoles.includes("admin") ? "system" : "your"} orders.
+              A comprehensive list of all your product purchases and orders.
             </p>
           </div>
         </div>
@@ -227,21 +243,19 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
         <Card className="border-0 shadow-premium rounded-xl">
           <CardHeader className="border-b border-border p-6">
             <CardTitle className="text-2xl font-semibold text-primary">
-              Order List
+              Store Order List
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             {orders.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
-                No orders found.
-                {userRoles.includes("customer") && (
-                  <Link
-                    to="/order"
-                    className="text-accent hover:underline ml-1 font-medium"
-                  >
-                    Start a new request!
-                  </Link>
-                )}
+                No store orders found.
+                <Link
+                  to="/store"
+                  className="text-accent hover:underline ml-1 font-medium"
+                >
+                  Start shopping!
+                </Link>
               </p>
             ) : (
               <div className="space-y-4">
@@ -280,12 +294,14 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
                         </div>
                       </div>
                       <Button
-                        onClick={() => navigate(`/ticket/${order.id}`)}
+                        asChild
                         variant="outline"
                         size="sm"
                         className="border-primary text-primary hover:bg-primary/10 rounded-md"
                       >
-                        View Details
+                        <Link to={`/dashboard/store-orders/${order.id}`}>
+                          View Details
+                        </Link>
                       </Button>
                     </CardContent>
                   </Card>

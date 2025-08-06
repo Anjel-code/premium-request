@@ -46,6 +46,7 @@ import {
   Timestamp, // Import Timestamp type from firebase/firestore
 } from "firebase/firestore";
 import { db } from "../firebase"; // Ensure this path is correct for your firebase.js
+import { createOrderStatusNotification } from "../lib/notificationUtils";
 
 // Define interfaces to match Firestore data structures
 interface Order {
@@ -496,6 +497,20 @@ const TicketView: React.FC<TicketViewProps> = ({ user, appId }) => {
         updateData.dismissedBy = user.uid;
         updateData.dismissedDate = new Date();
         console.log("Dismissing order by current user.");
+      }
+
+      // Create notification for status change
+      try {
+        await createOrderStatusNotification(
+          appId,
+          orderDetails.userId, // Notify the order owner
+          orderDetails.id,
+          orderDetails.ticketNumber,
+          orderDetails.status, // Old status
+          newStatus // New status
+        );
+      } catch (notificationError) {
+        console.error("Error creating status notification:", notificationError);
       }
 
       console.log(
