@@ -504,7 +504,8 @@ export const approveRefund = async (
     });
 
     // Restore stock (add back the quantity that was purchased)
-    await updateProductStock(appId, productId, (orderData.stockCount || 0) + quantity);
+    const currentStock = await getProductStock(appId, productId);
+    await updateProductStock(appId, productId, currentStock + quantity);
 
     // Create refund approval notification for user
     await createStoreNotification(appId, {

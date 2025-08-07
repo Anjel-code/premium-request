@@ -126,8 +126,9 @@ const StoreOrderDetail: React.FC<StoreOrderDetailProps> = ({ user, appId }) => {
 
         const orderData = orderSnap.data() as StoreOrder;
 
-        // Verify the order belongs to the current user
-        if (orderData.userId !== user.uid) {
+        // Verify the order belongs to the current user OR the user is an admin
+        const isAdmin = user.roles?.includes("admin") || user.roles?.includes("team_member");
+        if (orderData.userId !== user.uid && !isAdmin) {
           setError("You don't have permission to view this order");
           setLoading(false);
           return;

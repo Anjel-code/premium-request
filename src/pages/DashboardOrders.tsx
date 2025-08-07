@@ -123,17 +123,16 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
       `artifacts/${appId}/public/data/store-orders`
     );
 
-    const regularOrdersQuery = query(
-      regularOrdersRef,
-      where("userId", "==", user.uid),
-      orderBy("createdAt", "desc")
-    );
+    // Admin users can see all orders, regular users see only their own
+    const isAdmin = userRoles.includes("admin") || userRoles.includes("team_member");
+    
+    const regularOrdersQuery = isAdmin
+      ? query(regularOrdersRef, orderBy("createdAt", "desc"))
+      : query(regularOrdersRef, where("userId", "==", user.uid), orderBy("createdAt", "desc"));
 
-    const storeOrdersQuery = query(
-      storeOrdersRef,
-      where("userId", "==", user.uid),
-      orderBy("createdAt", "desc")
-    );
+    const storeOrdersQuery = isAdmin
+      ? query(storeOrdersRef, orderBy("createdAt", "desc"))
+      : query(storeOrdersRef, where("userId", "==", user.uid), orderBy("createdAt", "desc"));
 
     const unsubscribeRegular = onSnapshot(
       regularOrdersQuery,

@@ -137,12 +137,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
       `artifacts/${appId}/public/data/store-orders`
     );
 
-    // All users can see their own store orders
-    const storeOrdersQuery = query(
-      storeOrdersCollectionRef,
-      where("userId", "==", user.uid),
-      orderBy("createdAt", "desc")
-    );
+    // Admin users can see all store orders, regular users see only their own
+    const isAdmin = user.roles?.includes("admin") || user.roles?.includes("team_member");
+    const storeOrdersQuery = isAdmin 
+      ? query(storeOrdersCollectionRef, orderBy("createdAt", "desc"))
+      : query(storeOrdersCollectionRef, where("userId", "==", user.uid), orderBy("createdAt", "desc"));
 
     const unsubscribe = onSnapshot(
       storeOrdersQuery,
