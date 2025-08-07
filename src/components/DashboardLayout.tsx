@@ -14,7 +14,8 @@ import {
   Shield,
   MessageSquare,
   Users,
-  BarChart3, // <-- Add BarChart3 icon
+  BarChart3,
+  Activity,
 } from "lucide-react";
 import { getUnreadNotificationCount } from "../lib/notificationUtils";
 
@@ -39,6 +40,7 @@ const adminMenuItems = [
 ];
 
 const analyticsMenuItem = { title: "Analytics", url: "/analytics", icon: BarChart3 };
+const liveViewMenuItem = { title: "Live View", url: "/live-view", icon: Activity };
 
 export function DashboardLayout({
   children,
@@ -139,6 +141,22 @@ export function DashboardLayout({
             >
               <analyticsMenuItem.icon className="h-5 w-5 flex-shrink-0" />
               {sidebarOpen && <span className="ml-3">{analyticsMenuItem.title}</span>}
+            </Link>
+          )}
+
+          {/* Live View menu item for admins only */}
+          {isAdmin && (
+            <Link
+              key={liveViewMenuItem.title}
+              to={liveViewMenuItem.url}
+              className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                isActive(liveViewMenuItem.url)
+                  ? "bg-accent text-accent-foreground"
+                  : "hover:bg-accent/20"
+              }`}
+            >
+              <liveViewMenuItem.icon className="h-5 w-5 flex-shrink-0" />
+              {sidebarOpen && <span className="ml-3">{liveViewMenuItem.title}</span>}
             </Link>
           )}
 

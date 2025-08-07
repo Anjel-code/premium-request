@@ -51,11 +51,11 @@ import DashboardSupport from "./pages/DashboardSupport";
 import PaymentPortalPage from "./pages/PaymentPortalPage"; // Import PaymentPortalPage
 import SuccessPage from "./pages/SuccessPage"; // Import the new SuccessPage component
 import Store from "./pages/Store"; // Import the new Store component
-import DashboardStoreOrders from "./pages/DashboardStoreOrders"; // Import DashboardStoreOrders
 import StoreOrderDetail from "./pages/StoreOrderDetail"; // Import StoreOrderDetail
 import AdminStoreOrders from "./pages/AdminStoreOrders"; // Import AdminStoreOrders
 import CheckoutPage from "./pages/CheckoutPage"; // Import CheckoutPage
 import Analytics from "./pages/Analytics"; // Import Analytics
+import LiveView from "./pages/LiveView"; // Import LiveView
 
 import { CartProvider } from "@/contexts/CartContext";
 import CartPanel from "@/components/CartPanel";
@@ -499,6 +499,31 @@ const AppContent: React.FC<AppContentProps> = ({
           element={
             isAdmin ? (
               <Analytics
+                user={
+                  user
+                    ? {
+                        uid: user.uid,
+                        email: user.email ?? "",
+                        displayName: user.displayName ?? user.email ?? "",
+                        roles: userRoles,
+                        photoURL: user.photoURL ?? undefined,
+                      }
+                    : null
+                }
+                appId={appId}
+              />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+
+        {/* Live View Route - Protected for Admin Only */}
+        <Route
+          path="/live-view"
+          element={
+            isAdmin ? (
+              <LiveView
                 user={
                   user
                     ? {

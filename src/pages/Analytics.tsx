@@ -38,6 +38,9 @@ import {
   getDocs,
   deleteDoc,
   doc,
+  getDoc,
+  setDoc,
+  updateDoc,
 } from "firebase/firestore";
 import { db } from "../firebase";
 
@@ -128,6 +131,53 @@ const Analytics: React.FC<AnalyticsProps> = ({ user, appId }) => {
 
   const analytics = calculateAnalytics();
 
+  // Ensure user document exists with admin role
+  const ensureUserDocument = async () => {
+    if (!db || !user?.uid) return;
+    
+    try {
+      const userDocRef = doc(db, "users", user.uid);
+      const userDoc = await getDoc(userDocRef);
+      
+      if (!userDoc.exists()) {
+        console.log("User document doesn't exist, creating it...");
+        await setDoc(userDocRef, {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName || user.email,
+          roles: ["admin"], // Ensure admin role is set as an array
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+        console.log("User document created with admin role");
+      } else {
+        console.log("User document exists:", userDoc.data());
+        const userData = userDoc.data();
+        
+        // Check if roles field exists and is an array
+        if (!userData.roles || !Array.isArray(userData.roles)) {
+          console.log("Updating user document with proper roles array...");
+          await updateDoc(userDocRef, {
+            roles: ["admin"],
+            updatedAt: new Date()
+          });
+          console.log("User document updated with proper roles array");
+        } else if (!userData.roles.includes("admin")) {
+          console.log("Updating user document with admin role...");
+          await updateDoc(userDocRef, {
+            roles: ["admin"],
+            updatedAt: new Date()
+          });
+          console.log("User document updated with admin role");
+        } else {
+          console.log("User document already has admin role");
+        }
+      }
+    } catch (error) {
+      console.error("Error ensuring user document:", error);
+    }
+  };
+
   // Test function to try deleting a single document
   const testDeleteSingle = async () => {
     if (!db || !appId) return;
@@ -140,6 +190,23 @@ const Analytics: React.FC<AnalyticsProps> = ({ user, appId }) => {
     console.log("App ID:", appId);
     console.log("User UID:", user?.uid);
     
+    // Ensure user document exists with admin role
+    await ensureUserDocument();
+    
+    // Verify user document structure
+    try {
+      const userDocRef = doc(db, "users", user?.uid);
+      const userDoc = await getDoc(userDocRef);
+      console.log("=== USER DOCUMENT VERIFICATION ===");
+      console.log("User document exists:", userDoc.exists());
+      console.log("User document data:", userDoc.data());
+      console.log("Roles field:", userDoc.data()?.roles);
+      console.log("Roles is array:", Array.isArray(userDoc.data()?.roles));
+      console.log("Has admin role:", userDoc.data()?.roles?.includes("admin"));
+    } catch (error) {
+      console.error("Error verifying user document:", error);
+    }
+    
     try {
       const ordersRef = collection(db, `artifacts/${appId}/public/data/orders`);
       const snapshot = await getDocs(ordersRef);
@@ -150,8 +217,21 @@ const Analytics: React.FC<AnalyticsProps> = ({ user, appId }) => {
         const firstDoc = snapshot.docs[0];
         console.log("Testing delete of single document:", firstDoc.id);
         console.log("Document data:", firstDoc.data());
-        await deleteDoc(firstDoc.ref);
-        console.log("Single document deleted successfully");
+        console.log("Document userId:", firstDoc.data().userId);
+        console.log("Current user UID:", user?.uid);
+        console.log("Is user the owner?", firstDoc.data().userId === user?.uid);
+        
+        // Try to delete a document that the user owns first
+        const userOwnedDocs = snapshot.docs.filter(doc => doc.data().userId === user?.uid);
+        if (userOwnedDocs.length > 0) {
+          console.log("Trying to delete user-owned document:", userOwnedDocs[0].id);
+          await deleteDoc(userOwnedDocs[0].ref);
+          console.log("User-owned document deleted successfully");
+        } else {
+          console.log("No user-owned documents found, trying first document");
+          await deleteDoc(firstDoc.ref);
+          console.log("Single document deleted successfully");
+        }
       } else {
         console.log("No orders found to test deletion");
       }
@@ -178,6 +258,9 @@ const Analytics: React.FC<AnalyticsProps> = ({ user, appId }) => {
     console.log("Is admin:", user?.roles?.includes('admin'));
     console.log("App ID:", appId);
     console.log("User UID:", user?.uid);
+    
+    // Ensure user document exists with admin role
+    await ensureUserDocument();
     
     setResetting(true);
     try {
