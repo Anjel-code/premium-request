@@ -37,6 +37,7 @@ import {
   Settings,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import FileUpload from "./FileUpload";
 
 interface ProductData {
   id: string;
@@ -428,20 +429,25 @@ const AdminStoreEditor: React.FC<AdminStoreEditorProps> = ({
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {editedProduct.images.map((image, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                      <Input
+                    <div key={index} className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Image #{index + 1}</span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeArrayItem('images', index)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <FileUpload
+                        label=""
                         value={image}
-                        onChange={(e) => handleArrayInputChange('images', index, e.target.value)}
-                        placeholder="Enter image URL"
+                        onChange={(value) => handleArrayInputChange('images', index, value)}
+                        type="image"
+                        placeholder="Enter image URL or upload file"
                       />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeArrayItem('images', index)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
                     </div>
                   ))}
                   <Button
@@ -461,20 +467,25 @@ const AdminStoreEditor: React.FC<AdminStoreEditorProps> = ({
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {editedProduct.videos.map((video, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <Video className="h-4 w-4 text-muted-foreground" />
-                      <Input
+                    <div key={index} className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Video #{index + 1}</span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeArrayItem('videos', index)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <FileUpload
+                        label=""
                         value={video}
-                        onChange={(e) => handleArrayInputChange('videos', index, e.target.value)}
-                        placeholder="Enter video URL (YouTube embed)"
+                        onChange={(value) => handleArrayInputChange('videos', index, value)}
+                        type="video"
+                        placeholder="Enter video URL or upload file"
                       />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeArrayItem('videos', index)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
                     </div>
                   ))}
                   <Button

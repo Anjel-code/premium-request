@@ -26,8 +26,11 @@ import {
   Loader2,
   Settings,
   Edit,
+  Volume2,
+  Maximize2,
+  X,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   createStoreOrder,
   createStoreOrderNotification,
@@ -37,9 +40,19 @@ import { useToast } from "@/hooks/use-toast";
 import PopupOffer from "@/components/PopupOffer";
 import AdminStoreEditor from "@/components/AdminStoreEditor";
 import ReviewsEditor from "@/components/ReviewsEditor";
+import VideoEditor from "@/components/VideoEditor";
+import Footer from "@/components/Footer";
 import { isAdmin } from "@/lib/userUtils";
 
 // Product data interface - this will be easily configurable
+interface VideoReview {
+  id: string;
+  thumbnail: string;
+  videoUrl: string;
+  testimonial: string;
+  customerName: string;
+}
+
 interface ProductData {
   id: string;
   name: string;
@@ -48,6 +61,7 @@ interface ProductData {
   originalPrice: number;
   images: string[];
   videos: string[];
+  videoReviews: VideoReview[];
   rating: number;
   reviewCount: number;
   benefits: string[];
@@ -93,6 +107,43 @@ const mockProductData: ProductData = {
     "/placeholder.svg",
   ],
   videos: ["https://www.youtube.com/embed/dQw4w9WgXcQ"],
+  videoReviews: [
+    {
+      id: "1",
+      thumbnail: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=300&h=400&fit=crop&crop=face",
+      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      testimonial: "These headphones are incredible! The noise cancellation is amazing.",
+      customerName: "Sarah M.",
+    },
+    {
+      id: "2",
+      thumbnail: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=400&fit=crop&crop=face",
+      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      testimonial: "Best headphones I've ever owned. So comfortable!",
+      customerName: "Mike R.",
+    },
+    {
+      id: "3",
+      thumbnail: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=300&h=400&fit=crop&crop=face",
+      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      testimonial: "Perfect for work calls and music. Highly recommend!",
+      customerName: "Jennifer L.",
+    },
+    {
+      id: "4",
+      thumbnail: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&h=400&fit=crop&crop=face",
+      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      testimonial: "Absolutely love these headphones! Crystal clear sound.",
+      customerName: "David K.",
+    },
+    {
+      id: "5",
+      thumbnail: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=300&h=400&fit=crop&crop=face",
+      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      testimonial: "The battery life is incredible. Lasts all day!",
+      customerName: "Emma T.",
+    },
+  ],
   rating: 4.8,
   reviewCount: 1247,
   benefits: [
@@ -224,9 +275,14 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   const [showPopupOffer, setShowPopupOffer] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showReviewsEditor, setShowReviewsEditor] = useState(false);
+  const [showVideoEditor, setShowVideoEditor] = useState(false);
   const [isAdminUser, setIsAdminUser] = useState(false);
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
   const [visibleReviews, setVisibleReviews] = useState(12);
+  const [selectedVideo, setSelectedVideo] = useState<VideoReview | null>(null);
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [carouselRef, setCarouselRef] = useState<HTMLDivElement | null>(null);
+  const [hoveredVideo, setHoveredVideo] = useState<string | null>(null);
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const { toast } = useToast();
@@ -263,7 +319,12 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
     const adminProduct = localStorage.getItem('adminStoreProduct');
     if (adminProduct) {
       try {
-        return JSON.parse(adminProduct);
+        const parsedProduct = JSON.parse(adminProduct);
+        // Ensure videoReviews property exists
+        if (!parsedProduct.videoReviews) {
+          parsedProduct.videoReviews = mockProductData.videoReviews;
+        }
+        return parsedProduct;
       } catch (error) {
         console.error('Error parsing admin product data:', error);
       }
@@ -423,11 +484,97 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
     setShowReviewsEditor(false);
   };
 
+  const handleSaveVideos = (updatedVideos: VideoReview[]) => {
+    const updatedProduct = { ...product, videoReviews: updatedVideos };
+    localStorage.setItem('adminStoreProduct', JSON.stringify(updatedProduct));
+    setShowVideoEditor(false);
+  };
+
+  const handleCancelVideos = () => {
+    setShowVideoEditor(false);
+  };
+
+  const handleVideoClick = (video: VideoReview) => {
+    setSelectedVideo(video);
+    setShowVideoModal(true);
+  };
+
+  const handleCloseVideoModal = () => {
+    setShowVideoModal(false);
+    setSelectedVideo(null);
+  };
+
   const handleLoadMoreReviews = () => {
     const remainingReviews = product.reviews.length - visibleReviews;
     const nextBatch = Math.min(12, remainingReviews);
     setVisibleReviews(prev => prev + nextBatch);
   };
+
+  // Auto-scroll carousel functionality
+  useEffect(() => {
+    if (!carouselRef) return;
+
+    const cardWidth = 320; // Width of each video card (w-80 = 320px)
+    const cardGap = 16; // Gap between cards (gap-4 = 16px)
+    const totalCardWidth = cardWidth + cardGap; // Total width including gap
+    const scrollInterval = 3000; // Scroll every 3 seconds
+    let scrollTimer: NodeJS.Timeout;
+    let isPaused = false;
+    let currentCardIndex = 0;
+
+    const scrollToNextCard = () => {
+      if (!carouselRef || isPaused) return;
+
+      // Calculate the exact position for the next card
+      currentCardIndex = (currentCardIndex + 1) % (product.videoReviews?.length || 1);
+      const targetScroll = currentCardIndex * totalCardWidth;
+      
+      // If we've reached the end of the visible set, reset to beginning
+      if (currentCardIndex === 0) {
+        // Reset to beginning without animation for seamless loop
+        carouselRef.scrollLeft = 0;
+        // Wait a bit then scroll to first card
+        setTimeout(() => {
+          if (carouselRef) {
+            carouselRef.scrollTo({
+              left: totalCardWidth,
+              behavior: 'smooth'
+            });
+          }
+        }, 100);
+        return;
+      }
+      
+      // Smooth scroll to exact card position
+      carouselRef.scrollTo({
+        left: targetScroll,
+        behavior: 'smooth'
+      });
+    };
+
+    // Pause on hover
+    const handleMouseEnter = () => {
+      isPaused = true;
+    };
+
+    const handleMouseLeave = () => {
+      isPaused = false;
+    };
+
+    carouselRef.addEventListener('mouseenter', handleMouseEnter);
+    carouselRef.addEventListener('mouseleave', handleMouseLeave);
+
+    // Start the auto-scroll timer
+    scrollTimer = setInterval(scrollToNextCard, scrollInterval);
+
+    return () => {
+      if (scrollTimer) {
+        clearInterval(scrollTimer);
+      }
+      carouselRef.removeEventListener('mouseenter', handleMouseEnter);
+      carouselRef.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, [carouselRef, product.videoReviews]);
 
   const nextImage = () => {
     if (isTransitioning) return;
@@ -468,6 +615,17 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
         reviews={product.reviews}
         onSave={handleSaveReviews}
         onCancel={handleCancelReviews}
+      />
+    );
+  }
+
+  // If in video editing mode, show the video editor
+  if (showVideoEditor) {
+    return (
+      <VideoEditor
+        videos={product.videoReviews}
+        onSave={handleSaveVideos}
+        onCancel={handleCancelVideos}
       />
     );
   }
@@ -782,78 +940,203 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
       {/* Detailed Information */}
       <section className="py-12 px-6 bg-muted/30">
         <div className="container mx-auto">
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Product Description */}
-            <div className="lg:col-span-2 space-y-8">
-              <div>
-                <h2 className="text-2xl font-bold text-primary mb-4">
-                  Product Description
-                </h2>
-                <p className="text-muted-foreground leading-relaxed">
-                  {product.description}
-                </p>
-              </div>
+          <div className="max-w-4xl mx-auto space-y-8">
+            <div>
+              <h2 className="text-2xl font-bold text-primary mb-4">
+                Product Description
+              </h2>
+              <p className="text-muted-foreground leading-relaxed">
+                {product.description}
+              </p>
+            </div>
 
-              {/* Features */}
-              <div>
-                <h3 className="text-xl font-semibold text-primary mb-4">
-                  Key Features
-                </h3>
-                <div className="grid md:grid-cols-2 gap-3">
-                  {product.features.map((feature, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+            {/* Features */}
+            <div>
+              <h3 className="text-xl font-semibold text-primary mb-4">
+                Key Features
+              </h3>
+              <div className="grid md:grid-cols-2 gap-3">
+                {product.features.map((feature, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                    <span className="text-sm text-muted-foreground">
+                      {feature}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Specifications */}
+            <div>
+              <h3 className="text-xl font-semibold text-primary mb-4">
+                Technical Specifications
+              </h3>
+              <div className="bg-white rounded-lg border">
+                {Object.entries(product.specifications).map(
+                  ([key, value]) => (
+                    <div
+                      key={key}
+                      className="flex justify-between py-3 px-4 border-b last:border-b-0"
+                    >
+                      <span className="font-medium text-sm">{key}</span>
                       <span className="text-sm text-muted-foreground">
-                        {feature}
+                        {value}
                       </span>
                     </div>
-                  ))}
-                </div>
+                  )
+                )}
               </div>
+            </div>
 
-              {/* Specifications */}
-              <div>
-                <h3 className="text-xl font-semibold text-primary mb-4">
-                  Technical Specifications
-                </h3>
-                <div className="bg-white rounded-lg border">
-                  {Object.entries(product.specifications).map(
-                    ([key, value]) => (
-                      <div
-                        key={key}
-                        className="flex justify-between py-3 px-4 border-b last:border-b-0"
-                      >
-                        <span className="font-medium text-sm">{key}</span>
-                        <span className="text-sm text-muted-foreground">
-                          {value}
-                        </span>
+                         {/* Product Videos */}
+             {product.videos.length > 0 && (
+               <div>
+                 <h3 className="text-xl font-semibold text-primary mb-4">
+                   Product Video
+                 </h3>
+                 <div className="aspect-video bg-muted rounded-lg overflow-hidden">
+                   {product.videos[0].startsWith('data:') ? (
+                     // Local video file
+                     <video
+                       src={product.videos[0]}
+                       controls
+                       className="w-full h-full"
+                     />
+                   ) : (
+                     // YouTube or external video
+                     <iframe
+                       src={product.videos[0]}
+                       title="Product Video"
+                       className="w-full h-full"
+                       frameBorder="0"
+                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                       allowFullScreen
+                     />
+                   )}
+                 </div>
+               </div>
+             )}
+          </div>
+        </div>
+      </section>
+
+      {/* Video Reviews Carousel */}
+      <section className="py-12 px-6 bg-gradient-subtle">
+        <div className="container mx-auto">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-3xl font-bold text-primary">
+              People Love Our Headphones
+            </h2>
+            {isAdminUser && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowVideoEditor(true)}
+                className="flex items-center gap-2"
+              >
+                <Edit className="h-4 w-4" />
+                Edit Videos
+              </Button>
+            )}
+          </div>
+          <div className="relative">
+            <div 
+              ref={setCarouselRef}
+              className="flex gap-4 overflow-x-auto pb-4 group [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+              style={{ 
+                scrollBehavior: 'smooth'
+              }}
+            >
+              {/* Create infinite scroll by repeating videos multiple times */}
+              {Array.from({ length: 5 }, (_, repeatIndex) => 
+                (product.videoReviews || []).map((video, index) => (
+                  <div 
+                    key={`${video.id}-${repeatIndex}-${index}`} 
+                    className="flex-shrink-0 w-80"
+                  >
+                                         <div 
+                       className="group relative bg-white rounded-lg shadow-lg overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-105"
+                       onClick={() => handleVideoClick(video)}
+                       onMouseEnter={() => setHoveredVideo(video.id)}
+                       onMouseLeave={() => setHoveredVideo(null)}
+                     >
+                       <div className="aspect-[9/16] bg-muted relative">
+                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                         
+                         {/* Video Player - Shows on hover */}
+                         {hoveredVideo === video.id && (
+                           <div className="absolute inset-0 bg-black animate-in fade-in duration-300">
+                             {video.videoUrl.startsWith('data:') ? (
+                               // Local video file
+                               <video
+                                 src={video.videoUrl}
+                                 autoPlay
+                                 muted
+                                 loop
+                                 className="w-full h-full object-cover"
+                               />
+                             ) : (
+                               // YouTube or external video
+                               <iframe
+                                 src={`${video.videoUrl}?autoplay=1&mute=1&controls=0&loop=1&playlist=${video.videoUrl.split('/').pop()}`}
+                                 title={`Video testimonial by ${video.customerName}`}
+                                 className="w-full h-full"
+                                 frameBorder="0"
+                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                 allowFullScreen
+                                 sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                               />
+                             )}
+                           </div>
+                         )}
+                         
+                         {/* Thumbnail - Shows when not hovered */}
+                         {hoveredVideo !== video.id && (
+                           <>
+                             {/* Play overlay indicator */}
+                             <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                               <div className="w-16 h-16 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center">
+                                 <Play className="h-8 w-8 text-black ml-1" />
+                               </div>
+                             </div>
+                             
+                             <div className="absolute bottom-4 left-4 right-4">
+                               <div className="flex items-center justify-between">
+                                 <div className="flex items-center gap-2">
+                                   <div className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center cursor-pointer hover:bg-white/30 transition-colors">
+                                     <Play className="h-4 w-4 text-white" />
+                                   </div>
+                                   <div className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center cursor-pointer hover:bg-white/30 transition-colors">
+                                     <Volume2 className="h-4 w-4 text-white" />
+                                   </div>
+                                 </div>
+                                 <div className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center cursor-pointer hover:bg-white/30 transition-colors">
+                                   <Maximize2 className="h-4 w-4 text-white" />
+                                 </div>
+                               </div>
+                             </div>
+                             <img
+                               src={video.thumbnail}
+                               alt={`Video testimonial by ${video.customerName}`}
+                               className="w-full h-full object-cover"
+                             />
+                           </>
+                         )}
+                       </div>
+                      <div className="p-4">
+                        <p className="text-sm text-muted-foreground">
+                          "{video.testimonial}"
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-2 font-medium">
+                          - {video.customerName}
+                        </p>
                       </div>
-                    )
-                  )}
-                </div>
-              </div>
-
-              {/* Product Videos */}
-              {product.videos.length > 0 && (
-                <div>
-                  <h3 className="text-xl font-semibold text-primary mb-4">
-                    Product Video
-                  </h3>
-                  <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-                    <iframe
-                      src={product.videos[0]}
-                      title="Product Video"
-                      className="w-full h-full"
-                      frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
+                    </div>
                   </div>
-                </div>
+                ))
               )}
             </div>
-            {/* Empty column for grid layout */}
-            <div className="hidden lg:block"></div>
           </div>
         </div>
       </section>
@@ -1182,6 +1465,73 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
            </Button>
         </div>
       </section>
+
+      <Footer />
+
+      {/* Video Modal */}
+      {showVideoModal && selectedVideo && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold">Video Testimonial</h3>
+              <div className="flex gap-2">
+                {isAdminUser && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setShowVideoModal(false);
+                      setShowVideoEditor(true);
+                    }}
+                    className="flex items-center gap-2"
+                  >
+                    <Edit className="h-4 w-4" />
+                    Edit Video
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCloseVideoModal}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="p-4">
+                             <div className="aspect-video bg-muted rounded-lg overflow-hidden mb-4">
+                 {selectedVideo.videoUrl.startsWith('data:') ? (
+                   // Local video file
+                   <video
+                     src={selectedVideo.videoUrl}
+                     controls
+                     className="w-full h-full"
+                   />
+                 ) : (
+                   // YouTube or external video
+                   <iframe
+                     src={`${selectedVideo.videoUrl}?rel=0&modestbranding=1`}
+                     title={`Video testimonial by ${selectedVideo.customerName}`}
+                     className="w-full h-full"
+                     frameBorder="0"
+                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                     allowFullScreen
+                     sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                   />
+                 )}
+               </div>
+              <div className="space-y-2">
+                <p className="text-lg font-medium text-primary">
+                  {selectedVideo.customerName}
+                </p>
+                <p className="text-muted-foreground italic">
+                  "{selectedVideo.testimonial}"
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

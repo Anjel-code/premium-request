@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Shield, Users, Award, Globe, Clock, CheckCircle } from "lucide-react";
 import { Link } from "react-router-dom";
+import Footer from "@/components/Footer";
 // Removed: import Navigation from "@/components/Navigation"; // Navigation is now handled in App.jsx
 
 const About = () => {
@@ -252,6 +253,8 @@ const About = () => {
           </div>
         </div>
       </section>
+
+      <Footer />
     </div>
   );
 };

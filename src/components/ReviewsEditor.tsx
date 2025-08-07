@@ -26,6 +26,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import FileUpload from "./FileUpload";
 
 interface Review {
   id: string;
@@ -249,29 +250,23 @@ const ReviewsEditor: React.FC<ReviewsEditorProps> = ({
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor={`profileImage-${review.id}`}>Profile Image URL</Label>
-                      <div className="flex items-center gap-2">
-                        <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id={`profileImage-${review.id}`}
-                          value={review.profileImage || ""}
-                          onChange={(e) => handleReviewChange(review.id, 'profileImage', e.target.value)}
-                          placeholder="Enter profile image URL (optional)"
-                        />
-                      </div>
+                      <FileUpload
+                        label="Profile Image"
+                        value={review.profileImage || ""}
+                        onChange={(value) => handleReviewChange(review.id, 'profileImage', value)}
+                        type="image"
+                        placeholder="Enter profile image URL or upload file (optional)"
+                      />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor={`productImage-${review.id}`}>Product Image URL</Label>
-                      <div className="flex items-center gap-2">
-                        <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id={`productImage-${review.id}`}
-                          value={review.productImage || ""}
-                          onChange={(e) => handleReviewChange(review.id, 'productImage', e.target.value)}
-                          placeholder="Enter product image URL (optional)"
-                        />
-                      </div>
+                      <FileUpload
+                        label="Product Image"
+                        value={review.productImage || ""}
+                        onChange={(value) => handleReviewChange(review.id, 'productImage', value)}
+                        type="image"
+                        placeholder="Enter product image URL or upload file (optional)"
+                      />
                     </div>
 
                     <div className="flex items-center space-x-2">

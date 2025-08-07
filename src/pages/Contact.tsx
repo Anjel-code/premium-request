@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Mail, Phone, MapPin, Clock, Send } from "lucide-react";
 import { Link } from "react-router-dom";
+import Footer from "@/components/Footer";
 // Removed: import Navigation from "@/components/Navigation"; // Navigation is now handled in App.jsx
 import { useToast } from "@/hooks/use-toast";
 
@@ -297,6 +298,8 @@ const Contact = () => {
           </div>
         </div>
       </section>
+
+      <Footer />
     </div>
   );
 };
