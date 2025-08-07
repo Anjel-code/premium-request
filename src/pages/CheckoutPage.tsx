@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, ShoppingCart, CreditCard, MapPin, Shield, Zap } from "lucide-react";
+import { ArrowLeft, ShoppingCart, CreditCard, MapPin, Shield, Zap, AlertCircle } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { trackUserActivity } from "@/lib/liveViewUtils";
@@ -89,6 +89,14 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ user, appId }) => {
         if (result.state === 'granted') {
           setShowLocationAlert(false);
         }
+        
+        // Listen for permission changes
+        result.addEventListener('change', () => {
+          setLocationPermission(result.state);
+          if (result.state === 'granted') {
+            setShowLocationAlert(false);
+          }
+        });
       });
     }
   }, []);
@@ -117,6 +125,35 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ user, appId }) => {
         title: "Location Access Denied",
         description: "No worries! You can still complete your order. We'll use your shipping address for tracking.",
         variant: "default",
+      });
+    }
+  };
+
+  const handleResetLocationPermission = async () => {
+    try {
+      // Try to get location again - this will trigger the permission prompt
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: false,
+          timeout: 5000,
+          maximumAge: 0 // Force fresh location
+        });
+      });
+      
+      setLocationPermission('granted');
+      setShowLocationAlert(false);
+      
+      toast({
+        title: "Location Access Granted",
+        description: "Thank you! This helps us provide better service and track your order more accurately.",
+        variant: "default",
+      });
+    } catch (error) {
+      // If still denied, show instructions
+      toast({
+        title: "Location Permission Still Denied",
+        description: "Please enable location access in your browser settings and try again.",
+        variant: "destructive",
       });
     }
   };
@@ -319,12 +356,23 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ user, appId }) => {
               <CardContent>
                 {/* Location Permission Alert */}
                 {showLocationAlert && locationPermission !== 'granted' && (
-                  <Alert className="mb-6 border-blue-200 bg-blue-50">
-                    <MapPin className="h-4 w-4 text-blue-600" />
-                    <AlertDescription className="text-blue-800">
+                  <Alert className={`mb-6 ${
+                    locationPermission === 'denied' 
+                      ? 'border-orange-200 bg-orange-50' 
+                      : 'border-blue-200 bg-blue-50'
+                  }`}>
+                    <MapPin className={`h-4 w-4 ${
+                      locationPermission === 'denied' ? 'text-orange-600' : 'text-blue-600'
+                    }`} />
+                    <AlertDescription className={locationPermission === 'denied' ? 'text-orange-800' : 'text-blue-800'}>
                       <div className="flex items-start gap-3">
                         <div className="flex-1">
-                          <p className="font-medium mb-2">Enable Location Access for Better Service</p>
+                          <p className="font-medium mb-2">
+                            {locationPermission === 'denied' 
+                              ? 'Location Access Previously Denied' 
+                              : 'Enable Location Access for Better Service'
+                            }
+                          </p>
                           <div className="text-sm space-y-1">
                             <div className="flex items-center gap-2">
                               <Zap className="h-3 w-3 text-green-600" />
@@ -338,15 +386,43 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ user, appId }) => {
                               <MapPin className="h-3 w-3 text-green-600" />
                               <span>Accurate delivery tracking</span>
                             </div>
+                            {locationPermission === 'denied' && (
+                              <div className="flex items-center gap-2 mt-2 p-2 bg-orange-100 rounded">
+                                <AlertCircle className="h-3 w-3 text-orange-600" />
+                                <span className="text-xs">Location access was previously denied. Click below to re-request permission.</span>
+                              </div>
+                            )}
                           </div>
                         </div>
-                        <Button
-                          onClick={handleLocationPermission}
-                          size="sm"
-                          className="bg-blue-600 hover:bg-blue-700 text-white"
-                        >
-                          Allow Location
-                        </Button>
+                        <div className="flex flex-col gap-2">
+                          {locationPermission === 'denied' ? (
+                            <>
+                              <Button
+                                onClick={handleResetLocationPermission}
+                                size="sm"
+                                className="bg-orange-600 hover:bg-orange-700 text-white"
+                              >
+                                Re-request Location
+                              </Button>
+                              <Button
+                                onClick={() => setShowLocationAlert(false)}
+                                size="sm"
+                                variant="outline"
+                                className="text-orange-600 border-orange-600 hover:bg-orange-50"
+                              >
+                                Skip for Now
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              onClick={handleLocationPermission}
+                              size="sm"
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                              Allow Location
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </AlertDescription>
                   </Alert>

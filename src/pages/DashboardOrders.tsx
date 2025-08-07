@@ -489,9 +489,9 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
                               </Link>
                             </Button>
                             
-                            {/* Request Refund Button - Only show for completed orders that haven't been refunded */}
+                            {/* Request Refund Button - Only show for shipped/delivered orders that haven't been refunded */}
                             {storeOrder.paymentStatus === "completed" && 
-                             storeOrder.status !== "refunded" && 
+                             (storeOrder.status === "shipped" || storeOrder.status === "delivered") &&
                              (!storeOrder.refundStatus || storeOrder.refundStatus === "none") && (
                               <Button
                                 asChild

@@ -57,6 +57,7 @@ import LiveView from "./pages/LiveView"; // Import LiveView
 import DatabaseManagement from "./pages/DatabaseManagement"; // Import DatabaseManagement
 import RefundPage from "./pages/RefundPage"; // Import RefundPage
 import AdminRefundManagement from "./pages/AdminRefundManagement"; // Import AdminRefundManagement
+import RefundSupportChat from "./pages/RefundSupportChat"; // Import RefundSupportChat
 
 import { CartProvider } from "@/contexts/CartContext";
 import CartPanel from "@/components/CartPanel";
@@ -174,6 +175,7 @@ const AppContent: React.FC<AppContentProps> = ({
     "/dashboard/support",
     "/payment-portal", // Hide navbar on payment portal page
     "/success", // HIDE NAVBAR FOR THE SUCCESS PAGE
+    "/refunds", // Hide navbar for refund page
   ];
   const shouldHideNavbar = hideNavbarPaths.some((path) =>
     location.pathname.startsWith(path)
@@ -564,6 +566,8 @@ const AppContent: React.FC<AppContentProps> = ({
                       uid: user.uid,
                       email: user.email ?? "",
                       displayName: user.displayName ?? user.email ?? "",
+                      roles: userRoles,
+                      photoURL: user.photoURL ?? undefined,
                     }
                   : null
               }
@@ -588,6 +592,54 @@ const AppContent: React.FC<AppContentProps> = ({
                     : null
                 }
                 appId={appId}
+              />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+
+        {/* Refund Support Chat Route - Protected for Admin Only */}
+        <Route
+          path="/refund-support-chat/:orderId"
+          element={
+            isAdmin ? (
+              <RefundSupportChat
+                user={
+                  user
+                    ? {
+                        uid: user.uid,
+                        email: user.email ?? "",
+                        displayName: user.displayName ?? user.email ?? "",
+                      }
+                    : null
+                }
+                appId={appId}
+                isAdmin={true}
+              />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+
+        {/* Customer Refund Support Chat Route - Protected for Order Owner */}
+        <Route
+          path="/customer-refund-chat/:orderId"
+          element={
+            user ? (
+              <RefundSupportChat
+                user={
+                  user
+                    ? {
+                        uid: user.uid,
+                        email: user.email ?? "",
+                        displayName: user.displayName ?? user.email ?? "",
+                      }
+                    : null
+                }
+                appId={appId}
+                isAdmin={false}
               />
             ) : (
               <Navigate to="/" replace />

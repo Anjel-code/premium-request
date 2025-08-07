@@ -10,6 +10,7 @@ import Stripe from "stripe";
 
 // Initialize Stripe with your secret key from environment variables
 // Ensure process.env.STRIPE_SECRET_KEY is defined
+console.log("Stripe secret key loaded:", process.env.VITE_STRIPE_SECRET_KEY ? "Yes" : "No");
 const stripe = new Stripe(process.env.VITE_STRIPE_SECRET_KEY);
 
 const app = express();
@@ -66,7 +67,7 @@ app.post("/api/create-checkout-session", async (req, res) => {
       mode: "payment",
       success_url: `http://localhost:8080/success?${
         isStoreOrder ? "orderId" : "ticketId"
-      }=${ticketId}`, // Adjust success URL to your frontend
+      }=${ticketId}&session_id={CHECKOUT_SESSION_ID}`, // Include session ID for payment intent lookup
       cancel_url: `http://localhost:8080/cancel?${
         isStoreOrder ? "orderId" : "ticketId"
       }=${ticketId}`, // Adjust cancel URL to your frontend
@@ -83,6 +84,154 @@ app.post("/api/create-checkout-session", async (req, res) => {
     // Provide a more user-friendly error message
     res.status(500).json({
       error: "Failed to create checkout session. Please try again later.",
+    });
+  }
+});
+
+// Get payment intent ID from session ID
+app.get("/api/get-payment-intent/:sessionId", async (req, res) => {
+  const { sessionId } = req.params;
+
+  if (!sessionId) {
+    return res.status(400).json({
+      error: "Missing session ID",
+    });
+  }
+
+  try {
+    // Retrieve the checkout session
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    
+    if (!session.payment_intent) {
+      return res.status(404).json({
+        error: "No payment intent found for this session",
+      });
+    }
+
+    res.json({ 
+      paymentIntentId: session.payment_intent,
+      amount: session.amount_total / 100, // Convert from cents to dollars
+      status: session.payment_status
+    });
+  } catch (e) {
+    console.error("Error retrieving payment intent:", e.message);
+    res.status(500).json({
+      error: "Failed to retrieve payment intent. Please try again later.",
+      details: e.message
+    });
+  }
+});
+
+// Find payment intent by order details (amount and date range)
+app.post("/api/find-payment-intent", async (req, res) => {
+  const { amount, startDate, endDate, customerEmail } = req.body;
+
+  if (!amount || !startDate || !endDate) {
+    return res.status(400).json({
+      error: "Missing required fields: amount, startDate, endDate",
+    });
+  }
+
+  try {
+    // Convert amount to cents for comparison
+    const amountInCents = Math.round(parseFloat(amount) * 100);
+    
+    // List payment intents within the date range
+    const paymentIntents = await stripe.paymentIntents.list({
+      created: {
+        gte: Math.floor(new Date(startDate).getTime() / 1000),
+        lte: Math.floor(new Date(endDate).getTime() / 1000),
+      },
+      limit: 100,
+    });
+
+    // Find matching payment intent by amount
+    const matchingIntent = paymentIntents.data.find(intent => 
+      intent.amount === amountInCents && 
+      intent.status === 'succeeded'
+    );
+
+    if (matchingIntent) {
+      res.json({
+        paymentIntentId: matchingIntent.id,
+        amount: matchingIntent.amount / 100,
+        status: matchingIntent.status,
+        created: new Date(matchingIntent.created * 1000)
+      });
+    } else {
+      res.status(404).json({
+        error: "No matching payment intent found for the given amount and date range"
+      });
+    }
+  } catch (e) {
+    console.error("Error finding payment intent:", e.message);
+    res.status(500).json({
+      error: "Failed to find payment intent. Please try again later.",
+      details: e.message
+    });
+  }
+});
+
+// Refund endpoint
+app.post("/api/process-refund", async (req, res) => {
+  console.log("Refund request received:", req.body);
+  
+  const { paymentIntentId, amount, reason } = req.body;
+
+  // Basic validation
+  if (!paymentIntentId || !amount) {
+    console.log("Missing required fields:", { paymentIntentId, amount });
+    return res.status(400).json({
+      error: "Missing required fields: paymentIntentId, amount",
+    });
+  }
+
+  // Validate amount is a valid number
+  const numericAmount = parseFloat(amount);
+  if (isNaN(numericAmount) || numericAmount <= 0) {
+    console.log("Invalid amount:", amount);
+    return res.status(400).json({
+      error: "Invalid amount. Please provide a valid positive number.",
+    });
+  }
+
+  console.log("Processing refund for:", {
+    paymentIntentId,
+    amount: numericAmount,
+    reason
+  });
+
+  try {
+    // Create refund using Stripe API
+    // Stripe only accepts specific reason values, so we'll use 'requested_by_customer' 
+    // and store the custom reason in metadata
+    const refund = await stripe.refunds.create({
+      payment_intent: paymentIntentId,
+      amount: Math.round(numericAmount * 100), // Convert to cents
+      reason: "requested_by_customer", // Always use this for Stripe
+      metadata: {
+        refund_reason: reason || "Customer requested refund", // Store custom reason here
+      },
+    });
+
+    console.log("Refund processed successfully:", refund.id);
+    res.json({ 
+      success: true, 
+      refundId: refund.id,
+      status: refund.status,
+      amount: refund.amount / 100 // Convert back to dollars
+    });
+  } catch (e) {
+    console.error("Error processing refund:", e.message);
+    console.error("Error details:", {
+      code: e.code,
+      type: e.type,
+      decline_code: e.decline_code,
+      param: e.param
+    });
+    res.status(500).json({
+      error: "Failed to process refund. Please try again later.",
+      details: e.message
     });
   }
 });

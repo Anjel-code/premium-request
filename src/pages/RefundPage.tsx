@@ -20,21 +20,26 @@ import {
   User,
   MessageSquare
 } from "lucide-react";
-import { getRefundableOrders, requestRefund, StoreOrder } from "@/lib/storeUtils";
+import { getRefundableOrders, requestRefund, StoreOrder, getRefundRequests } from "@/lib/storeUtils";
 import { db } from "@/firebase";
+// Define the UserProfile interface
+interface UserProfile {
+  uid: string;
+  email: string;
+  displayName: string;
+  roles: string[];
+  photoURL?: string;
+}
 
 interface RefundPageProps {
-  user?: {
-    uid: string;
-    email: string;
-    displayName: string;
-  } | null;
+  user?: UserProfile | null;
   appId?: string;
 }
 
 const RefundPage: React.FC<RefundPageProps> = ({ user, appId }) => {
   const navigate = useNavigate();
   const [refundableOrders, setRefundableOrders] = useState<StoreOrder[]>([]);
+  const [refundHistory, setRefundHistory] = useState<StoreOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<StoreOrder | null>(null);
@@ -54,6 +59,11 @@ const RefundPage: React.FC<RefundPageProps> = ({ user, appId }) => {
         setLoading(true);
         const orders = await getRefundableOrders(appId, user.uid);
         setRefundableOrders(orders);
+        
+        // Also load all refund requests for history
+        const allRefunds = await getRefundRequests(appId);
+        const userRefunds = allRefunds.filter(refund => refund.userId === user.uid);
+        setRefundHistory(userRefunds);
       } catch (err) {
         console.error("Error loading refundable orders:", err);
         setError("Failed to load your orders. Please try again.");
@@ -104,6 +114,16 @@ const RefundPage: React.FC<RefundPageProps> = ({ user, appId }) => {
       case "paid": return "bg-green-100 text-green-800";
       case "shipped": return "bg-blue-100 text-blue-800";
       case "delivered": return "bg-purple-100 text-purple-800";
+      default: return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const getRefundStatusColor = (refundStatus: string) => {
+    switch (refundStatus) {
+      case "requested": return "bg-yellow-100 text-yellow-800";
+      case "approved": return "bg-green-100 text-green-800";
+      case "processed": return "bg-blue-100 text-blue-800";
+      case "rejected": return "bg-red-100 text-red-800";
       default: return "bg-gray-100 text-gray-800";
     }
   };
@@ -190,89 +210,194 @@ const RefundPage: React.FC<RefundPageProps> = ({ user, appId }) => {
           </div>
         )}
 
-        {/* Empty State */}
-        {!loading && refundableOrders.length === 0 && (
-          <Card className="max-w-md mx-auto">
-            <CardContent className="p-8 text-center">
-              <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Refundable Orders</h3>
-              <p className="text-muted-foreground mb-4">
-                You don't have any completed orders that are eligible for refunds at this time.
-              </p>
-              <Button onClick={() => navigate("/dashboard/orders")}>
-                View All Orders
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+                 {/* Empty State */}
+         {!loading && refundableOrders.length === 0 && refundHistory.length === 0 && (
+           <Card className="max-w-md mx-auto">
+             <CardContent className="p-8 text-center">
+               <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+               <h3 className="text-lg font-semibold mb-2">No Refundable Orders</h3>
+               <p className="text-muted-foreground mb-4">
+                 Refunds are only available for orders that have been shipped or delivered. 
+                 Orders that are still pending or paid but not yet shipped are not eligible for refunds.
+               </p>
+               <Button onClick={() => navigate("/dashboard/orders")}>
+                 View All Orders
+               </Button>
+             </CardContent>
+           </Card>
+         )}
 
-        {/* Orders List */}
-        {!loading && refundableOrders.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">
-                Eligible Orders ({refundableOrders.length})
-              </h2>
-              <Button
-                variant="outline"
-                onClick={() => window.location.reload()}
-                className="flex items-center gap-2"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Refresh
-              </Button>
-            </div>
+         {/* Empty State - Only if no refundable orders but has history */}
+         {!loading && refundableOrders.length === 0 && refundHistory.length > 0 && (
+           <Card className="max-w-md mx-auto">
+             <CardContent className="p-8 text-center">
+               <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+               <h3 className="text-lg font-semibold mb-2">No New Refundable Orders</h3>
+               <p className="text-muted-foreground mb-4">
+                 You don't have any new orders eligible for refunds, but you can view your refund history below.
+               </p>
+               <Button onClick={() => navigate("/dashboard/orders")}>
+                 View All Orders
+               </Button>
+             </CardContent>
+           </Card>
+         )}
 
-            {refundableOrders.map((order) => (
-              <Card key={order.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold text-primary">
-                          {order.productName}
-                        </h3>
-                        <Badge className={getStatusColor(order.status)}>
-                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                        </Badge>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-2">
-                          <DollarSign className="h-4 w-4" />
-                          <span>${order.totalAmount.toFixed(2)}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Package className="h-4 w-4" />
-                          <span>Qty: {order.quantity}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
-                          <span>{formatDate(order.createdAt)}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4" />
-                          <span>{order.userName}</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <Button
-                      onClick={() => {
-                        setSelectedOrder(order);
-                        setShowRefundDialog(true);
-                      }}
-                      className="flex items-center gap-2"
-                    >
-                      <MessageSquare className="h-4 w-4" />
-                      Request Refund
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                 {/* Orders List */}
+         {!loading && refundableOrders.length > 0 && (
+           <div className="space-y-4">
+             <div className="flex items-center justify-between">
+               <h2 className="text-xl font-semibold">
+                 Eligible Orders ({refundableOrders.length})
+               </h2>
+               <Button
+                 variant="outline"
+                 onClick={() => window.location.reload()}
+                 className="flex items-center gap-2"
+               >
+                 <RefreshCw className="h-4 w-4" />
+                 Refresh
+               </Button>
+             </div>
+
+             {refundableOrders.map((order) => (
+               <Card key={order.id} className="hover:shadow-md transition-shadow">
+                 <CardContent className="p-6">
+                   <div className="flex items-start justify-between mb-4">
+                     <div className="flex-1">
+                       <div className="flex items-center gap-3 mb-2">
+                         <h3 className="text-lg font-semibold text-primary">
+                           {order.productName}
+                         </h3>
+                         <Badge className={getStatusColor(order.status)}>
+                           {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                         </Badge>
+                       </div>
+                       
+                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-muted-foreground">
+                         <div className="flex items-center gap-2">
+                           <DollarSign className="h-4 w-4" />
+                           <span>${order.totalAmount.toFixed(2)}</span>
+                         </div>
+                         <div className="flex items-center gap-2">
+                           <Package className="h-4 w-4" />
+                           <span>Qty: {order.quantity}</span>
+                         </div>
+                         <div className="flex items-center gap-2">
+                           <Calendar className="h-4 w-4" />
+                           <span>{formatDate(order.createdAt)}</span>
+                         </div>
+                         <div className="flex items-center gap-2">
+                           <User className="h-4 w-4" />
+                           <span>{order.userName}</span>
+                         </div>
+                       </div>
+                     </div>
+                     
+                     <div className="flex gap-2">
+                       <Button
+                         onClick={() => {
+                           setSelectedOrder(order);
+                           setShowRefundDialog(true);
+                         }}
+                         className="flex items-center gap-2"
+                       >
+                         <MessageSquare className="h-4 w-4" />
+                         Request Refund
+                       </Button>
+                       <Button
+                         onClick={() => navigate(`/customer-refund-chat/${order.id}`)}
+                         variant="outline"
+                         className="flex items-center gap-2"
+                       >
+                         <MessageSquare className="h-4 w-4" />
+                         Chat with Support
+                       </Button>
+                     </div>
+                   </div>
+                 </CardContent>
+               </Card>
+             ))}
+           </div>
+         )}
+
+         {/* Refund History */}
+         {!loading && refundHistory.length > 0 && (
+           <div className="space-y-4 mt-8">
+             <div className="flex items-center justify-between">
+               <h2 className="text-xl font-semibold">
+                 Refund History ({refundHistory.length})
+               </h2>
+               <Button
+                 variant="outline"
+                 onClick={() => window.location.reload()}
+                 className="flex items-center gap-2"
+               >
+                 <RefreshCw className="h-4 w-4" />
+                 Refresh
+               </Button>
+             </div>
+
+             {refundHistory.map((order) => (
+               <Card key={order.id} className="hover:shadow-md transition-shadow">
+                 <CardContent className="p-6">
+                   <div className="flex items-start justify-between mb-4">
+                     <div className="flex-1">
+                       <div className="flex items-center gap-3 mb-2">
+                         <h3 className="text-lg font-semibold text-primary">
+                           {order.productName}
+                         </h3>
+                         <Badge className={getStatusColor(order.status)}>
+                           {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                         </Badge>
+                         <Badge className={getRefundStatusColor(order.refundStatus || "requested")}>
+                           {order.refundStatus?.charAt(0).toUpperCase() + order.refundStatus?.slice(1)}
+                         </Badge>
+                       </div>
+                       
+                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-muted-foreground mb-4">
+                         <div className="flex items-center gap-2">
+                           <DollarSign className="h-4 w-4" />
+                           <span>${order.totalAmount.toFixed(2)}</span>
+                         </div>
+                         <div className="flex items-center gap-2">
+                           <Package className="h-4 w-4" />
+                           <span>Qty: {order.quantity}</span>
+                         </div>
+                         <div className="flex items-center gap-2">
+                           <Calendar className="h-4 w-4" />
+                           <span>{formatDate(order.createdAt)}</span>
+                         </div>
+                         <div className="flex items-center gap-2">
+                           <User className="h-4 w-4" />
+                           <span>{order.userName}</span>
+                         </div>
+                       </div>
+
+                       {order.refundReason && (
+                         <div className="bg-muted/50 p-3 rounded-lg">
+                           <p className="text-sm font-medium mb-1">Refund Reason:</p>
+                           <p className="text-sm text-muted-foreground">{order.refundReason}</p>
+                         </div>
+                       )}
+                     </div>
+                     
+                     <div className="flex gap-2">
+                       <Button
+                         onClick={() => navigate(`/customer-refund-chat/${order.id}`)}
+                         variant="outline"
+                         className="flex items-center gap-2"
+                       >
+                         <MessageSquare className="h-4 w-4" />
+                         View Chat History
+                       </Button>
+                     </div>
+                   </div>
+                 </CardContent>
+               </Card>
+             ))}
+           </div>
+         )}
 
         {/* Refund Request Dialog */}
         <Dialog open={showRefundDialog} onOpenChange={setShowRefundDialog}>

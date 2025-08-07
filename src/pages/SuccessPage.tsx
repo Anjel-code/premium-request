@@ -220,6 +220,26 @@ const SuccessPage: React.FC = () => {
         `artifacts/${appId}/public/data/store-orders`
       );
 
+      // Get session ID from URL to retrieve payment intent ID
+      const queryParams = new URLSearchParams(location.search);
+      const sessionId = queryParams.get("session_id");
+      let paymentIntentId = null;
+
+      if (sessionId) {
+        try {
+          const response = await fetch(`http://localhost:4242/api/get-payment-intent/${sessionId}`);
+          if (response.ok) {
+            const data = await response.json();
+            paymentIntentId = data.paymentIntentId;
+            console.log("Retrieved payment intent ID:", paymentIntentId);
+          } else {
+            console.warn("Failed to retrieve payment intent ID:", response.statusText);
+          }
+        } catch (error) {
+          console.warn("Error retrieving payment intent ID:", error);
+        }
+      }
+
       // Check if this is a cart order (starts with "cart_") or direct order (starts with "direct_")
       const isNewOrder = orderInfo.orderId && (orderInfo.orderId.startsWith("cart_") || orderInfo.orderId.startsWith("direct_"));
       
@@ -253,9 +273,10 @@ const SuccessPage: React.FC = () => {
            totalAmount: orderInfo.totalPrice || 0, // Add this for compatibility with existing dashboard code
            paymentStatus: "completed",
            status: "paid",
+           paymentIntentId: paymentIntentId, // Store payment intent ID for refunds
            createdAt: new Date(),
            updatedAt: new Date(),
-                       // Save shipping information (only if customerInfo exists)
+           // Save shipping information (only if customerInfo exists)
             ...(orderInfo.customerInfo && {
               shippingInfo: {
                 firstName: orderInfo.customerInfo.firstName || "",
@@ -315,6 +336,7 @@ const SuccessPage: React.FC = () => {
         await updateDoc(orderRef, {
           paymentStatus: "completed",
           status: "paid",
+          paymentIntentId: paymentIntentId, // Store payment intent ID for refunds
           updatedAt: new Date(),
         });
       }

@@ -16,7 +16,7 @@ export interface UserActivity {
 }
 
 // Function to get user's location using browser geolocation
-export const getUserLocation = (): Promise<{ latitude: number; longitude: number; city?: string; country?: string }> => {
+export const getUserLocation = (forceFresh: boolean = false): Promise<{ latitude: number; longitude: number; city?: string; country?: string }> => {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
       // Fallback to a default location if geolocation is not available
@@ -69,10 +69,31 @@ export const getUserLocation = (): Promise<{ latitude: number; longitude: number
       {
         enableHighAccuracy: false,
         timeout: 5000,
-        maximumAge: 300000 // 5 minutes
+        maximumAge: forceFresh ? 0 : 300000 // Force fresh location if requested, otherwise 5 minutes
       }
     );
   });
+};
+
+// Function to check location permission status
+export const checkLocationPermission = (): Promise<'granted' | 'denied' | 'prompt'> => {
+  return new Promise((resolve) => {
+    if (!navigator.permissions || !navigator.permissions.query) {
+      resolve('prompt');
+      return;
+    }
+
+    navigator.permissions.query({ name: 'geolocation' }).then((result) => {
+      resolve(result.state);
+    }).catch(() => {
+      resolve('prompt');
+    });
+  });
+};
+
+// Function to reset location permission (force re-request)
+export const resetLocationPermission = (): Promise<{ latitude: number; longitude: number; city?: string; country?: string }> => {
+  return getUserLocation(true); // Force fresh location
 };
 
 // Function to track user activity with location

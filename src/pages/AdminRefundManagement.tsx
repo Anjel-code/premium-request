@@ -23,7 +23,8 @@ import {
   Eye,
   ThumbsUp,
   ThumbsDown,
-  Settings
+  Settings,
+  Send
 } from "lucide-react";
 import { 
   getRefundRequests, 
@@ -364,6 +365,15 @@ const AdminRefundManagement: React.FC<AdminRefundManagementProps> = ({ user, app
                             <ThumbsDown className="h-4 w-4" />
                             Reject
                           </Button>
+                          <Button
+                            onClick={() => navigate(`/refund-support-chat/${order.id}`)}
+                            variant="outline"
+                            className="flex items-center gap-2"
+                            size="sm"
+                          >
+                            <Send className="h-4 w-4" />
+                            Chat with Customer
+                          </Button>
                         </div>
                       </div>
                     </CardContent>
@@ -422,18 +432,29 @@ const AdminRefundManagement: React.FC<AdminRefundManagementProps> = ({ user, app
                           </div>
                         </div>
                         
-                        <Button
-                          onClick={() => {
-                            setSelectedOrder(order);
-                            setActionType("process");
-                            setShowActionDialog(true);
-                          }}
-                          className="flex items-center gap-2"
-                          size="sm"
-                        >
-                          <CheckCircle className="h-4 w-4" />
-                          Process Refund
-                        </Button>
+                                                 <div className="flex flex-col gap-2">
+                           <Button
+                             onClick={() => {
+                               setSelectedOrder(order);
+                               setActionType("process");
+                               setShowActionDialog(true);
+                             }}
+                             className="flex items-center gap-2"
+                             size="sm"
+                           >
+                             <CheckCircle className="h-4 w-4" />
+                             Process Refund
+                           </Button>
+                           <Button
+                             onClick={() => navigate(`/refund-support-chat/${order.id}`)}
+                             variant="outline"
+                             className="flex items-center gap-2"
+                             size="sm"
+                           >
+                             <Send className="h-4 w-4" />
+                             Chat with Customer
+                           </Button>
+                         </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -489,6 +510,18 @@ const AdminRefundManagement: React.FC<AdminRefundManagementProps> = ({ user, app
                               <span>By: {order.refundProcessedBy}</span>
                             </div>
                           </div>
+                        </div>
+                        
+                        <div className="flex flex-col gap-2">
+                          <Button
+                            onClick={() => navigate(`/refund-support-chat/${order.id}`)}
+                            variant="outline"
+                            className="flex items-center gap-2"
+                            size="sm"
+                          >
+                            <Send className="h-4 w-4" />
+                            Chat with Customer
+                          </Button>
                         </div>
                       </div>
                     </CardContent>
@@ -552,6 +585,18 @@ const AdminRefundManagement: React.FC<AdminRefundManagementProps> = ({ user, app
                               <p className="text-sm text-muted-foreground">{order.refundReason}</p>
                             </div>
                           )}
+                        </div>
+                        
+                        <div className="flex flex-col gap-2">
+                          <Button
+                            onClick={() => navigate(`/refund-support-chat/${order.id}`)}
+                            variant="outline"
+                            className="flex items-center gap-2"
+                            size="sm"
+                          >
+                            <Send className="h-4 w-4" />
+                            Chat with Customer
+                          </Button>
                         </div>
                       </div>
                     </CardContent>

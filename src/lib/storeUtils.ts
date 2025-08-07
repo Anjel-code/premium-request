@@ -39,8 +39,11 @@ export interface StoreOrder {
   refundReason?: string;
   refundAmount?: number;
   refundRequestDate?: Date;
+  refundApprovedDate?: Date;
+  refundApprovedBy?: string;
   refundProcessedDate?: Date;
   refundProcessedBy?: string;
+  paymentIntentId?: string; // Stripe payment intent ID for refunds
   createdAt: Date;
   updatedAt: Date;
   trackingInfo?: TrackingInfo;
@@ -496,10 +499,8 @@ export const approveRefund = async (
     // Update the order with refund approval
     await updateDoc(orderRef, {
       refundStatus: "approved",
-      refundProcessedDate: serverTimestamp(),
-      refundProcessedBy: adminName,
-      status: "refunded",
-      paymentStatus: "refunded",
+      refundApprovedDate: serverTimestamp(),
+      refundApprovedBy: adminName,
       updatedAt: serverTimestamp(),
     });
 
@@ -593,11 +594,107 @@ export const processRefund = async (
   try {
     const orderRef = doc(db, `artifacts/${appId}/public/data/store-orders`, orderId);
     
+    // Get the order to check if it has a payment intent ID
+    const orderDoc = await getDoc(orderRef);
+    if (!orderDoc.exists()) {
+      throw new Error("Order not found");
+    }
+
+    const orderData = orderDoc.data();
+    let paymentIntentId = orderData.paymentIntentId;
+
+    if (!paymentIntentId) {
+      // Try to find the payment intent ID using order details
+      console.log("No payment intent ID found, attempting to find it using order details...");
+      console.log("Order data:", orderData);
+      console.log("Order createdAt:", orderData.createdAt);
+      console.log("Order createdAt type:", typeof orderData.createdAt);
+      
+      try {
+        // Create a date range around the order creation date (±1 day)
+        // Handle both Firestore Timestamp and regular Date objects
+        let orderDate;
+        if (orderData.createdAt && typeof orderData.createdAt.toDate === 'function') {
+          // Firestore Timestamp
+          orderDate = orderData.createdAt.toDate();
+        } else if (orderData.createdAt) {
+          // Regular Date object or timestamp
+          orderDate = new Date(orderData.createdAt);
+        } else {
+          throw new Error("No creation date found for this order");
+        }
+        
+        // Validate the date
+        if (isNaN(orderDate.getTime())) {
+          console.error("Invalid order date:", orderDate);
+          throw new Error("Invalid order creation date");
+        }
+        
+        console.log("Processed order date:", orderDate);
+        const startDate = new Date(orderDate.getTime() - 24 * 60 * 60 * 1000); // 1 day before
+        const endDate = new Date(orderDate.getTime() + 24 * 60 * 60 * 1000); // 1 day after
+        console.log("Search date range:", { startDate, endDate });
+        
+        const findResponse = await fetch("http://localhost:4242/api/find-payment-intent", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            amount: amount,
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
+            customerEmail: orderData.userEmail,
+          }),
+        });
+
+        if (findResponse.ok) {
+          const findData = await findResponse.json();
+          paymentIntentId = findData.paymentIntentId;
+          console.log("Found payment intent ID:", paymentIntentId);
+          
+          // Update the order with the found payment intent ID
+          await updateDoc(orderRef, {
+            paymentIntentId: paymentIntentId,
+            updatedAt: serverTimestamp(),
+          });
+        } else {
+          throw new Error("No payment intent ID found for this order. This order was created before automatic refund processing was implemented. Please process this refund manually through your Stripe dashboard using the order details.");
+        }
+      } catch (findError) {
+        console.error("Error finding payment intent:", findError);
+        throw new Error("No payment intent ID found for this order. This order was created before automatic refund processing was implemented. Please process this refund manually through your Stripe dashboard using the order details.");
+      }
+    }
+
+    // Process the actual refund through Stripe
+    const refundResponse = await fetch("http://localhost:4242/api/process-refund", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        paymentIntentId,
+        amount,
+        reason: orderData.refundReason || "Customer requested refund",
+      }),
+    });
+
+    if (!refundResponse.ok) {
+      const errorData = await refundResponse.json();
+      throw new Error(`Stripe refund failed: ${errorData.error || errorData.details}`);
+    }
+
+    const refundData = await refundResponse.json();
+    console.log("Stripe refund processed:", refundData);
+
     // Update the order with refund processed
     await updateDoc(orderRef, {
       refundStatus: "processed",
       refundProcessedDate: serverTimestamp(),
       refundProcessedBy: adminName,
+      status: "refunded",
+      paymentStatus: "refunded",
       updatedAt: serverTimestamp(),
     });
 
@@ -606,7 +703,7 @@ export const processRefund = async (
       userId,
       type: "store_refund",
       title: "Refund Processed",
-      message: `Your refund of $${amount.toFixed(2)} for ${productName} has been processed and will appear in your account within 5-10 business days.`,
+      message: `Your refund of $${amount.toFixed(2)} for ${productName} has been processed successfully. The refund will appear in your account within 5-10 business days.`,
       orderId,
       productName,
       amount,
@@ -633,7 +730,7 @@ export const getRefundableOrders = async (appId: string, userId: string): Promis
       ordersRef,
       where("userId", "==", userId),
       where("paymentStatus", "==", "completed"),
-      where("status", "in", ["paid", "shipped", "delivered"]),
+      where("status", "in", ["shipped", "delivered"]), // Only shipped or delivered orders are refundable
       orderBy("createdAt", "desc")
     );
 
@@ -670,7 +767,7 @@ export const getRefundRequests = async (appId: string): Promise<StoreOrder[]> =>
     const ordersRef = collection(db, `artifacts/${appId}/public/data/store-orders`);
     const q = query(
       ordersRef,
-      where("refundStatus", "==", "requested"),
+      where("refundStatus", "in", ["requested", "approved", "processed", "rejected"]),
       orderBy("refundRequestDate", "desc")
     );
 
@@ -685,6 +782,8 @@ export const getRefundRequests = async (appId: string): Promise<StoreOrder[]> =>
         createdAt: data.createdAt?.toDate(),
         updatedAt: data.updatedAt?.toDate(),
         refundRequestDate: data.refundRequestDate?.toDate(),
+        refundApprovedDate: data.refundApprovedDate?.toDate(),
+        refundProcessedDate: data.refundProcessedDate?.toDate(),
       } as StoreOrder);
     });
 

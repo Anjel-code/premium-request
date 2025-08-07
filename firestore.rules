@@ -97,6 +97,21 @@ service cloud.firestore {
           );
       }
 
+      // --- Store Orders Refund Chat Subcollection ---
+      match /store-orders/{orderId}/refund-chat/{messageId} {
+        // Allow read for any authenticated user (temporarily more permissive for testing)
+        allow read: if request.auth != null;
+        
+        // Allow create for any authenticated user (temporarily more permissive for testing)
+        allow create: if request.auth != null && request.resource.data.senderId == request.auth.uid;
+        
+        // Allow update for message sender
+        allow update: if request.auth != null && resource.data.senderId == request.auth.uid;
+        
+        // Allow delete for message sender
+        allow delete: if request.auth != null && resource.data.senderId == request.auth.uid;
+      }
+
       // --- Notifications Collection ---
       match /notifications/{notificationId} {
         // Allow read if:
