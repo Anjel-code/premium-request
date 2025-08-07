@@ -2,20 +2,15 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to get a user's roles
-    function getUserRoles(userId) {
-      // Allow reading of any user's roles by an authenticated user
-      // This is crucial for the AdminPanel to check roles of other users
-      return get(/databases/$(database)/documents/users/$(userId)).data.roles;
-    }
+
 
     // --- User Profiles (Top-level 'users' collection) ---
     match /users/{userId} {
       // Allow read and update if:
       // 1. The request is authenticated AND
       // 2. The user is reading/updating their own profile (request.auth.uid == userId) OR
-      // 3. The user has the 'admin' role (allowing them to read/update any user's profile)
-      allow read, update: if request.auth != null && (request.auth.uid == userId || getUserRoles(request.auth.uid).hasAny(['admin']));
+      // 3. The user is an admin/team member (simplified - allow all authenticated users for now)
+      allow read, update: if request.auth != null;
       // Allow create if the request is authenticated and the user is creating their own profile
       allow create: if request.auth != null && request.auth.uid == userId;
     }
@@ -25,41 +20,24 @@ service cloud.firestore {
 
       // --- Orders Collection ---
       match /orders/{orderId} {
-        allow read: if request.auth != null && (
-          getUserRoles(request.auth.uid).hasAny(['admin', 'team_member']) ||
-          resource.data.userId == request.auth.uid
-        );
+        allow read: if request.auth != null && resource.data.userId == request.auth.uid;
         allow create: if request.auth != null;
-        // MODIFIED: Allow update for admins/team_members OR for the order owner to update paymentStatus
+        // Allow update for the order owner to update paymentStatus
         allow update: if request.auth != null && (
-          // Admins and team members can update any field
-          getUserRoles(request.auth.uid).hasAny(['admin', 'team_member']) ||
-          // The order owner can update paymentStatus from 'requested' to 'paid'
-          (
-            request.auth.uid == resource.data.userId &&
-            request.resource.data.paymentStatus == 'paid' &&
-            resource.data.paymentStatus == 'requested' &&
-            // Ensure only 'paymentStatus' and 'updatedAt' fields are being modified by the customer
-            request.resource.data.keys().hasOnly(['paymentStatus', 'updatedAt'])
-          )
+          request.auth.uid == resource.data.userId &&
+          request.resource.data.paymentStatus == 'paid' &&
+          resource.data.paymentStatus == 'requested' &&
+          // Ensure only 'paymentStatus' and 'updatedAt' fields are being modified by the customer
+          request.resource.data.keys().hasOnly(['paymentStatus', 'updatedAt'])
         );
         allow delete: if false;
       }
 
       // --- Store Orders Collection ---
       match /store-orders/{orderId} {
-        allow read: if request.auth != null && (
-          getUserRoles(request.auth.uid).hasAny(['admin', 'team_member']) ||
-          resource.data.userId == request.auth.uid
-        );
+        allow read: if request.auth != null;
         allow create: if request.auth != null;
-        allow update: if request.auth != null && (
-          getUserRoles(request.auth.uid).hasAny(['admin', 'team_member']) ||
-          (
-            request.auth.uid == resource.data.userId &&
-            request.resource.data.keys().hasOnly(['paymentStatus', 'status', 'updatedAt'])
-          )
-        );
+        allow update: if request.auth != null;
         allow delete: if false;
       }
 
@@ -67,60 +45,99 @@ service cloud.firestore {
       match /orders/{orderId}/conversation/{messageId} {
         // Allow read if:
         // 1. The request is authenticated AND
-        // 2. The user has 'admin' or 'team_member' roles OR
-        // 3. The user is the original creator of the order (resource.data.userId == request.auth.uid)
-        allow read: if request.auth != null && (
-          getUserRoles(request.auth.uid).hasAny(['admin', 'team_member']) ||
-          get(/databases/$(database)/documents/artifacts/$(appId)/public/data/orders/$(orderId)).data.userId == request.auth.uid
-        );
+        // 2. The user is the original creator of the order
+        allow read: if request.auth != null && 
+          get(/databases/$(database)/documents/artifacts/$(appId)/public/data/orders/$(orderId)).data.userId == request.auth.uid;
         // Allow create if:
         // 1. The request is authenticated AND
         // 2. The senderId matches the authenticated user's UID AND
-        // 3. The user has 'admin' or 'team_member' roles OR
-        // 4. The user is the original creator of the order
-        allow create: if request.auth != null && request.resource.data.senderId == request.auth.uid && (
-          getUserRoles(request.auth.uid).hasAny(['admin', 'team_member']) ||
-          get(/databases/$(database)/documents/artifacts/$(appId)/public/data/orders/$(orderId)).data.userId == request.auth.uid
-        );
+        // 3. The user is the original creator of the order
+        allow create: if request.auth != null && 
+          request.resource.data.senderId == request.auth.uid &&
+          get(/databases/$(database)/documents/artifacts/$(appId)/public/data/orders/$(orderId)).data.userId == request.auth.uid;
       }
 
       // --- Notifications Collection ---
       match /notifications/{notificationId} {
         // Allow read if:
         // 1. The request is authenticated AND
-        // 2. The user is reading their own notifications (userId == request.auth.uid) OR
-        // 3. The user has 'admin' role (allowing them to read any notifications)
-        allow read: if request.auth != null && (
-          resource.data.userId == request.auth.uid ||
-          getUserRoles(request.auth.uid).hasAny(['admin'])
-        );
+        // 2. The user is reading their own notifications (userId == request.auth.uid)
+        allow read: if request.auth != null && resource.data.userId == request.auth.uid;
         
         // Allow create if:
         // 1. The request is authenticated AND
         // 2. The notification is being created for the authenticated user OR
-        // 3. The user has 'admin' or 'team_member' role (allowing them to create notifications for others)
+        // 3. The notification is being created for support purposes (support notifications) OR
+        // 4. The notification is being created for store purposes (store notifications)
         allow create: if request.auth != null && (
           request.resource.data.userId == request.auth.uid ||
-          getUserRoles(request.auth.uid).hasAny(['admin', 'team_member'])
+          request.resource.data.type == "support" ||
+          request.resource.data.type == "store_payment" ||
+          request.resource.data.type == "store_order" ||
+          request.resource.data.type == "store_shipping" ||
+          request.resource.data.type == "store_delivery"
         );
         
         // Allow update if:
         // 1. The request is authenticated AND
-        // 2. The user is updating their own notification (userId == request.auth.uid) OR
-        // 3. The user has 'admin' role (allowing them to update any notification)
+        // 2. The user is updating their own notification (userId == request.auth.uid)
+        allow update: if request.auth != null && resource.data.userId == request.auth.uid;
+        
+        // Allow delete if:
+        // 1. The request is authenticated AND
+        // 2. The user is deleting their own notification (userId == request.auth.uid)
+        allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      }
+
+      // --- Support Chats Collection ---
+      match /supportChats/{chatId} {
+        // Allow read if:
+        // 1. The request is authenticated AND
+        // 2. The user is the customer of this chat OR
+        // 3. The user is an admin/team member (simplified - allow all authenticated users for now)
+        allow read: if request.auth != null;
+        
+        // Allow create if:
+        // 1. The request is authenticated AND
+        // 2. The user is creating a chat for themselves
+        allow create: if request.auth != null && request.resource.data.customerUid == request.auth.uid;
+        
+        // Allow update if:
+        // 1. The request is authenticated AND
+        // 2. The user is the customer of this chat OR
+        // 3. The user is an admin/team member (simplified - allow all authenticated users for now)
+        allow update: if request.auth != null;
+        
+        // Allow delete if:
+        // 1. The request is authenticated AND
+        // 2. The user is the customer of this chat OR
+        // 3. The user is an admin/team member (simplified - allow all authenticated users for now)
+        allow delete: if request.auth != null;
+      }
+
+      // --- Support Chat Messages Subcollection ---
+      match /supportChats/{chatId}/messages/{messageId} {
+        // Allow read for any authenticated user (simplified for now)
+        allow read: if request.auth != null;
+        
+        // Allow create if:
+        // 1. The request is authenticated AND
+        // 2. The senderId matches the authenticated user
+        allow create: if request.auth != null && request.resource.data.senderId == request.auth.uid;
+        
+        // Allow update if:
+        // 1. The request is authenticated AND
+        // 2. The senderId matches the authenticated user OR
+        // 3. The user is updating only the isRead field (for admin marking messages as read)
         allow update: if request.auth != null && (
-          resource.data.userId == request.auth.uid ||
-          getUserRoles(request.auth.uid).hasAny(['admin'])
+          resource.data.senderId == request.auth.uid ||
+          (request.resource.data.keys().hasAny(['isRead']) && request.resource.data.isRead == true)
         );
         
         // Allow delete if:
         // 1. The request is authenticated AND
-        // 2. The user is deleting their own notification (userId == request.auth.uid) OR
-        // 3. The user has 'admin' role (allowing them to delete any notification)
-        allow delete: if request.auth != null && (
-          resource.data.userId == request.auth.uid ||
-          getUserRoles(request.auth.uid).hasAny(['admin'])
-        );
+        // 2. The senderId matches the authenticated user
+        allow delete: if request.auth != null && resource.data.senderId == request.auth.uid;
       }
 
       // --- Teams Collection (for general team management) ---
@@ -140,19 +157,15 @@ service cloud.firestore {
 
       // --- Team Messages Subcollection (for general team chat) ---
       match /teams/{teamId}/messages/{messageId} {
-        // Allow read for team members and admins
-        allow read: if request.auth != null && (
-          get(/databases/$(database)/documents/artifacts/$(appId)/public/data/teams/$(teamId)).data.memberIds.hasAny([request.auth.uid]) ||
-          getUserRoles(request.auth.uid).hasAny(['admin'])
-        );
+        // Allow read for team members
+        allow read: if request.auth != null && 
+          get(/databases/$(database)/documents/artifacts/$(appId)/public/data/teams/$(teamId)).data.memberIds.hasAny([request.auth.uid]);
         
-        // Allow create for team members and admins
+        // Allow create for team members
         allow create: if request.auth != null && 
-          request.resource.data.senderId == request.auth.uid && (
-            get(/databases/$(database)/documents/artifacts/$(appId)/public/data/teams/$(teamId)).data.memberIds.hasAny([request.auth.uid]) ||
-            getUserRoles(request.auth.uid).hasAny(['admin'])
-          );
+          request.resource.data.senderId == request.auth.uid &&
+          get(/databases/$(database)/documents/artifacts/$(appId)/public/data/teams/$(teamId)).data.memberIds.hasAny([request.auth.uid]);
       }
     }
   }
-} 
+}

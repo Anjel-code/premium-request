@@ -1,6 +1,8 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { LogIn, LogOut, ArrowRight } from "lucide-react";
+import { LogIn, LogOut, ArrowRight, ShoppingCart } from "lucide-react";
+import { useCart } from "@/contexts/CartContext";
+import { Badge } from "@/components/ui/badge";
 
 const Navigation = ({
   user,
@@ -10,6 +12,7 @@ const Navigation = ({
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { totalItems, setIsCartOpen } = useCart();
 
   const isActive = (path) => location.pathname === path;
 
@@ -94,21 +97,34 @@ const Navigation = ({
           </div>
 
           <div className="flex items-center space-x-4">
-            {user ? (
-              // If user is logged in, show welcome message and Sign Out button
-              <>
-                <span className="text-sm text-muted-foreground hidden md:block">
-                  Welcome, {formatUserEmail(user.email)}
-                </span>
-                <Button
-                  onClick={handleSignOut}
-                  variant="outline"
-                  size="sm" // Smaller size for navbar
-                  className="border-accent text-accent hover:bg-accent/10 font-medium"
+            {/* Cart Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsCartOpen(true)}
+              className="relative"
+            >
+              <ShoppingCart className="h-4 w-4" />
+              {totalItems > 0 && (
+                <Badge 
+                  variant="destructive" 
+                  className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
                 >
-                  <LogOut className="mr-2 h-4 w-4" /> Sign Out
-                </Button>
-              </>
+                  {totalItems}
+                </Badge>
+              )}
+            </Button>
+            
+            {user ? (
+              // If user is logged in, show Sign Out button
+              <Button
+                onClick={handleSignOut}
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
             ) : (
               // If user is not logged in, show Sign In and Sign Up buttons
               <>

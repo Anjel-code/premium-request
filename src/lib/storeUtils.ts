@@ -30,11 +30,24 @@ export interface StoreOrder {
   productName: string;
   quantity: number;
   totalAmount: number;
+  totalPrice?: number;
   status: "pending" | "paid" | "shipped" | "delivered" | "cancelled";
   paymentStatus: "pending" | "completed" | "failed";
   createdAt: Date;
   updatedAt: Date;
   trackingInfo?: TrackingInfo;
+  // Shipping information
+  shippingInfo?: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    address: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+  };
 }
 
 // Interface for store notification

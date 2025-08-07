@@ -169,8 +169,25 @@ const AdminTrackingManager: React.FC<AdminTrackingManagerProps> = ({
     };
 
     if (editingEvent.id.startsWith("event_")) {
-      // New event
-      setEvents([...events, updatedEvent]);
+      // New event - add to events and sort
+      const newEvents = [...events, updatedEvent];
+      const sortedEvents = newEvents.sort((a, b) => {
+        // Customer should always be last
+        if (a.location === "Customer") return 1;
+        if (b.location === "Customer") return -1;
+
+        // Quibble should always be first
+        if (a.location === "Quibble") return -1;
+        if (b.location === "Quibble") return 1;
+
+        // Distribution Center should be second
+        if (a.location === "Distribution Center") return -1;
+        if (b.location === "Distribution Center") return 1;
+
+        // For other events, sort by timestamp (oldest first for timeline)
+        return a.timestamp.getTime() - b.timestamp.getTime();
+      });
+      setEvents(sortedEvents);
     } else {
       // Existing event
       setEvents(

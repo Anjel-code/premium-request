@@ -297,7 +297,7 @@ const OrderQueuePage: React.FC<OrderQueuePageProps> = ({ userRoles, user }) => {
 
   if (isLoading) {
     return (
-      <DashboardLayout>
+      <DashboardLayout user={user} appId={appId}>
         <div className="min-h-[calc(100vh-100px)] flex items-center justify-center p-6">
           <Loader2 className="h-10 w-10 text-primary animate-spin" />
           <p className="ml-4 text-primary">Loading order queue...</p>
@@ -308,7 +308,7 @@ const OrderQueuePage: React.FC<OrderQueuePageProps> = ({ userRoles, user }) => {
 
   if (error) {
     return (
-      <DashboardLayout>
+      <DashboardLayout user={user} appId={appId}>
         <div className="min-h-[calc(100vh-100px)] flex flex-col items-center justify-center p-6">
           <Card className="w-full max-w-md text-center shadow-premium rounded-xl">
             <CardHeader>
@@ -331,7 +331,7 @@ const OrderQueuePage: React.FC<OrderQueuePageProps> = ({ userRoles, user }) => {
 
   if (!hasAccess) {
     return (
-      <DashboardLayout>
+      <DashboardLayout user={user} appId={appId}>
         <div className="min-h-[calc(100vh-100px)] flex flex-col items-center justify-center p-6">
           <Card className="w-full max-w-md text-center shadow-premium rounded-xl">
             <CardHeader>
@@ -353,7 +353,7 @@ const OrderQueuePage: React.FC<OrderQueuePageProps> = ({ userRoles, user }) => {
   }
 
   return (
-    <DashboardLayout>
+    <DashboardLayout user={user} appId={appId}>
       <div className="space-y-8">
         <h1 className="text-4xl font-bold text-primary mb-6">Order Queue</h1>
         <p className="text-lg text-muted-foreground mb-8">

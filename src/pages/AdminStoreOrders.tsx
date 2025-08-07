@@ -357,7 +357,7 @@ const AdminStoreOrders: React.FC<AdminStoreOrdersProps> = ({ user, appId }) => {
 
   if (loadingOrders) {
     return (
-      <DashboardLayout>
+      <DashboardLayout user={user} appId={appId}>
         <div className="min-h-[calc(100vh-100px)] flex items-center justify-center p-6">
           <Loader2 className="h-10 w-10 text-primary animate-spin" />
           <p className="ml-4 text-primary">Loading store orders...</p>
@@ -368,7 +368,7 @@ const AdminStoreOrders: React.FC<AdminStoreOrdersProps> = ({ user, appId }) => {
 
   if (error) {
     return (
-      <DashboardLayout>
+      <DashboardLayout user={user} appId={appId}>
         <div className="min-h-[calc(100vh-100px)] flex flex-col items-center justify-center p-6">
           <Card className="w-full max-w-md text-center shadow-premium rounded-xl">
             <CardHeader>
@@ -385,7 +385,7 @@ const AdminStoreOrders: React.FC<AdminStoreOrdersProps> = ({ user, appId }) => {
   }
 
   return (
-    <DashboardLayout>
+    <DashboardLayout user={user} appId={appId}>
       <div className="space-y-8">
         <div className="mb-8 flex justify-between items-center">
           <div>
@@ -445,7 +445,7 @@ const AdminStoreOrders: React.FC<AdminStoreOrdersProps> = ({ user, appId }) => {
                             </div>
                             <div>
                               <span className="font-medium">Total:</span> $
-                              {order.totalAmount.toFixed(2)}
+                              {(order.totalAmount || order.totalPrice || 0).toFixed(2)}
                             </div>
                           </div>
                           <div className="flex flex-wrap gap-2 mt-3">

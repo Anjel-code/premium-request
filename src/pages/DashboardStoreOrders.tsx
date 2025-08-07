@@ -158,7 +158,7 @@ const DashboardStoreOrders: React.FC<DashboardStoreOrdersProps> = ({
 
   if (loadingOrders) {
     return (
-      <DashboardLayout>
+      <DashboardLayout user={user} appId={appId}>
         <div className="min-h-[calc(100vh-100px)] flex items-center justify-center p-6">
           <Loader2 className="h-10 w-10 text-primary animate-spin" />
           <p className="ml-4 text-primary">Loading store orders...</p>
@@ -169,7 +169,7 @@ const DashboardStoreOrders: React.FC<DashboardStoreOrdersProps> = ({
 
   if (error) {
     return (
-      <DashboardLayout>
+      <DashboardLayout user={user} appId={appId}>
         <div className="min-h-[calc(100vh-100px)] flex flex-col items-center justify-center p-6">
           <Card className="w-full max-w-md text-center shadow-premium rounded-xl">
             <CardHeader>
@@ -186,7 +186,7 @@ const DashboardStoreOrders: React.FC<DashboardStoreOrdersProps> = ({
   }
 
   return (
-    <DashboardLayout>
+    <DashboardLayout user={user} appId={appId}>
       <div className="space-y-8">
         <div className="mb-8 flex justify-between items-center">
           <div>
@@ -275,7 +275,7 @@ const DashboardStoreOrders: React.FC<DashboardStoreOrdersProps> = ({
                             </Badge>
                           </div>
                           <p className="text-sm text-muted-foreground mt-2">
-                            Total: ${order.totalAmount.toFixed(2)}
+                            Total: ${(order.totalAmount || order.totalPrice || 0).toFixed(2)}
                           </p>
                         </div>
                         <div className="flex flex-col gap-2">

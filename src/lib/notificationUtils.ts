@@ -9,8 +9,17 @@ import {
   orderBy,
   onSnapshot,
   getDocs,
+  writeBatch,
+  deleteDoc,
+  limit,
+  startAfter,
+  getCountFromServer,
 } from "firebase/firestore";
 import { db } from "../firebase";
+
+// Cache for notification counts
+const notificationCountCache = new Map<string, { count: number; timestamp: number }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export interface NotificationData {
   userId: string;
@@ -36,8 +45,40 @@ export interface Notification extends NotificationData {
   readAt?: Date;
 }
 
+export interface PaginatedNotifications {
+  notifications: Notification[];
+  hasMore: boolean;
+  lastDoc: any;
+}
+
 /**
- * Create a new notification in Firebase
+ * Get cached unread notification count
+ */
+const getCachedUnreadCount = (cacheKey: string): number | null => {
+  const cached = notificationCountCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    return cached.count;
+  }
+  return null;
+};
+
+/**
+ * Set cached unread notification count
+ */
+const setCachedUnreadCount = (cacheKey: string, count: number): void => {
+  notificationCountCache.set(cacheKey, { count, timestamp: Date.now() });
+};
+
+/**
+ * Clear cache for a specific user
+ */
+export const clearNotificationCache = (appId: string, userId: string): void => {
+  const cacheKey = `${appId}-${userId}`;
+  notificationCountCache.delete(cacheKey);
+};
+
+/**
+ * Create a new notification in Firebase with optimized batch write
  */
 export const createNotification = async (
   appId: string,
@@ -58,6 +99,9 @@ export const createNotification = async (
       createdAt: serverTimestamp(),
     });
 
+    // Clear cache for this user
+    clearNotificationCache(appId, notificationData.userId);
+
     return docRef.id;
   } catch (error) {
     console.error("Error creating notification:", error);
@@ -66,11 +110,12 @@ export const createNotification = async (
 };
 
 /**
- * Mark a notification as read
+ * Mark a notification as read with cache invalidation
  */
 export const markNotificationAsRead = async (
   appId: string,
-  notificationId: string
+  notificationId: string,
+  userId: string
 ): Promise<void> => {
   if (!db || !appId) {
     throw new Error("Firebase database or appId not available");
@@ -86,6 +131,9 @@ export const markNotificationAsRead = async (
       read: true,
       readAt: serverTimestamp(),
     });
+
+    // Clear cache for this user
+    clearNotificationCache(appId, userId);
   } catch (error) {
     console.error("Error marking notification as read:", error);
     throw new Error("Failed to mark notification as read");
@@ -93,7 +141,7 @@ export const markNotificationAsRead = async (
 };
 
 /**
- * Mark all notifications as read for a user
+ * Mark all notifications as read for a user with optimized batch operation
  */
 export const markAllNotificationsAsRead = async (
   appId: string,
@@ -111,25 +159,47 @@ export const markAllNotificationsAsRead = async (
     const q = query(
       notificationsRef,
       where("userId", "==", userId),
-      where("read", "==", false)
+      where("read", "==", false),
+      limit(500) // Limit batch size for performance
     );
 
     const querySnapshot = await getDocs(q);
-    const batch = db.batch();
+    
+    if (querySnapshot.empty) {
+      return;
+    }
 
-    querySnapshot.docs.forEach((docSnapshot) => {
+    const batch = writeBatch(db);
+    const batchSize = 500; // Firestore batch limit
+    let currentBatch = writeBatch(db);
+    let operationCount = 0;
+
+    for (const docSnapshot of querySnapshot.docs) {
       const notificationRef = doc(
         db,
         `artifacts/${appId}/public/data/notifications`,
         docSnapshot.id
       );
-      batch.update(notificationRef, {
+      currentBatch.update(notificationRef, {
         read: true,
         readAt: serverTimestamp(),
       });
-    });
+      operationCount++;
 
-    await batch.commit();
+      // Commit batch when it reaches the limit
+      if (operationCount % batchSize === 0) {
+        await currentBatch.commit();
+        currentBatch = writeBatch(db);
+      }
+    }
+
+    // Commit remaining operations
+    if (operationCount % batchSize !== 0) {
+      await currentBatch.commit();
+    }
+
+    // Clear cache for this user
+    clearNotificationCache(appId, userId);
   } catch (error) {
     console.error("Error marking all notifications as read:", error);
     throw new Error("Failed to mark all notifications as read");
@@ -137,7 +207,7 @@ export const markAllNotificationsAsRead = async (
 };
 
 /**
- * Get unread notification count for a user
+ * Get unread notification count for a user with caching
  */
 export const getUnreadNotificationCount = async (
   appId: string,
@@ -145,6 +215,13 @@ export const getUnreadNotificationCount = async (
 ): Promise<number> => {
   if (!db || !appId) {
     return 0;
+  }
+
+  const cacheKey = `${appId}-${userId}`;
+  const cachedCount = getCachedUnreadCount(cacheKey);
+  
+  if (cachedCount !== null) {
+    return cachedCount;
   }
 
   try {
@@ -158,11 +235,77 @@ export const getUnreadNotificationCount = async (
       where("read", "==", false)
     );
 
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.size;
+    const snapshot = await getCountFromServer(q);
+    const count = snapshot.data().count;
+    
+    // Cache the result
+    setCachedUnreadCount(cacheKey, count);
+    
+    return count;
   } catch (error) {
     console.error("Error getting unread notification count:", error);
     return 0;
+  }
+};
+
+/**
+ * Get paginated notifications for better performance
+ */
+export const getPaginatedNotifications = async (
+  appId: string,
+  userId: string,
+  pageSize: number = 20,
+  lastDoc?: any
+): Promise<PaginatedNotifications> => {
+  if (!db || !appId) {
+    return { notifications: [], hasMore: false, lastDoc: null };
+  }
+
+  try {
+    console.log("Getting paginated notifications for userId:", userId, "appId:", appId);
+    const notificationsRef = collection(
+      db,
+      `artifacts/${appId}/public/data/notifications`
+    );
+    
+    let q = query(
+      notificationsRef,
+      where("userId", "==", userId),
+      orderBy("createdAt", "desc"),
+      limit(pageSize)
+    );
+
+    if (lastDoc) {
+      q = query(
+        notificationsRef,
+        where("userId", "==", userId),
+        orderBy("createdAt", "desc"),
+        startAfter(lastDoc),
+        limit(pageSize)
+      );
+    }
+
+    const querySnapshot = await getDocs(q);
+    console.log("Query successful, found", querySnapshot.docs.length, "notifications");
+    
+    const notifications: Notification[] = querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate() || new Date(),
+    })) as Notification[];
+
+    const hasMore = querySnapshot.docs.length === pageSize;
+    const newLastDoc = querySnapshot.docs[querySnapshot.docs.length - 1];
+
+    return {
+      notifications,
+      hasMore,
+      lastDoc: newLastDoc,
+    };
+  } catch (error) {
+    console.error("Error getting paginated notifications:", error);
+    // Re-throw the error to be handled by the calling component
+    throw error;
   }
 };
 
@@ -285,4 +428,114 @@ export const createMessageNotification = async (
     ticketNumber,
     priority: "medium",
   });
+};
+
+/**
+ * Create notification for support message
+ */
+export const createSupportNotification = async (
+  appId: string,
+  customerUid: string,
+  senderName: string,
+  messageText: string
+): Promise<string> => {
+  const title = `New Support Message from ${senderName}`;
+  const message = `You have received a new support message: "${messageText.substring(0, 100)}${messageText.length > 100 ? '...' : ''}"`;
+
+  return createNotification(appId, {
+    userId: customerUid,
+    type: "support",
+    title,
+    message,
+    priority: "medium",
+  });
+};
+
+/**
+ * Delete a single notification with cache invalidation
+ */
+export const deleteNotification = async (
+  appId: string,
+  notificationId: string,
+  userId: string
+): Promise<void> => {
+  if (!db || !appId) {
+    throw new Error("Firebase database or appId not available");
+  }
+
+  try {
+    const notificationRef = doc(
+      db,
+      `artifacts/${appId}/public/data/notifications`,
+      notificationId
+    );
+    await deleteDoc(notificationRef);
+
+    // Clear cache for this user
+    clearNotificationCache(appId, userId);
+  } catch (error) {
+    console.error("Error deleting notification:", error);
+    throw new Error("Failed to delete notification");
+  }
+};
+
+/**
+ * Delete all notifications for a user with optimized batch operation
+ */
+export const deleteAllNotifications = async (
+  appId: string,
+  userId: string
+): Promise<void> => {
+  if (!db || !appId) {
+    throw new Error("Firebase database or appId not available");
+  }
+
+  try {
+    const notificationsRef = collection(
+      db,
+      `artifacts/${appId}/public/data/notifications`
+    );
+    const q = query(
+      notificationsRef,
+      where("userId", "==", userId),
+      limit(500) // Limit batch size for performance
+    );
+
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      return;
+    }
+
+    const batchSize = 500; // Firestore batch limit
+    let currentBatch = writeBatch(db);
+    let operationCount = 0;
+
+    for (const docSnapshot of querySnapshot.docs) {
+      const notificationRef = doc(
+        db,
+        `artifacts/${appId}/public/data/notifications`,
+        docSnapshot.id
+      );
+      currentBatch.delete(notificationRef);
+      operationCount++;
+
+      // Commit batch when it reaches the limit
+      if (operationCount % batchSize === 0) {
+        await currentBatch.commit();
+        currentBatch = writeBatch(db);
+      }
+    }
+
+    // Commit remaining operations
+    if (operationCount % batchSize !== 0) {
+      await currentBatch.commit();
+    }
+
+    // Clear cache for this user
+    clearNotificationCache(appId, userId);
+  } catch (error) {
+    console.error("Error deleting all notifications:", error);
+    throw new Error("Failed to delete all notifications");
+  }
 };

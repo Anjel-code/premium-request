@@ -10,6 +10,7 @@ import {
   getDoc,
   where,
   updateDoc,
+  setDoc,
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
@@ -31,6 +32,7 @@ import {
   Search,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { createSupportNotification } from "../lib/notificationUtils";
 
 // Define interfaces
 interface ChatMessage {
@@ -325,21 +327,34 @@ const DashboardSupport: React.FC<DashboardSupportProps> = ({ user, appId }) => {
     chatId: string,
     messages: ChatMessage[]
   ) => {
-    if (!db || !user) return;
+    if (!db || !user || !isAdminOrTeam) return;
 
     try {
+      // Only mark messages as read if they're from customers and not already read
       const unreadMessages = messages.filter(
-        (msg) => !msg.isRead && msg.senderId !== user.uid
+        (msg) => (msg.isRead === undefined || !msg.isRead) && msg.senderId !== user.uid
       );
+
+      if (unreadMessages.length === 0) return;
 
       for (const message of unreadMessages) {
         if (message.id) {
-          const messageRef = doc(
-            db,
-            `artifacts/${appId}/public/data/supportChats/${chatId}/messages`,
-            message.id
-          );
-          await updateDoc(messageRef, { isRead: true });
+          try {
+            const messageRef = doc(
+              db,
+              `artifacts/${appId}/public/data/supportChats/${chatId}/messages`,
+              message.id
+            );
+            // Check if the message already has isRead field, if not, use setDoc with merge
+            if (message.isRead === undefined) {
+              await setDoc(messageRef, { isRead: true }, { merge: true });
+            } else {
+              await updateDoc(messageRef, { isRead: true });
+            }
+          } catch (updateError) {
+            // Silently ignore individual message update errors
+            console.warn("Failed to mark message as read:", message.id, updateError);
+          }
         }
       }
     } catch (e) {
@@ -406,6 +421,21 @@ const DashboardSupport: React.FC<DashboardSupportProps> = ({ user, appId }) => {
       await updateDoc(chatRef, updateData);
       console.log("Chat metadata updated successfully");
 
+      // Create notification for customer if message is from admin/team member
+      if (isAdminOrTeam && selectedChat?.customerUid) {
+        try {
+          await createSupportNotification(
+            appId,
+            selectedChat.customerUid,
+            user.displayName || user.email,
+            newMessage.trim()
+          );
+          console.log("Support notification created successfully");
+        } catch (notificationError) {
+          console.warn("Failed to create support notification:", notificationError);
+        }
+      }
+
       setNewMessage("");
       setError(null); // Clear any previous errors
     } catch (e) {
@@ -435,7 +465,7 @@ const DashboardSupport: React.FC<DashboardSupportProps> = ({ user, appId }) => {
 
   if (loading) {
     return (
-      <DashboardLayout>
+      <DashboardLayout user={user} appId={appId}>
         <div className="min-h-[calc(100vh-100px)] flex items-center justify-center p-6">
           <Loader2 className="h-10 w-10 text-primary animate-spin" />
           <p className="ml-4 text-primary">Loading support...</p>
@@ -446,7 +476,7 @@ const DashboardSupport: React.FC<DashboardSupportProps> = ({ user, appId }) => {
 
   if (error) {
     return (
-      <DashboardLayout>
+      <DashboardLayout user={user} appId={appId}>
         <div className="min-h-[calc(100vh-100px)] flex flex-col items-center justify-center p-6">
           <Card className="w-full max-w-md text-center shadow-premium rounded-xl">
             <CardHeader>
@@ -465,7 +495,7 @@ const DashboardSupport: React.FC<DashboardSupportProps> = ({ user, appId }) => {
   // Customer view - single chat interface
   if (isCustomer) {
     return (
-      <DashboardLayout>
+      <DashboardLayout user={user} appId={appId}>
         <div className="container mx-auto max-w-4xl p-6">
           <Card className="shadow-premium rounded-xl flex flex-col h-[calc(100vh - 200px)]">
             <CardHeader className="border-b border-border p-4">
@@ -551,7 +581,7 @@ const DashboardSupport: React.FC<DashboardSupportProps> = ({ user, appId }) => {
 
   // Admin/Team view - chat list and selected chat
   return (
-    <DashboardLayout>
+    <DashboardLayout user={user} appId={appId}>
       <div className="container mx-auto p-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
           {/* Chat List */}

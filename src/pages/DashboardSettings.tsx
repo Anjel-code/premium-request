@@ -148,7 +148,7 @@ const DashboardSettings: React.FC<DashboardSettingsProps> = ({
 
   if (loading) {
     return (
-      <DashboardLayout>
+      <DashboardLayout user={user} appId={appId}>
         <div className="min-h-[calc(100vh-100px)] flex items-center justify-center p-6">
           <Loader2 className="h-10 w-10 text-primary animate-spin" />
           <p className="ml-4 text-primary">Loading settings...</p>
@@ -158,7 +158,7 @@ const DashboardSettings: React.FC<DashboardSettingsProps> = ({
   }
 
   return (
-    <DashboardLayout>
+    <DashboardLayout user={user} appId={appId}>
       <div className="space-y-8">
         {/* Header */}
         <div className="mb-8">

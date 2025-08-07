@@ -30,6 +30,8 @@ import {
   createStoreOrder,
   createStoreOrderNotification,
 } from "@/lib/storeUtils";
+import { useCart } from "@/contexts/CartContext";
+import { useToast } from "@/hooks/use-toast";
 
 // Product data interface - this will be easily configurable
 interface ProductData {
@@ -179,17 +181,20 @@ interface StoreProps {
 
 const Store: React.FC<StoreProps> = ({ user, appId }) => {
   const [selectedImage, setSelectedImage] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const navigate = useNavigate();
+  const { addToCart } = useCart();
+  const { toast } = useToast();
 
   const product = mockProductData;
   const discountPercentage = Math.round(
     ((product.originalPrice - product.price) / product.originalPrice) * 100
   );
 
-  const handleAddToCart = async () => {
+  const handleBuyNow = async () => {
     if (!user || !appId) {
       // If user is not logged in, redirect to payment portal
       const totalAmount = product.price * quantity;
@@ -258,14 +263,35 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
     }
   };
 
+  const handleAddToCart = () => {
+    addToCart({
+      productId: product.id,
+      name: product.name,
+      price: product.price,
+      quantity,
+      image: product.images[0],
+    });
+
+    toast({
+      title: "Added to cart",
+      description: `${product.name} has been added to your cart.`,
+    });
+  };
+
   const nextImage = () => {
+    if (isTransitioning) return;
+    setIsTransitioning(true);
     setSelectedImage((prev) => (prev + 1) % product.images.length);
+    setTimeout(() => setIsTransitioning(false), 300);
   };
 
   const prevImage = () => {
+    if (isTransitioning) return;
+    setIsTransitioning(true);
     setSelectedImage(
       (prev) => (prev - 1 + product.images.length) % product.images.length
     );
+    setTimeout(() => setIsTransitioning(false), 300);
   };
 
   return (
@@ -280,7 +306,9 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                 <img
                   src={product.images[selectedImage]}
                   alt={product.name}
-                  className="w-full h-full object-cover cursor-zoom-in"
+                  className={`w-full h-full object-cover cursor-zoom-in transition-all duration-300 ease-in-out ${
+                    isTransitioning ? 'opacity-50 scale-95' : 'opacity-100 scale-100'
+                  }`}
                 />
                 <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center">
                   <ZoomIn className="h-8 w-8 text-white opacity-0 hover:opacity-100 transition-opacity" />
@@ -288,18 +316,18 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white/90 transition-all duration-200 ease-in-out transform hover:scale-105 active:scale-95"
                   onClick={prevImage}
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronLeft className="h-4 w-4 transition-transform duration-200" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white/90 transition-all duration-200 ease-in-out transform hover:scale-105 active:scale-95"
                   onClick={nextImage}
                 >
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronRight className="h-4 w-4 transition-transform duration-200" />
                 </Button>
               </div>
 
@@ -308,10 +336,15 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                 {product.images.map((image, index) => (
                   <button
                     key={index}
-                    onClick={() => setSelectedImage(index)}
-                    className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-colors ${
+                    onClick={() => {
+                      if (isTransitioning) return;
+                      setIsTransitioning(true);
+                      setSelectedImage(index);
+                      setTimeout(() => setIsTransitioning(false), 300);
+                    }}
+                    className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all duration-200 ease-in-out transform hover:scale-105 ${
                       selectedImage === index
-                        ? "border-accent"
+                        ? "border-accent scale-105"
                         : "border-transparent hover:border-muted-foreground/20"
                     }`}
                   >
@@ -411,25 +444,37 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                   </div>
                 </div>
 
-                {/* Primary CTA */}
-                <Button
-                  onClick={handleAddToCart}
-                  disabled={isProcessing}
-                  size="lg"
-                  className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-lg py-6 mb-4"
-                >
-                  {isProcessing ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <ShoppingCart className="mr-2 h-5 w-5" />
-                      Add to Cart - ${(product.price * quantity).toFixed(2)}
-                    </>
-                  )}
-                </Button>
+                                 {/* Primary CTA */}
+                 <Button
+                   onClick={handleBuyNow}
+                   disabled={isProcessing}
+                   size="lg"
+                   className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-lg py-6 mb-4"
+                 >
+                   {isProcessing ? (
+                     <>
+                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                       Processing...
+                     </>
+                   ) : (
+                     <>
+                       <CreditCard className="mr-2 h-5 w-5" />
+                       Buy Now - ${(product.price * quantity).toFixed(2)}
+                     </>
+                   )}
+                 </Button>
+
+                 {/* Add to Cart Button */}
+                 <Button
+                   onClick={handleAddToCart}
+                   disabled={isProcessing}
+                   variant="outline"
+                   size="lg"
+                   className="w-full border-accent text-accent hover:bg-accent/10 text-lg py-6 mb-4"
+                 >
+                   <ShoppingCart className="mr-2 h-5 w-5" />
+                   Add to Cart - ${(product.price * quantity).toFixed(2)}
+                 </Button>
 
                 {/* Secondary Actions */}
                 <div className="flex gap-2">
@@ -646,14 +691,14 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
             Join thousands of satisfied customers who trust our products. Order
             now and enjoy free shipping with our 30-day money-back guarantee.
           </p>
-          <Button
-            onClick={handleAddToCart}
-            size="lg"
-            className="bg-accent hover:bg-accent/90 text-accent-foreground text-lg px-8 py-6"
-          >
-            <ShoppingCart className="mr-2 h-5 w-5" />
-            Add to Cart - ${product.price}
-          </Button>
+                     <Button
+             onClick={handleBuyNow}
+             size="lg"
+             className="bg-primary hover:bg-primary/90 text-primary-foreground text-lg px-8 py-6"
+           >
+             <CreditCard className="mr-2 h-5 w-5" />
+             Buy Now - ${product.price}
+           </Button>
         </div>
       </section>
     </div>

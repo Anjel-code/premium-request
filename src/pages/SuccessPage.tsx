@@ -8,6 +8,7 @@ import {
   collection,
   serverTimestamp,
   getDoc,
+  setDoc,
 } from "firebase/firestore";
 import { signInWithCustomToken, signInAnonymously } from "firebase/auth";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -16,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { auth, db } from "../firebase"; // Import the existing Firebase instances
 import { createPaymentNotification } from "../lib/notificationUtils";
 import { handleStorePaymentSuccess } from "../lib/storeUtils";
+import { useCart } from "@/contexts/CartContext";
 
 const SuccessPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -24,15 +26,18 @@ const SuccessPage: React.FC = () => {
   const [isStoreOrder, setIsStoreOrder] = useState(false);
   const [storeOrderInfo, setStoreOrderInfo] = useState<any>(null);
   const location = useLocation();
+  const { clearCart } = useCart();
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
     const idFromUrl = queryParams.get("ticketId");
     const orderIdFromUrl = queryParams.get("orderId");
 
-    // Check if this is a store order
+    // Check if this is a store order or cart order
     const storedOrderInfo = sessionStorage.getItem("storeOrderInfo");
+    const cartOrderInfo = sessionStorage.getItem("cartOrderInfo");
     console.log("Stored order info:", storedOrderInfo);
+    console.log("Cart order info:", cartOrderInfo);
     console.log(
       "URL params - ticketId:",
       idFromUrl,
@@ -44,10 +49,45 @@ const SuccessPage: React.FC = () => {
     let storeOrderInfoLocal: any = null;
     let ticketIdLocal: string | null = null;
 
-    if (storedOrderInfo) {
-      try {
-        const parsedInfo = JSON.parse(storedOrderInfo);
-        console.log("Parsed store order info:", parsedInfo);
+         if (cartOrderInfo) {
+       try {
+         const parsedInfo = JSON.parse(cartOrderInfo);
+         console.log("Raw cart order info from sessionStorage:", cartOrderInfo);
+         console.log("Parsed cart order info:", parsedInfo);
+         console.log("Items in parsed info:", parsedInfo.items);
+         console.log("Total price in parsed info:", parsedInfo.totalPrice);
+         storeOrderInfoLocal = parsedInfo;
+         isStoreOrderLocal = true;
+         ticketIdLocal = parsedInfo.orderId;
+         setStoreOrderInfo(parsedInfo);
+         setIsStoreOrder(true);
+         setTicketId(parsedInfo.orderId);
+         // Clear the stored info
+         sessionStorage.removeItem("cartOrderInfo");
+       } catch (error) {
+         console.error("Error parsing cart order info:", error);
+       }
+     } else if (storedOrderInfo) {
+       try {
+         const parsedInfo = JSON.parse(storedOrderInfo);
+         console.log("Parsed store order info:", parsedInfo);
+         storeOrderInfoLocal = parsedInfo;
+         isStoreOrderLocal = true;
+         ticketIdLocal = parsedInfo.orderId;
+         setStoreOrderInfo(parsedInfo);
+         setIsStoreOrder(true);
+         setTicketId(parsedInfo.orderId);
+         // Clear the stored info
+         sessionStorage.removeItem("storeOrderInfo");
+       } catch (error) {
+         console.error("Error parsing stored order info:", error);
+       }
+       try {
+         const parsedInfo = JSON.parse(cartOrderInfo);
+         console.log("Raw cart order info from sessionStorage:", cartOrderInfo);
+         console.log("Parsed cart order info:", parsedInfo);
+         console.log("Items in parsed info:", parsedInfo.items);
+         console.log("Total price in parsed info:", parsedInfo.totalPrice);
         storeOrderInfoLocal = parsedInfo;
         isStoreOrderLocal = true;
         ticketIdLocal = parsedInfo.orderId;
@@ -55,9 +95,9 @@ const SuccessPage: React.FC = () => {
         setIsStoreOrder(true);
         setTicketId(parsedInfo.orderId);
         // Clear the stored info
-        sessionStorage.removeItem("storeOrderInfo");
+        sessionStorage.removeItem("cartOrderInfo");
       } catch (error) {
-        console.error("Error parsing stored order info:", error);
+        console.error("Error parsing cart order info:", error);
       }
     } else if (orderIdFromUrl) {
       // If orderId is in URL but no sessionStorage, create a basic order info
@@ -177,47 +217,113 @@ const SuccessPage: React.FC = () => {
         `artifacts/${appId}/public/data/store-orders`
       );
 
-      // Update store order payment status
-      const orderRef = doc(
-        db,
-        `artifacts/${appId}/public/data/store-orders`,
-        orderInfo.orderId
-      );
-
-      // First check if the document exists
-      const orderDoc = await getDoc(orderRef);
-      if (!orderDoc.exists()) {
-        console.error(
-          "Store order document does not exist:",
+      // Check if this is a cart order (starts with "cart_")
+      const isCartOrder = orderInfo.orderId && orderInfo.orderId.startsWith("cart_");
+      
+             if (isCartOrder) {
+         // For cart orders, create the order document
+         console.log("Processing cart order:", orderInfo.orderId);
+         console.log("Cart order info:", orderInfo);
+         console.log("Items:", orderInfo.items);
+         console.log("Total price:", orderInfo.totalPrice);
+         console.log("Customer info:", orderInfo.customerInfo);
+        const orderRef = doc(
+          db,
+          `artifacts/${appId}/public/data/store-orders`,
           orderInfo.orderId
         );
-        setError("Store order not found. Please contact support.");
-        setLoading(false);
-        return;
+
+                 // Create the cart order document
+         await setDoc(orderRef, {
+           orderId: orderInfo.orderId,
+           userId: currentUserId,
+           userEmail: orderInfo.customerInfo?.email || "customer@example.com",
+           userName: `${orderInfo.customerInfo?.firstName || ""} ${orderInfo.customerInfo?.lastName || ""}`.trim(),
+           productId: "cart_order",
+           productName: orderInfo.items ? 
+             orderInfo.items.length === 1 
+               ? orderInfo.items[0].name 
+               : `Cart Order - ${orderInfo.items.length} items` 
+             : "Product",
+           quantity: orderInfo.items ? orderInfo.items.reduce((total, item) => total + item.quantity, 0) : 1,
+           totalPrice: orderInfo.totalPrice || 0,
+           totalAmount: orderInfo.totalPrice || 0, // Add this for compatibility with existing dashboard code
+           paymentStatus: "completed",
+           status: "paid",
+           createdAt: new Date(),
+           updatedAt: new Date(),
+                       // Save shipping information (only if customerInfo exists)
+            ...(orderInfo.customerInfo && {
+              shippingInfo: {
+                firstName: orderInfo.customerInfo.firstName || "",
+                lastName: orderInfo.customerInfo.lastName || "",
+                email: orderInfo.customerInfo.email || "",
+                phone: orderInfo.customerInfo.phone || "",
+                address: orderInfo.customerInfo.address || "",
+                city: orderInfo.customerInfo.city || "",
+                state: orderInfo.customerInfo.state || "",
+                zipCode: orderInfo.customerInfo.zipCode || "",
+                country: orderInfo.customerInfo.country || "",
+              }
+            }),
+         });
+
+                 console.log("Cart order created successfully:", orderInfo.orderId);
+         
+         // Clear the cart after successful cart order payment
+         clearCart();
+         console.log("Cart cleared after successful payment");
+       } else {
+         // For existing store orders, update the payment status
+        const orderRef = doc(
+          db,
+          `artifacts/${appId}/public/data/store-orders`,
+          orderInfo.orderId
+        );
+
+        // First check if the document exists
+        const orderDoc = await getDoc(orderRef);
+        if (!orderDoc.exists()) {
+          console.error(
+            "Store order document does not exist:",
+            orderInfo.orderId
+          );
+          setError("Store order not found. Please contact support.");
+          setLoading(false);
+          return;
+        }
+
+        console.log("Found store order document:", orderDoc.data());
+        console.log("Current user ID:", currentUserId);
+        console.log("Store order user ID:", orderDoc.data().userId);
+        console.log("Attempting to update store order...");
+
+        await updateDoc(orderRef, {
+          paymentStatus: "completed",
+          status: "paid",
+          updatedAt: new Date(),
+        });
       }
-
-      console.log("Found store order document:", orderDoc.data());
-
-      await updateDoc(orderRef, {
-        paymentStatus: "completed",
-        status: "paid",
-        updatedAt: new Date(),
-      });
 
       // Create store payment success notifications
       await handleStorePaymentSuccess(
         appId,
-        orderInfo.userId,
-        orderInfo.userEmail,
-        orderInfo.userName,
-        orderInfo.productName,
-        orderInfo.amount,
+        currentUserId,
+        orderInfo.customerInfo?.email || orderInfo.userEmail || "customer@example.com",
+        orderInfo.customerInfo ? `${orderInfo.customerInfo.firstName} ${orderInfo.customerInfo.lastName}`.trim() : orderInfo.userName || "Customer",
+        orderInfo.items ? `Cart Order - ${orderInfo.items.length} items` : orderInfo.productName || "Product",
+        orderInfo.totalPrice || orderInfo.amount || 0,
         orderInfo.orderId
       );
 
       setLoading(false);
     } catch (err) {
       console.error("Error updating store payment status:", err);
+      console.error("Error details:", {
+        code: (err as any).code,
+        message: (err as any).message,
+        stack: (err as any).stack
+      });
       setError(
         "Failed to confirm store payment. Please contact support if you believe this is an error."
       );

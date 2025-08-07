@@ -171,7 +171,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
             updatedAt: data.updatedAt?.toDate(),
             ticketNumber: doc.id.slice(-8).toUpperCase(), // Use order ID as ticket number
             estimatedCompletion: null,
-            budget: `$${data.totalAmount.toFixed(2)}`,
+            budget: `$${(data.totalAmount || data.totalPrice || 0).toFixed(2)}`,
             progress:
               data.status === "pending"
                 ? 25
@@ -286,7 +286,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
   if (loadingUserRole || loadingOrders) {
     // Combine loading states
     return (
-      <DashboardLayout>
+      <DashboardLayout user={user} appId={appId}>
         <div className="min-h-[calc(100vh-100px)] flex items-center justify-center p-6">
           <Loader2 className="h-10 w-10 text-primary animate-spin" />
           <p className="ml-4 text-primary">Loading your dashboard data...</p>
@@ -297,7 +297,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
 
   if (error) {
     return (
-      <DashboardLayout>
+      <DashboardLayout user={user} appId={appId}>
         <div className="min-h-[calc(100vh-100px)] flex flex-col items-center justify-center p-6">
           <Card className="w-full max-w-md text-center shadow-premium rounded-xl">
             <CardHeader>
@@ -319,7 +319,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
   }
 
   return (
-    <DashboardLayout>
+    <DashboardLayout user={user} appId={appId}>
       <div className="space-y-8">
         <div className="mb-8 flex justify-between items-center">
           <div>
@@ -480,7 +480,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
         {/* Note: These tabs are visually present but their content is simple placeholders.
             The actual "All Orders" view is handled by DashboardOrders.tsx via the link. */}
         <Tabs defaultValue="orders" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 bg-muted/50 rounded-lg p-1 mb-4">
+          <TabsList className={`grid w-full bg-muted/50 rounded-lg p-1 mb-4 ${
+            hasAdminOrTeamRole 
+              ? 'grid-cols-2 lg:grid-cols-4' 
+              : 'grid-cols-3'
+          }`}>
             <TabsTrigger
               value="orders"
               className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-md transition-all duration-200"

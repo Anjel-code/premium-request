@@ -275,7 +275,7 @@ const StoreOrderDetail: React.FC<StoreOrderDetailProps> = ({ user, appId }) => {
 
   if (loading) {
     return (
-      <DashboardLayout>
+      <DashboardLayout user={user} appId={appId}>
         <div className="min-h-[calc(100vh-100px)] flex items-center justify-center p-6">
           <Loader2 className="h-10 w-10 text-primary animate-spin" />
           <p className="ml-4 text-primary">Loading order details...</p>
@@ -286,7 +286,7 @@ const StoreOrderDetail: React.FC<StoreOrderDetailProps> = ({ user, appId }) => {
 
   if (error || !order) {
     return (
-      <DashboardLayout>
+      <DashboardLayout user={user} appId={appId}>
         <div className="min-h-[calc(100vh-100px)] flex flex-col items-center justify-center p-6">
           <Card className="w-full max-w-md text-center shadow-premium rounded-xl">
             <CardHeader>
@@ -309,7 +309,7 @@ const StoreOrderDetail: React.FC<StoreOrderDetailProps> = ({ user, appId }) => {
   }
 
   return (
-    <DashboardLayout>
+    <DashboardLayout user={user} appId={appId}>
       <div className="space-y-8">
         {/* Header */}
         <div className="mb-8">
@@ -415,7 +415,7 @@ const StoreOrderDetail: React.FC<StoreOrderDetailProps> = ({ user, appId }) => {
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Total Amount:</span>
                 <span className="font-medium text-lg text-primary">
-                  ${order.totalAmount.toFixed(2)}
+                  ${(order.totalAmount || order.totalPrice || 0).toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between items-center">
@@ -449,6 +449,61 @@ const StoreOrderDetail: React.FC<StoreOrderDetailProps> = ({ user, appId }) => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Shipping Information */}
+          {order.shippingInfo && (
+            <Card className="border-0 shadow-premium rounded-xl">
+              <CardHeader className="border-b border-border p-6">
+                <CardTitle className="text-xl font-semibold text-primary">
+                  Shipping Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Name:</span>
+                      <span className="font-medium">
+                        {order.shippingInfo.firstName} {order.shippingInfo.lastName}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Email:</span>
+                      <span className="font-medium">{order.shippingInfo.email}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Phone:</span>
+                      <span className="font-medium">{order.shippingInfo.phone}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Address:</span>
+                      <span className="font-medium text-right">
+                        {order.shippingInfo.address}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">City:</span>
+                      <span className="font-medium">{order.shippingInfo.city}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">State:</span>
+                      <span className="font-medium">{order.shippingInfo.state}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">ZIP Code:</span>
+                      <span className="font-medium">{order.shippingInfo.zipCode}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Country:</span>
+                      <span className="font-medium">{order.shippingInfo.country}</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Tracking Information */}
           <Card className="border-0 shadow-premium rounded-xl">

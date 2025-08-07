@@ -1,6 +1,7 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
 import {
   Bell,
   Home,
@@ -14,10 +15,13 @@ import {
   MessageSquare,
   Users,
 } from "lucide-react";
+import { getUnreadNotificationCount } from "../lib/notificationUtils";
 
 interface DashboardLayoutProps {
   children: ReactNode;
   userRole?: "user" | "admin" | "team";
+  user?: any;
+  appId?: string;
 }
 
 const userMenuItems = [
@@ -36,12 +40,36 @@ const adminMenuItems = [
 export function DashboardLayout({
   children,
   userRole = "user",
+  user,
+  appId,
 }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(0);
   const location = useLocation();
   const currentPath = location.pathname;
 
   const isActive = (path: string) => currentPath === path;
+
+  // Fetch notification count
+  useEffect(() => {
+    if (!user || !appId) return;
+
+    const fetchNotificationCount = async () => {
+      try {
+        const count = await getUnreadNotificationCount(appId, user.uid);
+        setNotificationCount(count);
+      } catch (error) {
+        console.warn("Failed to fetch notification count:", error);
+      }
+    };
+
+    fetchNotificationCount();
+
+    // Set up interval to refresh notification count
+    const interval = setInterval(fetchNotificationCount, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [user, appId]);
 
   return (
     <div className="min-h-screen flex w-full bg-background">
@@ -77,7 +105,17 @@ export function DashboardLayout({
                   : "hover:bg-accent/20"
               }`}
             >
-              <item.icon className="h-5 w-5 flex-shrink-0" />
+              <div className="relative">
+                <item.icon className="h-5 w-5 flex-shrink-0" />
+                {item.title === "Notifications" && notificationCount > 0 && (
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+                  >
+                    {notificationCount > 99 ? "99+" : notificationCount}
+                  </Badge>
+                )}
+              </div>
               {sidebarOpen && <span className="ml-3">{item.title}</span>}
             </Link>
           ))}
@@ -111,9 +149,17 @@ export function DashboardLayout({
           <h1 className="text-xl font-semibold text-primary">Quibble</h1>
 
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild>
+            <Button variant="ghost" size="icon" asChild className="relative">
               <Link to="/dashboard/notifications">
                 <Bell className="h-5 w-5" />
+                {notificationCount > 0 && (
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+                  >
+                    {notificationCount > 99 ? "99+" : notificationCount}
+                  </Badge>
+                )}
               </Link>
             </Button>
             <Button variant="outline" asChild>

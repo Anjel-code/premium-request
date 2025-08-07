@@ -136,7 +136,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
             updatedAt: data.updatedAt?.toDate(),
             ticketNumber: doc.id.slice(-8).toUpperCase(), // Use order ID as ticket number
             estimatedCompletion: null,
-            budget: `$${data.totalAmount.toFixed(2)}`,
+            budget: `$${(data.totalAmount || data.totalPrice || 0).toFixed(2)}`,
             progress:
               data.status === "pending"
                 ? 25
@@ -259,7 +259,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
 
   if (loadingOrders) {
     return (
-      <DashboardLayout>
+      <DashboardLayout user={user} appId={appId}>
         <div className="min-h-[calc(100vh-100px)] flex items-center justify-center p-6">
           <Loader2 className="h-10 w-10 text-primary animate-spin" />
           <p className="ml-4 text-primary">Loading store orders...</p>
@@ -270,7 +270,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
 
   if (error) {
     return (
-      <DashboardLayout>
+      <DashboardLayout user={user} appId={appId}>
         <div className="min-h-[calc(100vh-100px)] flex flex-col items-center justify-center p-6">
           <Card className="w-full max-w-md text-center shadow-premium rounded-xl">
             <CardHeader>
@@ -292,7 +292,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
   }
 
   return (
-    <DashboardLayout>
+    <DashboardLayout user={user} appId={appId}>
       <div className="space-y-8">
         <div className="mb-8 flex justify-between items-center">
           <div>
