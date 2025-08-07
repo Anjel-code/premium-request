@@ -61,6 +61,7 @@ const Navigation = ({
             >
               Store
             </Link>
+
             <Link
               to="/about"
               className={`transition-colors ${

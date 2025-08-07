@@ -273,6 +273,15 @@ const SuccessPage: React.FC = () => {
 
          console.log("New order created successfully:", orderInfo.orderId);
          
+         // Mark wellness discount as used if it was applied
+         const wellnessDiscountApplied = localStorage.getItem('wellnessDiscountApplied') === 'true';
+         if (wellnessDiscountApplied) {
+           localStorage.setItem('wellnessDiscountUsed', 'true');
+           localStorage.setItem('wellnessDiscountUsedAt', new Date().toISOString());
+           localStorage.setItem('wellnessDiscountUsedForOrder', orderInfo.orderId);
+           console.log("Wellness discount marked as used for order:", orderInfo.orderId);
+         }
+         
          // Clear the cart after successful cart order payment (only for cart orders)
          if (orderInfo.orderId.startsWith("cart_")) {
            clearCart();

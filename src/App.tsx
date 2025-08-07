@@ -55,6 +55,7 @@ import DashboardStoreOrders from "./pages/DashboardStoreOrders"; // Import Dashb
 import StoreOrderDetail from "./pages/StoreOrderDetail"; // Import StoreOrderDetail
 import AdminStoreOrders from "./pages/AdminStoreOrders"; // Import AdminStoreOrders
 import CheckoutPage from "./pages/CheckoutPage"; // Import CheckoutPage
+
 import { CartProvider } from "@/contexts/CartContext";
 import CartPanel from "@/components/CartPanel";
 
@@ -505,6 +506,7 @@ const AppContent: React.FC<AppContentProps> = ({
         />
         {/* Checkout Route */}
         <Route path="/checkout" element={<CheckoutPage />} />
+
         {/* New Success Route */}
         <Route path="/success" element={<SuccessPage />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
