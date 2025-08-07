@@ -45,8 +45,8 @@ const Navigation = ({
               to="/"
               className={`transition-colors ${
                 isActive("/")
-                  ? "text-accent"
-                  : "text-foreground hover:text-accent"
+                  ? "text-primary"
+                  : "text-foreground hover:text-primary"
               }`}
             >
               Home
@@ -55,8 +55,8 @@ const Navigation = ({
               to="/store"
               className={`transition-colors ${
                 isActive("/store")
-                  ? "text-accent"
-                  : "text-foreground hover:text-accent"
+                  ? "text-primary"
+                  : "text-foreground hover:text-primary"
               }`}
             >
               Store
@@ -66,8 +66,8 @@ const Navigation = ({
               to="/about"
               className={`transition-colors ${
                 isActive("/about")
-                  ? "text-accent"
-                  : "text-foreground hover:text-accent"
+                  ? "text-primary"
+                  : "text-foreground hover:text-primary"
               }`}
             >
               About
@@ -76,8 +76,8 @@ const Navigation = ({
               to="/contact"
               className={`transition-colors ${
                 isActive("/contact")
-                  ? "text-accent"
-                  : "text-foreground hover:text-accent"
+                  ? "text-primary"
+                  : "text-foreground hover:text-primary"
               }`}
             >
               Contact
@@ -88,8 +88,8 @@ const Navigation = ({
                 to="/dashboard"
                 className={`transition-colors ${
                   isActive("/dashboard")
-                    ? "text-accent"
-                    : "text-foreground hover:text-accent"
+                    ? "text-primary"
+                    : "text-foreground hover:text-primary"
                 }`}
               >
                 Dashboard

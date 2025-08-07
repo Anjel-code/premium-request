@@ -105,17 +105,17 @@ export function DashboardLayout({
                   : "hover:bg-accent/20"
               }`}
             >
-              <div className="relative">
-                <item.icon className="h-5 w-5 flex-shrink-0" />
-                {item.title === "Notifications" && notificationCount > 0 && (
-                  <Badge 
-                    variant="destructive" 
-                    className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
-                  >
-                    {notificationCount > 99 ? "99+" : notificationCount}
-                  </Badge>
-                )}
-              </div>
+                             <div className="relative overflow-visible">
+                 <item.icon className="h-5 w-5 flex-shrink-0" />
+                                   {item.title === "Notifications" && notificationCount > 0 && (
+                    <Badge 
+                      variant="destructive" 
+                      className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs min-w-[20px] bg-red-500"
+                    >
+                      {notificationCount > 99 ? "99+" : notificationCount}
+                    </Badge>
+                  )}
+               </div>
               {sidebarOpen && <span className="ml-3">{item.title}</span>}
             </Link>
           ))}
@@ -149,17 +149,17 @@ export function DashboardLayout({
           <h1 className="text-xl font-semibold text-primary">Quibble</h1>
 
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild className="relative">
+            <Button variant="ghost" size="icon" asChild className="relative overflow-visible">
               <Link to="/dashboard/notifications">
                 <Bell className="h-5 w-5" />
-                {notificationCount > 0 && (
-                  <Badge 
-                    variant="destructive" 
-                    className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
-                  >
-                    {notificationCount > 99 ? "99+" : notificationCount}
-                  </Badge>
-                )}
+                                 {notificationCount > 0 && (
+                   <Badge 
+                     variant="destructive" 
+                     className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs min-w-[20px] bg-red-500"
+                   >
+                     {notificationCount > 99 ? "99+" : notificationCount}
+                   </Badge>
+                 )}
               </Link>
             </Button>
             <Button variant="outline" asChild>

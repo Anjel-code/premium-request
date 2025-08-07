@@ -683,44 +683,46 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
         />
       )}
       {/* Hero Section */}
-      <section className="pt-24 pb-12 px-6">
+      <section className="pt-24 pb-16 px-6 bg-gradient-to-br from-background via-background to-muted/20">
         <div className="container mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 items-start">
+          <div className="grid lg:grid-cols-2 gap-16 items-start">
             {/* Product Images */}
-            <div className="space-y-4">
-              <div className="relative aspect-square bg-muted rounded-lg overflow-hidden">
+            <div className="space-y-6">
+              <div className="relative aspect-square bg-gradient-to-br from-muted/50 to-muted rounded-2xl overflow-hidden shadow-2xl shadow-black/10 border border-border/50">
                 <img
                   src={product.images[selectedImage]}
                   alt={product.name}
-                  className={`w-full h-full object-cover cursor-zoom-in transition-all duration-300 ease-in-out ${
+                  className={`w-full h-full object-cover cursor-zoom-in transition-all duration-500 ease-out ${
                     isTransitioning ? 'opacity-50 scale-95' : 'opacity-100 scale-100'
                   }`}
                 />
-                <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center">
-                  <ZoomIn className="h-8 w-8 text-white opacity-0 hover:opacity-100 transition-opacity" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 hover:opacity-100 transition-all duration-300 flex items-center justify-center">
+                  <div className="bg-white/90 backdrop-blur-sm rounded-full p-3 shadow-lg">
+                    <ZoomIn className="h-6 w-6 text-primary" />
+                  </div>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white/90 transition-all duration-200 ease-in-out transform hover:scale-105 active:scale-95 disabled:pointer-events-none [&:not(:disabled)]:active:animate-none"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white backdrop-blur-sm transition-all duration-300 ease-out transform hover:scale-110 active:scale-95 disabled:pointer-events-none shadow-lg border border-border/20"
                   onClick={prevImage}
                   disabled={isTransitioning}
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronLeft className="h-5 w-5 text-primary" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white/90 transition-all duration-200 ease-in-out transform hover:scale-105 active:scale-95 disabled:pointer-events-none [&:not(:disabled)]:active:animate-none"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white backdrop-blur-sm transition-all duration-300 ease-out transform hover:scale-110 active:scale-95 disabled:pointer-events-none shadow-lg border border-border/20"
                   onClick={nextImage}
                   disabled={isTransitioning}
                 >
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronRight className="h-5 w-5 text-primary" />
                 </Button>
               </div>
 
               {/* Thumbnail Images */}
-              <div className="flex gap-2 overflow-x-auto overflow-y-hidden p-1">
+              <div className="flex gap-3 overflow-x-auto overflow-y-hidden p-2">
                 {product.images.map((image, index) => (
                   <button
                     key={index}
@@ -730,10 +732,10 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                       setSelectedImage(index);
                       setTimeout(() => setIsTransitioning(false), 300);
                     }}
-                    className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all duration-200 ease-in-out transform hover:scale-105 disabled:pointer-events-none ${
+                    className={`flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden border-2 transition-all duration-300 ease-out transform hover:scale-110 disabled:pointer-events-none shadow-md ${
                       selectedImage === index
-                        ? "border-accent scale-105"
-                        : "border-transparent hover:border-muted-foreground/20"
+                        ? "border-primary scale-110 shadow-lg shadow-primary/20"
+                        : "border-border/30 hover:border-primary/50 hover:shadow-lg"
                     }`}
                     disabled={isTransitioning}
                   >
@@ -748,186 +750,238 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
             </div>
 
             {/* Product Info */}
-            <div className="space-y-6">
+            <div className="space-y-8">
               <div>
-                <h1 className="text-3xl font-bold text-primary mb-2">
+                <div className="flex items-center gap-3 mb-4">
+                  <Badge variant="secondary" className="bg-secondary/10 text-secondary border-secondary/20">
+                    ⭐ Premium Quality
+                  </Badge>
+                  <Badge variant="outline" className="text-xs border-primary/30 text-primary">
+                    🔥 Best Seller
+                  </Badge>
+                </div>
+                <h1 className="text-4xl font-bold text-primary mb-3 leading-tight">
                   {product.name}
                 </h1>
 
                 {/* Rating and Reviews */}
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="flex items-center gap-1">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`h-4 w-4 ${
-                          i < Math.floor(product.rating)
-                            ? "text-yellow-400 fill-current"
-                            : "text-gray-300"
-                        }`}
-                      />
-                    ))}
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`h-5 w-5 ${
+                            i < Math.floor(product.rating)
+                              ? "text-yellow-400 fill-current"
+                              : "text-gray-300"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-lg font-semibold text-primary">
+                        {product.rating}
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        {product.reviewCount} verified reviews
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-sm text-muted-foreground">
-                    {product.rating} ({product.reviewCount} reviews)
-                  </span>
+                  <div className="h-8 w-px bg-border"></div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-secondary" />
+                    <span className="text-sm text-muted-foreground">Verified Purchase</span>
+                  </div>
                 </div>
 
-                {/* Pricing */}
-                <div className="flex items-center gap-3 mb-6">
-                  <span className="text-3xl font-bold text-primary">
-                    ${finalPrice.toFixed(2)}
-                  </span>
-                  <span className="text-lg text-muted-foreground line-through">
-                    ${product.originalPrice}
-                  </span>
-                  <div className="flex gap-2">
-                    <Badge variant="destructive" className="text-sm">
-                      Save {discountPercentage}%
+                                {/* Pricing */}
+                <div className="bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/20 rounded-2xl p-6 mb-8">
+                  <div className="flex items-baseline gap-4 mb-3">
+                    <span className="text-5xl font-bold text-primary">
+                      ${finalPrice.toFixed(2)}
+                    </span>
+                    <span className="text-2xl text-muted-foreground line-through">
+                      ${product.originalPrice}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Badge variant="destructive" className="text-sm px-3 py-1 bg-red-500 text-white">
+                      Save ${(product.originalPrice - finalPrice).toFixed(2)} ({discountPercentage}% OFF)
                     </Badge>
                     {(wellnessDiscountApplied && !wellnessDiscountUsed) && (
-                      <Badge variant="secondary" className="text-sm bg-accent text-accent-foreground">
-                        +{wellnessDiscountPercentage}% Off
+                      <Badge variant="secondary" className="text-sm px-3 py-1 bg-orange-500 text-white">
+                        +{wellnessDiscountPercentage}% Extra Off
                       </Badge>
                     )}
+                  </div>
+                  <div className="mt-3 text-sm text-muted-foreground">
+                    💳 Secure payment • 🚚 Free shipping • 🔄 30-day returns
                   </div>
                 </div>
 
                 {/* Stock Alert */}
                 {product.stockCount <= 20 && (
-                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-6">
-                    <p className="text-sm text-orange-800">
-                      ⚠️ Only {product.stockCount} left in stock!
-                    </p>
+                  <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-xl p-4 mb-6 animate-pulse">
+                    <div className="flex items-center gap-3">
+                      <div className="w-3 h-3 bg-red-500 rounded-full animate-ping"></div>
+                      <p className="text-sm font-medium text-orange-800">
+                        ⚠️ Only {product.stockCount} left in stock! Order now to secure yours.
+                      </p>
+                    </div>
                   </div>
                 )}
 
                 {/* Key Benefits */}
-                <div className="space-y-2 mb-6">
-                  {product.benefits.map((benefit, index) => (
-                    <div key={index} className="flex items-start gap-2">
-                      <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm text-muted-foreground">
-                        {benefit}
-                      </span>
-                    </div>
-                  ))}
+                <div className="bg-white border border-border/50 rounded-xl p-6 mb-8 shadow-sm">
+                  <h3 className="text-lg font-semibold text-primary mb-4">✨ Why Choose This Product?</h3>
+                  <div className="grid gap-3">
+                    {product.benefits.map((benefit, index) => (
+                      <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/20">
+                        <div className="w-6 h-6 bg-secondary rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <CheckCircle className="h-4 w-4 text-white" />
+                        </div>
+                        <span className="text-sm font-medium text-primary">
+                          {benefit}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Quantity Selector */}
-                <div className="flex items-center gap-4 mb-6">
-                  <span className="text-sm font-medium">Quantity:</span>
-                  <div className="flex items-center border rounded-lg">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      className="px-3"
-                      disabled={quantity <= 1}
-                    >
-                      -
-                    </Button>
-                    <span className="px-4 py-2 text-sm font-medium">
-                      {quantity}
+                <div className="bg-white border border-border/50 rounded-xl p-6 mb-8 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-lg font-semibold text-primary">Quantity</span>
+                    <span className="text-sm text-muted-foreground">
+                      {product.stockCount} available
                     </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setQuantity(Math.min(product.stockCount, quantity + 1))}
-                      className="px-3"
-                      disabled={quantity >= product.stockCount}
-                    >
-                      +
-                    </Button>
-                  </div>
-                  {quantity >= product.stockCount && (
-                    <span className="text-sm text-orange-600 font-medium">
-                      Max available: {product.stockCount}
-                    </span>
-                  )}
-                </div>
-
-                                 {/* Primary CTA */}
-                 <Button
-                   onClick={handleBuyNow}
-                   disabled={isProcessing || quantity > product.stockCount}
-                   size="lg"
-                   className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-lg py-6 mb-4"
-                 >
-                   {isProcessing ? (
-                     <>
-                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                       Processing...
-                     </>
-                   ) : (
-                     <>
-                       <CreditCard className="mr-2 h-5 w-5" />
-                       Buy Now - ${(finalPrice * quantity).toFixed(2)}
-                     </>
-                   )}
-                 </Button>
-
-                 {/* Add to Cart Button */}
-                 <Button
-                   onClick={handleAddToCart}
-                   disabled={isProcessing || quantity > product.stockCount}
-                   variant="outline"
-                   size="lg"
-                   className="w-full border-accent text-accent hover:bg-accent/10 text-lg py-6 mb-4"
-                 >
-                   <ShoppingCart className="mr-2 h-5 w-5" />
-                   Add to Cart - ${(finalPrice * quantity).toFixed(2)}
-                 </Button>
-
-                                 {/* Secondary Actions */}
-                 <div className="flex gap-2">
-                   <Button
-                     variant="ghost"
-                     size="lg"
-                     className="flex-1"
-                     onClick={() => setIsWishlisted(!isWishlisted)}
-                   >
-                     <Heart
-                       className={`mr-2 h-5 w-5 ${
-                         isWishlisted ? "fill-red-500 text-red-500" : ""
-                       }`}
-                     />
-                     {isWishlisted ? "Wishlisted" : "Wishlist"}
-                   </Button>
-                   <Button variant="ghost" size="lg">
-                     <Share2 className="mr-2 h-5 w-5" />
-                     Share
-                   </Button>
-                 </div>
-
-                {/* Trust Indicators */}
-                <div className="space-y-3 pt-6 border-t">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Truck className="h-4 w-4" />
-                    <span>{product.shippingInfo}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Shield className="h-4 w-4" />
-                    <span>{product.guarantee}</span>
                   </div>
                   <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1">
-                      <CreditCard className="h-4 w-4 text-green-600" />
-                      <span className="text-xs text-muted-foreground">
-                        Visa
+                    <div className="flex items-center border-2 border-primary/20 rounded-xl overflow-hidden bg-gradient-to-r from-primary/5 to-primary/10">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                        className="px-4 py-3 hover:bg-primary/10 transition-colors"
+                        disabled={quantity <= 1}
+                      >
+                        <span className="text-xl font-bold">−</span>
+                      </Button>
+                      <span className="px-6 py-3 text-lg font-bold text-primary bg-white min-w-[60px] text-center">
+                        {quantity}
                       </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setQuantity(Math.min(product.stockCount, quantity + 1))}
+                        className="px-4 py-3 hover:bg-primary/10 transition-colors"
+                        disabled={quantity >= product.stockCount}
+                      >
+                        <span className="text-xl font-bold">+</span>
+                      </Button>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <CreditCard className="h-4 w-4 text-blue-600" />
-                      <span className="text-xs text-muted-foreground">
-                        Mastercard
+                    {quantity >= product.stockCount && (
+                      <span className="text-sm text-orange-600 font-medium bg-orange-50 px-3 py-1 rounded-full">
+                        Max available: {product.stockCount}
                       </span>
+                    )}
+                  </div>
+                </div>
+
+                                                 {/* Primary CTA */}
+                <div className="space-y-4 mb-8">
+                  <Button
+                    onClick={handleBuyNow}
+                    disabled={isProcessing || quantity > product.stockCount}
+                    size="lg"
+                    className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 text-primary-foreground text-xl py-8 rounded-2xl shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 transform hover:scale-[1.02] font-bold"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="mr-3 h-6 w-6 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="mr-3 h-6 w-6" />
+                        Buy Now - ${(finalPrice * quantity).toFixed(2)}
+                      </>
+                    )}
+                  </Button>
+
+                  <Button
+                    onClick={handleAddToCart}
+                    disabled={isProcessing || quantity > product.stockCount}
+                    variant="outline"
+                    size="lg"
+                    className="w-full border-2 border-primary/30 text-primary hover:bg-primary/5 text-lg py-6 rounded-2xl transition-all duration-300 transform hover:scale-[1.02] font-semibold"
+                  >
+                    <ShoppingCart className="mr-3 h-5 w-5" />
+                    Add to Cart - ${(finalPrice * quantity).toFixed(2)}
+                  </Button>
+                </div>
+
+                                                 {/* Secondary Actions */}
+                <div className="flex gap-3">
+                  <Button
+                    variant="ghost"
+                    size="lg"
+                    className="flex-1 bg-white border border-border/50 hover:bg-primary/5 hover:border-primary/30 transition-all duration-300 rounded-xl"
+                    onClick={() => setIsWishlisted(!isWishlisted)}
+                  >
+                    <Heart
+                      className={`mr-2 h-5 w-5 transition-all duration-300 ${
+                        isWishlisted ? "fill-red-500 text-red-500 scale-110" : "text-muted-foreground"
+                      }`}
+                    />
+                    {isWishlisted ? "Wishlisted" : "Wishlist"}
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="lg"
+                    className="flex-1 bg-white border border-border/50 hover:bg-primary/5 hover:border-primary/30 transition-all duration-300 rounded-xl"
+                  >
+                    <Share2 className="mr-2 h-5 w-5 text-muted-foreground" />
+                    Share
+                  </Button>
+                </div>
+
+                {/* Trust Indicators */}
+                <div className="bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/20 rounded-2xl p-6 mt-8">
+                  <h3 className="text-lg font-semibold text-primary mb-4">🛡️ Trust & Security</h3>
+                  <div className="grid gap-4">
+                    <div className="flex items-center gap-3 p-3 bg-white/50 rounded-lg border border-primary/20">
+                      <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                        <Truck className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium text-primary">{product.shippingInfo}</span>
+                        <p className="text-xs text-muted-foreground">Fast & reliable delivery</p>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Lock className="h-4 w-4 text-green-600" />
-                      <span className="text-xs text-muted-foreground">
-                        SSL Secure
-                      </span>
+                    <div className="flex items-center gap-3 p-3 bg-white/50 rounded-lg border border-primary/20">
+                      <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
+                        <Shield className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium text-primary">{product.guarantee}</span>
+                        <p className="text-xs text-muted-foreground">Risk-free purchase</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-center gap-6 pt-2">
+                      <div className="flex items-center gap-2 bg-white/70 px-3 py-2 rounded-lg">
+                        <CreditCard className="h-4 w-4 text-primary" />
+                        <span className="text-xs font-medium text-primary">Visa</span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-white/70 px-3 py-2 rounded-lg">
+                        <CreditCard className="h-4 w-4 text-secondary" />
+                        <span className="text-xs font-medium text-primary">Mastercard</span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-white/70 px-3 py-2 rounded-lg">
+                        <Lock className="h-4 w-4 text-primary" />
+                        <span className="text-xs font-medium text-primary">SSL Secure</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -938,49 +992,55 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
       </section>
 
       {/* Detailed Information */}
-      <section className="py-12 px-6 bg-muted/30">
+      <section className="py-16 px-6 bg-gradient-to-br from-muted/20 via-background to-muted/10">
         <div className="container mx-auto">
-          <div className="max-w-4xl mx-auto space-y-8">
-            <div>
-              <h2 className="text-2xl font-bold text-primary mb-4">
-                Product Description
+          <div className="max-w-5xl mx-auto space-y-12">
+            <div className="bg-white rounded-2xl p-8 shadow-lg border border-border/50">
+              <h2 className="text-3xl font-bold text-primary mb-6 flex items-center gap-3">
+                📝 Product Description
               </h2>
-              <p className="text-muted-foreground leading-relaxed">
+              <p className="text-muted-foreground leading-relaxed text-lg">
                 {product.description}
               </p>
             </div>
 
             {/* Features */}
-            <div>
-              <h3 className="text-xl font-semibold text-primary mb-4">
-                Key Features
+            <div className="bg-white rounded-2xl p-8 shadow-lg border border-border/50">
+              <h3 className="text-2xl font-bold text-primary mb-6 flex items-center gap-3">
+                ⚡ Key Features
               </h3>
-              <div className="grid md:grid-cols-2 gap-3">
-                {product.features.map((feature, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
-                    <span className="text-sm text-muted-foreground">
-                      {feature}
-                    </span>
-                  </div>
-                ))}
+              <div className="grid md:grid-cols-2 gap-4">
+                                  {product.features.map((feature, index) => (
+                    <div key={index} className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/20">
+                      <div className="w-6 h-6 bg-secondary rounded-full flex items-center justify-center flex-shrink-0">
+                        <CheckCircle className="h-4 w-4 text-white" />
+                      </div>
+                      <span className="text-sm font-medium text-primary">
+                        {feature}
+                      </span>
+                    </div>
+                  ))}
               </div>
             </div>
 
             {/* Specifications */}
-            <div>
-              <h3 className="text-xl font-semibold text-primary mb-4">
-                Technical Specifications
+            <div className="bg-white rounded-2xl p-8 shadow-lg border border-border/50">
+              <h3 className="text-2xl font-bold text-primary mb-6 flex items-center gap-3">
+                🔧 Technical Specifications
               </h3>
-              <div className="bg-white rounded-lg border">
+              <div className="bg-gradient-to-br from-muted to-primary/5 rounded-xl border border-border overflow-hidden">
                 {Object.entries(product.specifications).map(
-                  ([key, value]) => (
+                  ([key, value], index) => (
                     <div
                       key={key}
-                      className="flex justify-between py-3 px-4 border-b last:border-b-0"
+                                             className={`flex justify-between py-4 px-6 ${
+                         index !== Object.entries(product.specifications).length - 1
+                           ? "border-b border-border"
+                           : ""
+                       }`}
                     >
-                      <span className="font-medium text-sm">{key}</span>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="font-semibold text-primary">{key}</span>
+                      <span className="text-sm font-medium text-muted-foreground bg-white/70 px-3 py-1 rounded-full">
                         {value}
                       </span>
                     </div>
@@ -989,45 +1049,50 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
               </div>
             </div>
 
-                         {/* Product Videos */}
-             {product.videos.length > 0 && (
-               <div>
-                 <h3 className="text-xl font-semibold text-primary mb-4">
-                   Product Video
-                 </h3>
-                 <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-                   {product.videos[0].startsWith('data:') ? (
-                     // Local video file
-                     <video
-                       src={product.videos[0]}
-                       controls
-                       className="w-full h-full"
-                     />
-                   ) : (
-                     // YouTube or external video
-                     <iframe
-                       src={product.videos[0]}
-                       title="Product Video"
-                       className="w-full h-full"
-                       frameBorder="0"
-                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                       allowFullScreen
-                     />
-                   )}
-                 </div>
-               </div>
-             )}
+                                     {/* Product Videos */}
+            {product.videos.length > 0 && (
+              <div className="bg-white rounded-2xl p-8 shadow-lg border border-border/50">
+                <h3 className="text-2xl font-bold text-primary mb-6 flex items-center gap-3">
+                  🎥 Product Video
+                </h3>
+                <div className="aspect-video bg-gradient-to-br from-muted/50 to-muted rounded-xl overflow-hidden shadow-lg">
+                 {product.videos[0].startsWith('data:') ? (
+                   // Local video file
+                   <video
+                     src={product.videos[0]}
+                     controls
+                     className="w-full h-full"
+                   />
+                 ) : (
+                   // YouTube or external video
+                  <iframe
+                    src={product.videos[0]}
+                    title="Product Video"
+                    className="w-full h-full"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                 )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </section>
 
       {/* Video Reviews Carousel */}
-      <section className="py-12 px-6 bg-gradient-subtle">
+      <section className="py-16 px-6 bg-gradient-to-br from-primary/5 via-secondary/5 to-primary/10">
         <div className="container mx-auto">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-3xl font-bold text-primary">
-              People Love Our Headphones
-            </h2>
+                    <div className="flex items-center justify-between mb-8">
+            <div className="text-center flex-1">
+              <h2 className="text-4xl font-bold text-primary mb-4">
+                🎬 Real Customer Stories
+              </h2>
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                See what our customers are saying about their experience with our premium headphones
+              </p>
+            </div>
             {isAdminUser && (
               <Button
                 variant="outline"
@@ -1053,10 +1118,10 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                 (product.videoReviews || []).map((video, index) => (
                   <div 
                     key={`${video.id}-${repeatIndex}-${index}`} 
-                    className="flex-shrink-0 w-80"
+                    className="flex-shrink-0 w-64"
                   >
                                          <div 
-                       className="group relative bg-white rounded-lg shadow-lg overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-105"
+                       className="group relative bg-white rounded-xl shadow-lg overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-105"
                        onClick={() => handleVideoClick(video)}
                        onMouseEnter={() => setHoveredVideo(video.id)}
                        onMouseLeave={() => setHoveredVideo(null)}
@@ -1096,23 +1161,23 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                            <>
                              {/* Play overlay indicator */}
                              <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                               <div className="w-16 h-16 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center">
-                                 <Play className="h-8 w-8 text-black ml-1" />
+                               <div className="w-12 h-12 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center">
+                                 <Play className="h-6 w-6 text-black ml-1" />
                                </div>
                              </div>
                              
-                             <div className="absolute bottom-4 left-4 right-4">
+                             <div className="absolute bottom-3 left-3 right-3">
                                <div className="flex items-center justify-between">
-                                 <div className="flex items-center gap-2">
-                                   <div className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center cursor-pointer hover:bg-white/30 transition-colors">
-                                     <Play className="h-4 w-4 text-white" />
+                                 <div className="flex items-center gap-1">
+                                   <div className="w-6 h-6 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center cursor-pointer hover:bg-white/30 transition-colors">
+                                     <Play className="h-3 w-3 text-white" />
                                    </div>
-                                   <div className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center cursor-pointer hover:bg-white/30 transition-colors">
-                                     <Volume2 className="h-4 w-4 text-white" />
+                                   <div className="w-6 h-6 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center cursor-pointer hover:bg-white/30 transition-colors">
+                                     <Volume2 className="h-3 w-3 text-white" />
                                    </div>
                                  </div>
-                                 <div className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center cursor-pointer hover:bg-white/30 transition-colors">
-                                   <Maximize2 className="h-4 w-4 text-white" />
+                                 <div className="w-6 h-6 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center cursor-pointer hover:bg-white/30 transition-colors">
+                                   <Maximize2 className="h-3 w-3 text-white" />
                                  </div>
                                </div>
                              </div>
@@ -1124,8 +1189,8 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                            </>
                          )}
                        </div>
-                      <div className="p-4">
-                        <p className="text-sm text-muted-foreground">
+                      <div className="p-3">
+                        <p className="text-xs text-muted-foreground leading-relaxed">
                           "{video.testimonial}"
                         </p>
                         <p className="text-xs text-muted-foreground mt-2 font-medium">
@@ -1444,25 +1509,45 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
         </div>
       </section>
 
-      {/* Final CTA Section */}
-      <section className="py-12 px-6 bg-accent/5">
+            {/* Final CTA Section */}
+      <section className="py-20 px-6 bg-gradient-to-br from-primary/5 via-accent/5 to-primary/10">
         <div className="container mx-auto text-center">
-          <h2 className="text-2xl font-bold text-primary mb-4">
-            Ready to Experience Premium Quality?
-          </h2>
-          <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
-            Join thousands of satisfied customers who trust our products. Order
-            now and enjoy free shipping with our 30-day money-back guarantee.
-          </p>
-                     <Button
-             onClick={handleBuyNow}
-             disabled={quantity > product.stockCount}
-             size="lg"
-             className="bg-primary hover:bg-primary/90 text-primary-foreground text-lg px-8 py-6"
-           >
-             <CreditCard className="mr-2 h-5 w-5" />
-             Buy Now - ${finalPrice.toFixed(2)}
-           </Button>
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-white rounded-3xl p-12 shadow-2xl border border-primary/10">
+              <h2 className="text-4xl font-bold text-primary mb-6">
+                🚀 Ready to Experience Premium Quality?
+              </h2>
+              <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
+                Join thousands of satisfied customers who trust our products. Order
+                now and enjoy free shipping with our 30-day money-back guarantee.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                <Button
+                  onClick={handleBuyNow}
+                  disabled={quantity > product.stockCount}
+                  size="lg"
+                  className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 text-primary-foreground text-xl px-12 py-8 rounded-2xl shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 transform hover:scale-105 font-bold"
+                >
+                  <CreditCard className="mr-3 h-6 w-6" />
+                  Buy Now - ${finalPrice.toFixed(2)}
+                </Button>
+                <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-secondary" />
+                    <span>Free Shipping</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-primary" />
+                    <span>30-Day Returns</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Lock className="h-4 w-4 text-secondary" />
+                    <span>Secure Payment</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 

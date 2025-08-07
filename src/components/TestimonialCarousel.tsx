@@ -60,7 +60,7 @@ const TestimonialCarousel = () => {
         {[...testimonials, ...testimonials].map((testimonial, index) => (
           <Card
             key={index}
-            className="relative cursor-pointer z-0 border-0 shadow-elegant flex-shrink-0 w-80 transition-all duration-300 hover:z-10 hover:shadow-[0_0_15px_3px_rgba(230,172,16,0.7)]"
+            className="relative cursor-pointer z-0 border-0 shadow-elegant flex-shrink-0 w-80 transition-all duration-300 hover:z-10 hover:shadow-[0_0_15px_3px_rgba(124,58,237,0.3)]"
           >
             <CardContent className="p-8">
               <div className="flex mb-4">

@@ -18,7 +18,10 @@ const app = express();
 // Allow specific origins (recommended for production)
 app.use(
   cors({
-    origin: "http://localhost:8080", // Only allow requests from your frontend's origin
+    origin: ["http://localhost:8080", "http://localhost:5173", "http://localhost:3000"], // Allow multiple frontend ports
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 

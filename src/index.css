@@ -6,62 +6,62 @@
 
 @layer base {
   :root {
-    /* Core Colors - Premium Palette */
-    --background: 0 0% 96.1%; /* Warm off-white #F5F5F5 */
-    --foreground: 0 0% 11.8%; /* Deep charcoal #1E1E1E */
+    /* Core Colors - Modern 3-Color System */
+    --background: 0 0% 98%; /* Light gray background */
+    --foreground: 215 25% 27%; /* Slate gray text */
 
     --card: 0 0% 100%; /* Pure white for cards */
-    --card-foreground: 0 0% 11.8%;
+    --card-foreground: 215 25% 27%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 11.8%;
+    --popover-foreground: 215 25% 27%;
 
-    /* Primary - Deep Charcoal */
-    --primary: 0 0% 11.8%; /* #1E1E1E */
-    --primary-foreground: 0 0% 96.1%;
+    /* Primary - Deep Purple (Accent) */
+    --primary: 262 83% 58%; /* #7C3AED - Deep purple */
+    --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Muted Gold */
-    --secondary: 43 74% 38.8%; /* #B8860B muted gold */
-    --secondary-foreground: 0 0% 11.8%;
+    /* Secondary - Purple */
+    --secondary: 280 85% 58%; /* #a33bed - Purple */
+    --secondary-foreground: 0 0% 100%;
 
     /* Muted tones */
-    --muted: 0 0% 93.3%; /* Slightly darker than background */
-    --muted-foreground: 0 0% 45.1%;
+    --muted: 215 16% 95%; /* Light slate */
+    --muted-foreground: 215 25% 45%;
 
-    /* Accent - Luxury Gold */
-    --accent: 43 96% 56%; /* Brighter vibrant gold for highlights */
-    --accent-foreground: 0 0% 11.8%;
+    /* Accent - Deep Purple (same as primary for consistency) */
+    --accent: 262 83% 58%; /* #7C3AED - Deep purple */
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 96.1%;
+    --destructive-foreground: 0 0% 100%;
 
     /* Borders and inputs */
-    --border: 0 0% 85.1%;
-    --input: 0 0% 90.2%;
-    --ring: 43 74% 38.8%; /* Gold ring focus */
+    --border: 215 16% 90%;
+    --input: 215 16% 95%;
+    --ring: 262 83% 58%; /* Purple ring focus */
 
-    /* Premium gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(0 0% 11.8%), hsl(0 0% 18%));
-    --gradient-gold: linear-gradient(135deg, hsl(43 96% 56%), hsl(43 96% 65%));
+    /* Modern gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(262 83% 58%), hsl(262 83% 68%));
+    --gradient-secondary: linear-gradient(135deg, hsl(280 85% 58%), hsl(280 85% 68%));
     --gradient-subtle: linear-gradient(
       180deg,
-      hsl(0 0% 96.1%),
-      hsl(0 0% 93.3%)
+      hsl(0 0% 98%),
+      hsl(215 16% 95%)
     );
     --gradient-button: linear-gradient(
       135deg,
-      hsl(43 96% 56%),
-      hsl(43 100% 62%)
+      hsl(262 83% 58%),
+      hsl(262 83% 68%)
     );
     --gradient-hover: linear-gradient(
       135deg,
-      hsl(43 100% 62%),
-      hsl(43 100% 68%)
+      hsl(262 83% 68%),
+      hsl(262 83% 78%)
     );
 
     /* Shadows */
-    --shadow-elegant: 0 10px 30px -10px hsl(0 0% 11.8% / 0.15);
-    --shadow-premium: 0 25px 50px -12px hsl(0 0% 11.8% / 0.25);
+    --shadow-elegant: 0 10px 30px -10px hsl(262 83% 58% / 0.15);
+    --shadow-premium: 0 25px 50px -12px hsl(262 83% 58% / 0.25);
 
     /* Typography hierarchy */
     --font-display: "Inter", system-ui, sans-serif;
