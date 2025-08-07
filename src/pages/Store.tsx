@@ -685,71 +685,86 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
       {/* Hero Section */}
       <section className="pt-24 pb-16 px-6 bg-gradient-to-br from-background via-background to-muted/20">
         <div className="container mx-auto">
-          <div className="grid lg:grid-cols-2 gap-16 items-start">
-            {/* Product Images */}
-            <div className="space-y-6">
-              <div className="relative aspect-square bg-gradient-to-br from-muted/50 to-muted rounded-2xl overflow-hidden shadow-2xl shadow-black/10 border border-border/50">
-                <img
-                  src={product.images[selectedImage]}
-                  alt={product.name}
-                  className={`w-full h-full object-cover cursor-zoom-in transition-all duration-500 ease-out ${
-                    isTransitioning ? 'opacity-50 scale-95' : 'opacity-100 scale-100'
-                  }`}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 hover:opacity-100 transition-all duration-300 flex items-center justify-center">
-                  <div className="bg-white/90 backdrop-blur-sm rounded-full p-3 shadow-lg">
-                    <ZoomIn className="h-6 w-6 text-primary" />
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white backdrop-blur-sm transition-all duration-300 ease-out transform hover:scale-110 active:scale-95 disabled:pointer-events-none shadow-lg border border-border/20"
-                  onClick={prevImage}
-                  disabled={isTransitioning}
-                >
-                  <ChevronLeft className="h-5 w-5 text-primary" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white backdrop-blur-sm transition-all duration-300 ease-out transform hover:scale-110 active:scale-95 disabled:pointer-events-none shadow-lg border border-border/20"
-                  onClick={nextImage}
-                  disabled={isTransitioning}
-                >
-                  <ChevronRight className="h-5 w-5 text-primary" />
-                </Button>
-              </div>
-
-              {/* Thumbnail Images */}
-              <div className="flex gap-3 overflow-x-auto overflow-y-hidden p-2">
-                {product.images.map((image, index) => (
-                  <button
-                    key={index}
-                    onClick={() => {
-                      if (isTransitioning) return;
-                      setIsTransitioning(true);
-                      setSelectedImage(index);
-                      setTimeout(() => setIsTransitioning(false), 300);
-                    }}
-                    className={`flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden border-2 transition-all duration-300 ease-out transform hover:scale-110 disabled:pointer-events-none shadow-md ${
-                      selectedImage === index
-                        ? "border-primary scale-110 shadow-lg shadow-primary/20"
-                        : "border-border/30 hover:border-primary/50 hover:shadow-lg"
+          <div className="grid lg:grid-cols-2 gap-16">
+            {/* Left Column - Sticky Product Images */}
+            <div className="lg:sticky lg:top-24 lg:self-start">
+              {/* Product Images */}
+              <div className="space-y-6">
+                <div className="relative aspect-square bg-gradient-to-br from-muted/50 to-muted rounded-2xl overflow-hidden shadow-2xl shadow-black/10 border border-border/50">
+                  <img
+                    src={product.images[selectedImage]}
+                    alt={product.name}
+                    className={`w-full h-full object-cover cursor-zoom-in transition-all duration-500 ease-out ${
+                      isTransitioning ? 'opacity-50 scale-95' : 'opacity-100 scale-100'
                     }`}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 hover:opacity-100 transition-all duration-300 flex items-center justify-center">
+                    <div className="bg-white/90 backdrop-blur-sm rounded-full p-3 shadow-lg cursor-pointer" onClick={() => {
+                      const modal = document.createElement('div');
+                      modal.className = 'fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4';
+                      modal.onclick = () => modal.remove();
+                      
+                      const img = document.createElement('img');
+                      img.src = product.images[selectedImage];
+                      img.alt = product.name;
+                      img.className = 'max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl';
+                      
+                      modal.appendChild(img);
+                      document.body.appendChild(modal);
+                    }}>
+                      <ZoomIn className="h-6 w-6 text-primary" />
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white backdrop-blur-sm transition-all duration-300 ease-out transform hover:scale-110 active:scale-95 disabled:pointer-events-none shadow-lg border border-border/20"
+                    onClick={prevImage}
                     disabled={isTransitioning}
                   >
-                    <img
-                      src={image}
-                      alt={`${product.name} ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </button>
-                ))}
+                    <ChevronLeft className="h-5 w-5 text-primary" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white backdrop-blur-sm transition-all duration-300 ease-out transform hover:scale-110 active:scale-95 disabled:pointer-events-none shadow-lg border border-border/20"
+                    onClick={nextImage}
+                    disabled={isTransitioning}
+                  >
+                    <ChevronRight className="h-5 w-5 text-primary" />
+                  </Button>
+                </div>
+
+                {/* Thumbnail Images */}
+                <div className="flex gap-3 overflow-x-auto overflow-y-hidden p-2">
+                  {product.images.map((image, index) => (
+                    <button
+                      key={index}
+                      onClick={() => {
+                        if (isTransitioning) return;
+                        setIsTransitioning(true);
+                        setSelectedImage(index);
+                        setTimeout(() => setIsTransitioning(false), 300);
+                      }}
+                      className={`flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden border-2 transition-all duration-300 ease-out transform hover:scale-110 disabled:pointer-events-none shadow-md ${
+                        selectedImage === index
+                          ? "border-primary scale-110 shadow-lg shadow-primary/20"
+                          : "border-border/30 hover:border-primary/50 hover:shadow-lg"
+                      }`}
+                      disabled={isTransitioning}
+                    >
+                      <img
+                        src={image}
+                        alt={`${product.name} ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
-            {/* Product Info */}
+            {/* Right Column - Product Info */}
             <div className="space-y-8">
               <div>
                 <div className="flex items-center gap-3 mb-4">
@@ -773,7 +788,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                           key={i}
                           className={`h-5 w-5 ${
                             i < Math.floor(product.rating)
-                              ? "text-yellow-400 fill-current"
+                              ? "text-primary fill-current"
                               : "text-gray-300"
                           }`}
                         />
@@ -822,10 +837,10 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
 
                 {/* Stock Alert */}
                 {product.stockCount <= 20 && (
-                  <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-xl p-4 mb-6 animate-pulse">
+                  <div className="bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20 rounded-xl p-4 mb-6 animate-pulse">
                     <div className="flex items-center gap-3">
-                      <div className="w-3 h-3 bg-red-500 rounded-full animate-ping"></div>
-                      <p className="text-sm font-medium text-orange-800">
+                      <div className="w-3 h-3 bg-primary rounded-full animate-ping"></div>
+                      <p className="text-sm font-medium text-primary">
                         ⚠️ Only {product.stockCount} left in stock! Order now to secure yours.
                       </p>
                     </div>
@@ -932,10 +947,10 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                   >
                     <Heart
                       className={`mr-2 h-5 w-5 transition-all duration-300 ${
-                        isWishlisted ? "fill-red-500 text-red-500 scale-110" : "text-muted-foreground"
+                        isWishlisted ? "fill-primary text-primary scale-110" : "text-muted-foreground"
                       }`}
                     />
-                    {isWishlisted ? "Wishlisted" : "Wishlist"}
+                    <span className="text-muted-foreground">{isWishlisted ? "Wishlisted" : "Wishlist"}</span>
                   </Button>
                   <Button 
                     variant="ghost" 
@@ -943,13 +958,16 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                     className="flex-1 bg-white border border-border/50 hover:bg-primary/5 hover:border-primary/30 transition-all duration-300 rounded-xl"
                   >
                     <Share2 className="mr-2 h-5 w-5 text-muted-foreground" />
-                    Share
+                    <span className="text-muted-foreground">Share</span>
                   </Button>
                 </div>
 
                 {/* Trust Indicators */}
                 <div className="bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/20 rounded-2xl p-6 mt-8">
-                  <h3 className="text-lg font-semibold text-primary mb-4">🛡️ Trust & Security</h3>
+                  <h3 className="text-lg font-semibold text-primary mb-4 flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-secondary" />
+                    Trust & Security
+                  </h3>
                   <div className="grid gap-4">
                     <div className="flex items-center gap-3 p-3 bg-white/50 rounded-lg border border-primary/20">
                       <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">

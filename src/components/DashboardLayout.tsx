@@ -110,7 +110,7 @@ export function DashboardLayout({
                                    {item.title === "Notifications" && notificationCount > 0 && (
                     <Badge 
                       variant="destructive" 
-                      className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs min-w-[20px] bg-red-500"
+                      className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs min-w-[20px] bg-primary text-primary-foreground"
                     >
                       {notificationCount > 99 ? "99+" : notificationCount}
                     </Badge>
@@ -152,14 +152,14 @@ export function DashboardLayout({
             <Button variant="ghost" size="icon" asChild className="relative overflow-visible">
               <Link to="/dashboard/notifications">
                 <Bell className="h-5 w-5" />
-                                 {notificationCount > 0 && (
-                   <Badge 
-                     variant="destructive" 
-                     className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs min-w-[20px] bg-red-500"
-                   >
-                     {notificationCount > 99 ? "99+" : notificationCount}
-                   </Badge>
-                 )}
+                                                 {notificationCount > 0 && (
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs min-w-[20px] bg-primary text-primary-foreground"
+                  >
+                    {notificationCount > 99 ? "99+" : notificationCount}
+                  </Badge>
+                )}
               </Link>
             </Button>
             <Button variant="outline" asChild>

@@ -252,11 +252,11 @@ const DashboardNotifications: React.FC<DashboardNotificationsProps> = ({
       <DashboardLayout user={user} appId={appId}>
         <div className="space-y-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
           <h1 className="text-3xl font-bold text-primary">Notifications</h1>
-          <Card className="border-yellow-200 bg-yellow-50 animate-in fade-in duration-300">
+          <Card className="border-primary/20 bg-primary/5 animate-in fade-in duration-300">
             <CardContent className="p-6">
               <div className="flex items-center space-x-2">
-                <AlertCircle className="h-5 w-5 text-yellow-600 animate-pulse" />
-                <span className="text-yellow-800">
+                <AlertCircle className="h-5 w-5 text-primary animate-pulse" />
+                <span className="text-primary">
                   Your account doesn't have the necessary permissions to view notifications. 
                   Please contact support to update your account permissions.
                 </span>
@@ -273,11 +273,11 @@ const DashboardNotifications: React.FC<DashboardNotificationsProps> = ({
       <DashboardLayout user={user} appId={appId}>
         <div className="space-y-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
           <h1 className="text-3xl font-bold text-primary">Notifications</h1>
-          <Card className="border-red-200 bg-red-50 animate-in fade-in duration-300">
+          <Card className="border-secondary/20 bg-secondary/5 animate-in fade-in duration-300">
             <CardContent className="p-6">
               <div className="flex items-center space-x-2">
-                <AlertCircle className="h-5 w-5 text-red-600 animate-pulse" />
-                <span className="text-red-800">{error}</span>
+                <AlertCircle className="h-5 w-5 text-secondary animate-pulse" />
+                <span className="text-secondary">{error}</span>
               </div>
             </CardContent>
           </Card>
@@ -303,7 +303,7 @@ const DashboardNotifications: React.FC<DashboardNotificationsProps> = ({
                 variant="outline"
                 size="sm"
                 disabled={performingAction === "clear-all"}
-                className="text-red-600 border-red-200 hover:bg-red-50 transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-secondary border-secondary/20 hover:bg-secondary/10 transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {performingAction === "clear-all" ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
