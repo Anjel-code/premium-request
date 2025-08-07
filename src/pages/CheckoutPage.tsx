@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, ShoppingCart, CreditCard } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ArrowLeft, ShoppingCart, CreditCard, MapPin, Shield, Zap } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
+import { trackUserActivity } from "@/lib/liveViewUtils";
 
 interface CheckoutFormData {
   firstName: string;
@@ -21,7 +23,18 @@ interface CheckoutFormData {
   country: string;
 }
 
-const CheckoutPage: React.FC = () => {
+interface CheckoutPageProps {
+  user: {
+    uid: string;
+    email: string;
+    displayName: string;
+    roles: string[];
+    photoURL?: string;
+  } | null;
+  appId: string;
+}
+
+const CheckoutPage: React.FC<CheckoutPageProps> = ({ user, appId }) => {
   const navigate = useNavigate();
   const { items, totalPrice, clearCart } = useCart();
   const { toast } = useToast();
@@ -41,6 +54,8 @@ const CheckoutPage: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDirectOrder, setIsDirectOrder] = useState(false);
   const [directOrderInfo, setDirectOrderInfo] = useState<any>(null);
+  const [showLocationAlert, setShowLocationAlert] = useState(true);
+  const [locationPermission, setLocationPermission] = useState<'granted' | 'denied' | 'prompt'>('prompt');
 
   // Check for direct order or cart items
   useEffect(() => {
@@ -65,6 +80,46 @@ const CheckoutPage: React.FC = () => {
       navigate("/store");
     }
   }, [items, navigate, toast]);
+
+  // Check geolocation permission status
+  useEffect(() => {
+    if (navigator.permissions && navigator.permissions.query) {
+      navigator.permissions.query({ name: 'geolocation' }).then((result) => {
+        setLocationPermission(result.state);
+        if (result.state === 'granted') {
+          setShowLocationAlert(false);
+        }
+      });
+    }
+  }, []);
+
+  const handleLocationPermission = async () => {
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: false,
+          timeout: 5000,
+          maximumAge: 300000
+        });
+      });
+      
+      setLocationPermission('granted');
+      setShowLocationAlert(false);
+      
+      toast({
+        title: "Location Access Granted",
+        description: "Thank you! This helps us provide better service and track your order more accurately.",
+        variant: "default",
+      });
+    } catch (error) {
+      setLocationPermission('denied');
+      toast({
+        title: "Location Access Denied",
+        description: "No worries! You can still complete your order. We'll use your shipping address for tracking.",
+        variant: "default",
+      });
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -93,6 +148,17 @@ const CheckoutPage: React.FC = () => {
     setIsProcessing(true);
 
     try {
+      // Track checkout activity with location if user is logged in
+      if (user) {
+        await trackUserActivity(
+          appId,
+          user.uid,
+          user.email,
+          user.displayName,
+          "checkout"
+        );
+      }
+
       if (isDirectOrder && directOrderInfo) {
         // Handle direct order (Buy Now)
         const orderInfo = {
@@ -251,6 +317,41 @@ const CheckoutPage: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
+                {/* Location Permission Alert */}
+                {showLocationAlert && locationPermission !== 'granted' && (
+                  <Alert className="mb-6 border-blue-200 bg-blue-50">
+                    <MapPin className="h-4 w-4 text-blue-600" />
+                    <AlertDescription className="text-blue-800">
+                      <div className="flex items-start gap-3">
+                        <div className="flex-1">
+                          <p className="font-medium mb-2">Enable Location Access for Better Service</p>
+                          <div className="text-sm space-y-1">
+                            <div className="flex items-center gap-2">
+                              <Zap className="h-3 w-3 text-green-600" />
+                              <span>Faster order processing</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Shield className="h-3 w-3 text-green-600" />
+                              <span>Enhanced security verification</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-3 w-3 text-green-600" />
+                              <span>Accurate delivery tracking</span>
+                            </div>
+                          </div>
+                        </div>
+                        <Button
+                          onClick={handleLocationPermission}
+                          size="sm"
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                          Allow Location
+                        </Button>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>

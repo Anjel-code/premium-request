@@ -61,11 +61,13 @@ interface Notification {
 interface DashboardNotificationsProps {
   user: any;
   appId: string;
+  userRole?: "user" | "admin" | "team";
 }
 
 const DashboardNotifications: React.FC<DashboardNotificationsProps> = ({
   user,
   appId,
+  userRole,
 }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -225,7 +227,7 @@ const DashboardNotifications: React.FC<DashboardNotificationsProps> = ({
 
   if (loading) {
     return (
-      <DashboardLayout user={user} appId={appId}>
+      <DashboardLayout user={user} appId={appId} userRole={userRole}>
         <div className="space-y-6 animate-in fade-in duration-500">
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold text-primary">Notifications</h1>
@@ -249,7 +251,7 @@ const DashboardNotifications: React.FC<DashboardNotificationsProps> = ({
 
   if (!hasValidRoles) {
     return (
-      <DashboardLayout user={user} appId={appId}>
+      <DashboardLayout user={user} appId={appId} userRole={userRole}>
         <div className="space-y-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
           <h1 className="text-3xl font-bold text-primary">Notifications</h1>
           <Card className="border-primary/20 bg-primary/5 animate-in fade-in duration-300">
@@ -270,7 +272,7 @@ const DashboardNotifications: React.FC<DashboardNotificationsProps> = ({
 
   if (error) {
     return (
-      <DashboardLayout user={user} appId={appId}>
+      <DashboardLayout user={user} appId={appId} userRole={userRole}>
         <div className="space-y-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
           <h1 className="text-3xl font-bold text-primary">Notifications</h1>
           <Card className="border-secondary/20 bg-secondary/5 animate-in fade-in duration-300">
@@ -287,7 +289,7 @@ const DashboardNotifications: React.FC<DashboardNotificationsProps> = ({
   }
 
   return (
-    <DashboardLayout user={user} appId={appId}>
+    <DashboardLayout user={user} appId={appId} userRole={userRole}>
       <div className="space-y-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
         <div className="flex items-center justify-between">
           <div>

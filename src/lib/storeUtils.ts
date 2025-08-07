@@ -1,5 +1,6 @@
 import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, setDoc, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
+import { trackUserActivity } from "./liveViewUtils";
 
 // Interface for tracking event
 export interface TrackingEvent {
@@ -246,6 +247,15 @@ export const createStoreOrder = async (
       updatedAt: serverTimestamp(),
     });
 
+    // Track checkout activity with location
+    await trackUserActivity(
+      appId,
+      orderData.userId,
+      orderData.userEmail,
+      orderData.userName,
+      "checkout"
+    );
+
     console.log("Store order created successfully with ID:", docRef.id);
     return docRef.id;
   } catch (error) {
@@ -310,6 +320,15 @@ export const handleStorePaymentSuccess = async (
       read: false,
       priority: "medium",
     });
+
+    // Track purchase activity with location
+    await trackUserActivity(
+      appId,
+      userId,
+      userEmail,
+      userName,
+      "purchase"
+    );
 
     // Note: Shipping notification will be created separately when the order is actually shipped
     // This prevents showing "Order Shipped" immediately after payment

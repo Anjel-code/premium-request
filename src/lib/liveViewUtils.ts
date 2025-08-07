@@ -15,6 +15,97 @@ export interface UserActivity {
   };
 }
 
+// Function to get user's location using browser geolocation
+export const getUserLocation = (): Promise<{ latitude: number; longitude: number; city?: string; country?: string }> => {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      // Fallback to a default location if geolocation is not available
+      resolve({
+        latitude: 40.7128,
+        longitude: -74.0060,
+        city: "Unknown",
+        country: "Unknown"
+      });
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        
+        try {
+          // Reverse geocoding to get city and country
+          const response = await fetch(
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+          );
+          const data = await response.json();
+          
+          resolve({
+            latitude,
+            longitude,
+            city: data.city || data.locality || "Unknown",
+            country: data.countryName || "Unknown"
+          });
+        } catch (error) {
+          // If reverse geocoding fails, just return coordinates
+          resolve({
+            latitude,
+            longitude,
+            city: "Unknown",
+            country: "Unknown"
+          });
+        }
+      },
+      (error) => {
+        console.warn("Geolocation error:", error);
+        // Fallback to a default location
+        resolve({
+          latitude: 40.7128,
+          longitude: -74.0060,
+          city: "Unknown",
+          country: "Unknown"
+        });
+      },
+      {
+        enableHighAccuracy: false,
+        timeout: 5000,
+        maximumAge: 300000 // 5 minutes
+      }
+    );
+  });
+};
+
+// Function to track user activity with location
+export const trackUserActivity = async (
+  appId: string,
+  userId: string,
+  userEmail: string,
+  userName: string,
+  activity: "view" | "cart" | "checkout" | "purchase"
+) => {
+  if (!db || !appId) return;
+
+  try {
+    // Get user location
+    const location = await getUserLocation();
+    
+    const activitiesRef = collection(db, `artifacts/${appId}/public/data/user-activities`);
+    
+    await addDoc(activitiesRef, {
+      userId,
+      userEmail,
+      userName,
+      activity,
+      timestamp: serverTimestamp(),
+      location,
+    });
+    
+    console.log(`Tracked ${activity} activity for user ${userEmail} at location:`, location);
+  } catch (error) {
+    console.error("Error tracking user activity:", error);
+  }
+};
+
 // Sample locations for testing
 const sampleLocations = [
   { latitude: 40.7128, longitude: -74.0060, city: "New York", country: "USA" },
@@ -172,5 +263,33 @@ export const clearUserActivities = async (appId: string) => {
     console.log("Cleared all user activities");
   } catch (error) {
     console.error("Error clearing user activities:", error);
+  }
+};
+
+export const clearAllSampleData = async (appId: string) => {
+  if (!db || !appId) return;
+  
+  try {
+    // Clear user activities
+    const activitiesRef = collection(db, `artifacts/${appId}/public/data/user-activities`);
+    const activitiesSnapshot = await getDocs(activitiesRef);
+    const activityDeletions = activitiesSnapshot.docs.map(doc => deleteDoc(doc.ref));
+    
+    // Clear orders
+    const ordersRef = collection(db, `artifacts/${appId}/public/data/orders`);
+    const ordersSnapshot = await getDocs(ordersRef);
+    const orderDeletions = ordersSnapshot.docs.map(doc => deleteDoc(doc.ref));
+    
+    // Clear store orders
+    const storeOrdersRef = collection(db, `artifacts/${appId}/public/data/store-orders`);
+    const storeOrdersSnapshot = await getDocs(storeOrdersRef);
+    const storeOrderDeletions = storeOrdersSnapshot.docs.map(doc => deleteDoc(doc.ref));
+    
+    // Wait for all deletions to complete
+    await Promise.all([...activityDeletions, ...orderDeletions, ...storeOrderDeletions]);
+    
+    console.log(`Cleared all sample data: ${activitiesSnapshot.docs.length} activities, ${ordersSnapshot.docs.length} orders, ${storeOrdersSnapshot.docs.length} store orders`);
+  } catch (error) {
+    console.error("Error clearing all sample data:", error);
   }
 }; 

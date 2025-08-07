@@ -29,6 +29,16 @@ import {
   Volume2,
   Maximize2,
   X,
+  CreditCard as CreditCardIcon,
+  Truck as TruckIcon,
+  RotateCcw,
+  Crown,
+  TrendingUp,
+  FileText,
+  Zap,
+  Wrench,
+  Video,
+  Rocket,
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -48,6 +58,7 @@ import VideoEditor from "@/components/VideoEditor";
 import Footer from "@/components/Footer";
 import { isAdmin } from "@/lib/userUtils";
 import { checkStorageQuota, clearAllStorage } from "@/lib/storageUtils";
+import { trackUserActivity } from "@/lib/liveViewUtils";
 
 // Product data interface - this will be easily configurable
 interface VideoReview {
@@ -320,7 +331,18 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
     };
 
     checkAdminStatus();
-  }, [user?.uid]);
+    
+    // Track view activity with location if user is logged in
+    if (user && appId) {
+      trackUserActivity(
+        appId,
+        user.uid,
+        user.email,
+        user.displayName,
+        "view"
+      );
+    }
+  }, [user?.uid, user, appId]);
 
   // Check storage quota and show warning if needed
   useEffect(() => {
@@ -519,6 +541,17 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
           });
           return;
         }
+      }
+
+      // Track cart activity with location if user is logged in
+      if (user && appId) {
+        await trackUserActivity(
+          appId,
+          user.uid,
+          user.email,
+          user.displayName,
+          "cart"
+        );
       }
 
       addToCart({
@@ -774,7 +807,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
               disabled
               className="flex items-center gap-2 bg-muted text-muted-foreground"
             >
-              <Loader2 className="h-4 w-4 animate-spin" />
+                                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
               Loading
             </Button>
           </div>
@@ -932,11 +965,13 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
             <div className="space-y-8">
               <div>
                 <div className="flex items-center gap-3 mb-4">
-                  <Badge variant="secondary" className="bg-secondary/10 text-secondary border-secondary/20">
-                    ⭐ Premium Quality
+                  <Badge variant="secondary" className="bg-secondary/10 text-secondary border-secondary/20 flex items-center gap-1">
+                    <Crown className="h-3 w-3 text-secondary" />
+                    Premium Quality
                   </Badge>
-                  <Badge variant="outline" className="text-xs border-primary/30 text-primary">
-                    🔥 Best Seller
+                  <Badge variant="outline" className="text-xs border-primary/30 text-primary flex items-center gap-1">
+                    <TrendingUp className="h-3 w-3 text-primary" />
+                    Best Seller
                   </Badge>
                 </div>
                 <h1 className="text-4xl font-bold text-primary mb-3 leading-tight">
@@ -994,8 +1029,21 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                       </Badge>
                     )}
                   </div>
-                  <div className="mt-3 text-sm text-muted-foreground">
-                    💳 Secure payment • 🚚 Free shipping • 🔄 30-day returns
+                  <div className="mt-3 text-sm text-muted-foreground flex items-center gap-4">
+                    <div className="flex items-center gap-1">
+                      <CreditCardIcon className="h-4 w-4 text-primary" />
+                      <span>Secure payment</span>
+                    </div>
+                    <span className="text-muted-foreground/50">•</span>
+                    <div className="flex items-center gap-1">
+                      <TruckIcon className="h-4 w-4 text-primary" />
+                      <span>Free shipping</span>
+                    </div>
+                    <span className="text-muted-foreground/50">•</span>
+                    <div className="flex items-center gap-1">
+                      <RotateCcw className="h-4 w-4 text-primary" />
+                      <span>30-day returns</span>
+                    </div>
                   </div>
                 </div>
 
@@ -1042,7 +1090,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-lg font-semibold text-primary">Quantity</span>
                     <span className="text-sm text-muted-foreground">
-                      {product.stockCount} available
+                      {realTimeStock !== null ? realTimeStock : product.stockCount} available
                     </span>
                   </div>
                   <div className="flex items-center gap-4">
@@ -1094,12 +1142,12 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                 >
                     {isProcessing ? (
                       <>
-                        <Loader2 className="mr-3 h-6 w-6 animate-spin" />
+                        <Loader2 className="mr-3 h-6 w-6 animate-spin text-white" />
                         Processing...
                       </>
                     ) : (
                       <>
-                        <CreditCard className="mr-3 h-6 w-6" />
+                        <CreditCard className="mr-3 h-6 w-6 text-white" />
                         Buy Now - ${(finalPrice * quantity).toFixed(2)}
                       </>
                     )}
@@ -1112,7 +1160,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                     size="lg"
                     className="w-full border-2 border-primary/30 text-primary hover:bg-primary/5 hover:text-primary text-lg py-6 rounded-2xl transition-all duration-300 transform hover:scale-[1.02] font-semibold"
                   >
-                    <ShoppingCart className="mr-3 h-5 w-5" />
+                    <ShoppingCart className="mr-3 h-5 w-5 text-primary" />
                     Add to Cart - ${(finalPrice * quantity).toFixed(2)}
                   </Button>
                 </div>
@@ -1195,7 +1243,8 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
           <div className="max-w-5xl mx-auto space-y-12">
             <div className="bg-white rounded-2xl p-8 shadow-lg border border-border/50">
               <h2 className="text-3xl font-bold text-primary mb-6 flex items-center gap-3">
-                📝 Product Description
+                <FileText className="h-8 w-8 text-primary" />
+                Product Description
               </h2>
               <p className="text-muted-foreground leading-relaxed text-lg">
                 {product.description}
@@ -1205,7 +1254,8 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
             {/* Features */}
             <div className="bg-white rounded-2xl p-8 shadow-lg border border-border/50">
               <h3 className="text-2xl font-bold text-primary mb-6 flex items-center gap-3">
-                ⚡ Key Features
+                <Zap className="h-6 w-6 text-primary" />
+                Key Features
               </h3>
               <div className="grid md:grid-cols-2 gap-4">
                                   {product.features.map((feature, index) => (
@@ -1224,7 +1274,8 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
             {/* Specifications */}
             <div className="bg-white rounded-2xl p-8 shadow-lg border border-border/50">
               <h3 className="text-2xl font-bold text-primary mb-6 flex items-center gap-3">
-                🔧 Technical Specifications
+                <Wrench className="h-6 w-6 text-primary" />
+                Technical Specifications
               </h3>
               <div className="bg-gradient-to-br from-muted to-primary/5 rounded-xl border border-border overflow-hidden">
                 {Object.entries(product.specifications).map(
@@ -1251,7 +1302,8 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
             {product.videos.length > 0 && (
               <div className="bg-white rounded-2xl p-8 shadow-lg border border-border/50">
                 <h3 className="text-2xl font-bold text-primary mb-6 flex items-center gap-3">
-                  🎥 Product Video
+                  <Video className="h-6 w-6 text-primary" />
+                  Product Video
                 </h3>
                 <div className="aspect-video bg-gradient-to-br from-muted/50 to-muted rounded-xl overflow-hidden shadow-lg">
                  {product.videos[0].startsWith('data:') ? (
@@ -1284,8 +1336,9 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
         <div className="container mx-auto">
                     <div className="flex items-center justify-between mb-8">
             <div className="text-center flex-1">
-              <h2 className="text-4xl font-bold text-primary mb-4">
-                🎬 Real Customer Stories
+              <h2 className="text-4xl font-bold text-primary mb-4 flex items-center justify-center gap-3">
+                <Video className="h-8 w-8 text-primary" />
+                Real Customer Stories
               </h2>
               <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
                 See what our customers are saying about their experience with our premium headphones
@@ -1298,7 +1351,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                 onClick={() => setShowVideoEditor(true)}
                 className="flex items-center gap-2"
               >
-                <Edit className="h-4 w-4" />
+                <Edit className="h-4 w-4 text-primary" />
                 Edit Videos
               </Button>
             )}
@@ -1418,7 +1471,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                 onClick={() => setShowReviewsEditor(true)}
                 className="flex items-center gap-2"
               >
-                <Edit className="h-4 w-4" />
+                <Edit className="h-4 w-4 text-primary" />
                 Edit Reviews
               </Button>
             )}
@@ -1712,8 +1765,9 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
         <div className="container mx-auto text-center">
           <div className="max-w-4xl mx-auto">
             <div className="bg-white rounded-3xl p-12 shadow-2xl border border-primary/10">
-              <h2 className="text-4xl font-bold text-primary mb-6">
-                🚀 Ready to Experience Premium Quality?
+              <h2 className="text-4xl font-bold text-primary mb-6 flex items-center justify-center gap-3">
+                <Rocket className="h-8 w-8 text-primary" />
+                Ready to Experience Premium Quality?
               </h2>
               <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
                 Join thousands of satisfied customers who trust our products. Order
@@ -1726,7 +1780,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
             size="lg"
                   className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 text-primary-foreground text-xl px-12 py-8 rounded-2xl shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 transform hover:scale-105 font-bold"
           >
-                  <CreditCard className="mr-3 h-6 w-6" />
+                  <CreditCard className="mr-3 h-6 w-6 text-white" />
                   Buy Now - ${finalPrice.toFixed(2)}
                 </Button>
                 <div className="flex items-center gap-6 text-sm text-muted-foreground">
@@ -1768,7 +1822,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                     }}
                     className="flex items-center gap-2"
                   >
-                    <Edit className="h-4 w-4" />
+                    <Edit className="h-4 w-4 text-primary" />
                     Edit Video
                   </Button>
                 )}
@@ -1777,7 +1831,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                   size="sm"
                   onClick={handleCloseVideoModal}
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </div>
             </div>

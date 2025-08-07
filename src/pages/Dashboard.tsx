@@ -18,7 +18,6 @@ import {
   Zap,
   Star,
   Loader2, // Import Loader2 for loading state
-  PlusCircle, // For the "Create Dummy Order" button
   ShoppingCart, // For Orders tab (from previous shorter version)
   Bell, // For Notifications tab (from previous shorter version)
   Users, // For Team Chat tab (from previous shorter version)
@@ -340,7 +339,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
             </Button>
             {hasAdminOrTeamRole && (
               <>
-                <Button onClick={() => navigate("queue")}>See the Queue</Button>
                 <Button
                   asChild
                   className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-md shadow-sm"
@@ -348,12 +346,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
                   <Link to="/dashboard/admin/store-orders">
                     <Package className="mr-2 h-4 w-4" /> Manage Store Orders
                   </Link>
-                </Button>
-                <Button
-                  onClick={() => navigate("/create-dummy-order")}
-                  className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-md shadow-sm"
-                >
-                  <PlusCircle className="mr-2 h-4 w-4" /> Create Dummy Order
                 </Button>
               </>
             )}

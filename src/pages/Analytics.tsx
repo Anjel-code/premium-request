@@ -78,12 +78,28 @@ interface StoreOrder {
   paymentStatus: string;
 }
 
+interface UserActivity {
+  id: string;
+  userId: string;
+  userEmail: string;
+  userName: string;
+  activity: "view" | "cart" | "checkout" | "purchase";
+  timestamp: Date;
+  location?: {
+    latitude: number;
+    longitude: number;
+    city?: string;
+    country?: string;
+  };
+}
+
 const Analytics: React.FC<AnalyticsProps> = ({ user, appId }) => {
   const [dateRange, setDateRange] = useState("Today");
   const [compareDate, setCompareDate] = useState("Aug 6, 2025");
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<Order[]>([]);
   const [storeOrders, setStoreOrders] = useState<StoreOrder[]>([]);
+  const [userActivities, setUserActivities] = useState<UserActivity[]>([]);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [resetting, setResetting] = useState(false);
 
@@ -100,12 +116,21 @@ const Analytics: React.FC<AnalyticsProps> = ({ user, appId }) => {
     const todayStoreOrders = storeOrders.filter(order => 
       order.createdAt >= startOfDay && order.createdAt < endOfDay
     );
+    const todayUserActivities = userActivities.filter(activity => 
+      activity.timestamp >= startOfDay && activity.timestamp < endOfDay
+    );
 
     // Calculate summary statistics
     const grossSales = todayStoreOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
     const totalOrders = todayOrders.length + todayStoreOrders.length;
     const completedOrders = todayOrders.filter(order => order.status === "completed").length +
                           todayStoreOrders.filter(order => order.status === "delivered").length;
+    
+    // Calculate sessions and user activity
+    const sessions = todayUserActivities.filter(activity => activity.activity === "view").length;
+    const cartAdditions = todayUserActivities.filter(activity => activity.activity === "cart").length;
+    const checkouts = todayUserActivities.filter(activity => activity.activity === "checkout").length;
+    const purchases = todayUserActivities.filter(activity => activity.activity === "purchase").length;
     
     // Calculate returning customer rate
     const uniqueCustomers = new Set([
@@ -124,8 +149,13 @@ const Analytics: React.FC<AnalyticsProps> = ({ user, appId }) => {
       returningCustomerRate,
       ordersFulfilled: completedOrders,
       totalOrders,
+      sessions,
+      cartAdditions,
+      checkouts,
+      purchases,
       todayOrders,
-      todayStoreOrders
+      todayStoreOrders,
+      todayUserActivities
     };
   };
 
@@ -264,15 +294,18 @@ const Analytics: React.FC<AnalyticsProps> = ({ user, appId }) => {
     
     setResetting(true);
     try {
-      // Get all orders and store orders
+      // Get all orders, store orders, and user activities
       const ordersRef = collection(db, `artifacts/${appId}/public/data/orders`);
       const storeOrdersRef = collection(db, `artifacts/${appId}/public/data/store-orders`);
+      const userActivitiesRef = collection(db, `artifacts/${appId}/public/data/user-activities`);
       
       const ordersSnapshot = await getDocs(ordersRef);
       const storeOrdersSnapshot = await getDocs(storeOrdersRef);
+      const userActivitiesSnapshot = await getDocs(userActivitiesRef);
       
       console.log("Found orders to delete:", ordersSnapshot.docs.length);
       console.log("Found store orders to delete:", storeOrdersSnapshot.docs.length);
+      console.log("Found user activities to delete:", userActivitiesSnapshot.docs.length);
       
       // Delete all orders
       const orderDeletions = ordersSnapshot.docs.map(doc => 
@@ -284,8 +317,13 @@ const Analytics: React.FC<AnalyticsProps> = ({ user, appId }) => {
         deleteDoc(doc.ref)
       );
       
+      // Delete all user activities
+      const userActivityDeletions = userActivitiesSnapshot.docs.map(doc => 
+        deleteDoc(doc.ref)
+      );
+      
       // Wait for all deletions to complete
-      await Promise.all([...orderDeletions, ...storeOrderDeletions]);
+      await Promise.all([...orderDeletions, ...storeOrderDeletions, ...userActivityDeletions]);
       
       console.log("All data reset successfully");
       setShowResetDialog(false);
@@ -310,6 +348,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ user, appId }) => {
 
     const ordersRef = collection(db, `artifacts/${appId}/public/data/orders`);
     const storeOrdersRef = collection(db, `artifacts/${appId}/public/data/store-orders`);
+    const userActivitiesRef = collection(db, `artifacts/${appId}/public/data/user-activities`);
 
     const unsubscribeOrders = onSnapshot(
       query(ordersRef, orderBy("createdAt", "desc")),
@@ -320,7 +359,11 @@ const Analytics: React.FC<AnalyticsProps> = ({ user, appId }) => {
           createdAt: doc.data().createdAt?.toDate() || new Date(),
           updatedAt: doc.data().updatedAt?.toDate() || new Date(),
         })) as Order[];
+        console.log("Analytics - Fetched orders:", fetchedOrders.length);
         setOrders(fetchedOrders);
+      },
+      (error) => {
+        console.error("Analytics - Error fetching orders:", error);
       }
     );
 
@@ -333,7 +376,29 @@ const Analytics: React.FC<AnalyticsProps> = ({ user, appId }) => {
           createdAt: doc.data().createdAt?.toDate() || new Date(),
           updatedAt: doc.data().updatedAt?.toDate() || new Date(),
         })) as StoreOrder[];
+        console.log("Analytics - Fetched store orders:", fetchedStoreOrders.length);
         setStoreOrders(fetchedStoreOrders);
+      },
+      (error) => {
+        console.error("Analytics - Error fetching store orders:", error);
+      }
+    );
+
+    const unsubscribeUserActivities = onSnapshot(
+      query(userActivitiesRef, orderBy("timestamp", "desc")),
+      (snapshot) => {
+        const fetchedActivities: UserActivity[] = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          timestamp: doc.data().timestamp?.toDate() || new Date(),
+        })) as UserActivity[];
+        console.log("Analytics - Fetched user activities:", fetchedActivities.length);
+        setUserActivities(fetchedActivities);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Analytics - Error fetching user activities:", error);
+        setUserActivities([]);
         setLoading(false);
       }
     );
@@ -341,15 +406,16 @@ const Analytics: React.FC<AnalyticsProps> = ({ user, appId }) => {
     return () => {
       unsubscribeOrders();
       unsubscribeStoreOrders();
+      unsubscribeUserActivities();
     };
   }, [db, appId]);
 
-  // Mock data - in real implementation, this would come from your backend
+  // Real data from Firestore
   const summaryStats = [
     { title: "Gross sales", value: `$${analytics.grossSales.toFixed(2)}`, icon: DollarSign },
-    { title: "Returning customer rate", value: `${analytics.returningCustomerRate.toFixed(1)}%`, icon: Users },
+    { title: "Sessions", value: analytics.sessions.toString(), icon: Users },
     { title: "Orders fulfilled", value: analytics.ordersFulfilled.toString(), icon: Package },
-    { title: "Orders", value: analytics.totalOrders.toString(), icon: ShoppingCart },
+    { title: "Total orders", value: analytics.totalOrders.toString(), icon: ShoppingCart },
   ];
 
   const salesBreakdown = [
@@ -364,10 +430,10 @@ const Analytics: React.FC<AnalyticsProps> = ({ user, appId }) => {
   ];
 
   const conversionBreakdown = [
-    { label: "Sessions", value: `${analytics.totalOrders > 0 ? "100" : "0"}%` },
-    { label: "Added to cart", value: `${analytics.totalOrders > 0 ? "100" : "0"}%` },
-    { label: "Reached checkout", value: `${analytics.totalOrders > 0 ? "100" : "0"}%` },
-    { label: "Completed checkout", value: `${analytics.totalOrders > 0 ? "100" : "0"}%` },
+    { label: "Sessions", value: analytics.sessions.toString() },
+    { label: "Added to cart", value: analytics.cartAdditions.toString() },
+    { label: "Reached checkout", value: analytics.checkouts.toString() },
+    { label: "Completed purchase", value: analytics.purchases.toString() },
   ];
 
   const chartData = [

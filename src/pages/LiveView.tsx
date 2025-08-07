@@ -18,6 +18,7 @@ import {
   Globe,
   TrendingUp,
   Activity,
+  Database,
 } from "lucide-react";
 import {
   collection,
@@ -125,24 +126,70 @@ function Earth({ userLocations }: { userLocations: Array<{ lat: number; lng: num
       const textureLoader = new THREE.TextureLoader();
       const material = meshRef.current.material as THREE.MeshPhongMaterial;
       
-      // Load the real earth texture
-      textureLoader.load(
+      // Try multiple texture sources
+      const textureUrls = [
         '/images/earth-texture.jpg',
-        (texture) => {
-          material.map = texture;
-          material.color = new THREE.Color(0xffffff);
-          material.transparent = false;
-          material.opacity = 1;
-          setTextureLoaded(true);
-        },
-        undefined,
-        (error) => {
-          console.log('Earth texture not found, using fallback');
-          // Simple fallback - just blue ocean
-          material.color = new THREE.Color(0x1e40af);
-          setTextureLoaded(true);
+        'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg',
+        'https://eoimages.gsfc.nasa.gov/images/imagerecords/73000/73909/world.topo.bathy.200412.3x5400x2700.jpg'
+      ];
+      
+      let currentUrlIndex = 0;
+      
+      const tryNextTexture = () => {
+        if (currentUrlIndex >= textureUrls.length) {
+          console.log('All texture sources failed, using fallback');
+          // Create a simple procedural texture as fallback
+          const canvas = document.createElement('canvas');
+          canvas.width = 1024;
+          canvas.height = 512;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            // Blue ocean background
+            ctx.fillStyle = '#1e40af';
+            ctx.fillRect(0, 0, 1024, 512);
+            
+            // Simple green continents
+            ctx.fillStyle = '#22c55e';
+            ctx.fillRect(200, 100, 300, 200); // North America
+            ctx.fillRect(800, 150, 400, 250); // Europe/Asia
+            ctx.fillRect(900, 450, 200, 300); // Africa
+            ctx.fillRect(1400, 700, 200, 150); // Australia
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            material.map = texture;
+            material.color = new THREE.Color(0xffffff);
+            material.needsUpdate = true;
+            setTextureLoaded(true);
+          }
+          return;
         }
-      );
+        
+        const currentUrl = textureUrls[currentUrlIndex];
+        console.log(`Trying texture: ${currentUrl}`);
+        
+        textureLoader.load(
+          currentUrl,
+          (texture) => {
+            console.log('Earth texture loaded successfully from:', currentUrl);
+            material.map = texture;
+            material.color = new THREE.Color(0xffffff);
+            material.transparent = false;
+            material.opacity = 1;
+            material.needsUpdate = true;
+            setTextureLoaded(true);
+          },
+          (progress) => {
+            console.log('Loading earth texture...', progress);
+          },
+          (error) => {
+            console.log(`Failed to load texture from ${currentUrl}:`, error);
+            currentUrlIndex++;
+            tryNextTexture();
+          }
+        );
+      };
+      
+      tryNextTexture();
     }
   }, []);
 
@@ -159,10 +206,10 @@ function Earth({ userLocations }: { userLocations: Array<{ lat: number; lng: num
           color={0xffffff}
           transparent={false}
           opacity={1}
-          shininess={50}
-          specular={0x222222}
-          emissive={0x111111}
-          emissiveIntensity={0.05}
+          shininess={30}
+          specular={0x111111}
+          emissive={0x000000}
+          emissiveIntensity={0}
         />
       </mesh>
 
@@ -266,9 +313,29 @@ function LocationPin({ lat, lng, type, locationName }: { lat: number; lng: numbe
 const LiveView: React.FC<LiveViewProps> = ({ user, appId }) => {
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [storeOrders, setStoreOrders] = useState<Order[]>([]);
   const [userActivities, setUserActivities] = useState<UserActivity[]>([]);
   const [searchLocation, setSearchLocation] = useState("");
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [hasNoData, setHasNoData] = useState(false);
+  const [generatingSampleData, setGeneratingSampleData] = useState(false);
+
+  // Function to manually generate sample data
+  const handleGenerateSampleData = async () => {
+    if (!appId) return;
+    setGeneratingSampleData(true);
+    try {
+      console.log("🔄 LiveView: Manually generating sample data...");
+      await generateSampleUserActivity(appId);
+      await generateSampleOrders(appId);
+      console.log("✅ LiveView: Sample data generated successfully");
+      setHasNoData(false);
+    } catch (error) {
+      console.error("❌ LiveView: Error generating sample data:", error);
+    } finally {
+      setGeneratingSampleData(false);
+    }
+  };
 
   // Real-time statistics
   const [stats, setStats] = useState({
@@ -329,28 +396,36 @@ const LiveView: React.FC<LiveViewProps> = ({ user, appId }) => {
     const storeOrdersRef = collection(db, `artifacts/${appId}/public/data/store-orders`);
     const userActivitiesRef = collection(db, `artifacts/${appId}/public/data/user-activities`);
 
-    // Generate some initial sample data if none exists
-    const generateInitialData = async () => {
+    // Check for existing data without generating sample data automatically
+    const checkExistingData = async () => {
       try {
         // Check if we have any user activities
         const activitiesSnapshot = await getDocs(userActivitiesRef);
-        if (activitiesSnapshot.empty) {
-          console.log("No user activities found, generating sample data...");
-          await generateSampleUserActivity(appId);
-        }
+        const hasActivities = !activitiesSnapshot.empty;
         
         // Check if we have any orders
         const ordersSnapshot = await getDocs(ordersRef);
-        if (ordersSnapshot.empty) {
-          console.log("No orders found, generating sample orders...");
-          await generateSampleOrders(appId);
+        const hasOrders = !ordersSnapshot.empty;
+        
+        // Check if we have any store orders
+        const storeOrdersSnapshot = await getDocs(storeOrdersRef);
+        const hasStoreOrders = !storeOrdersSnapshot.empty;
+        
+        const hasAnyData = hasActivities || hasOrders || hasStoreOrders;
+        setHasNoData(!hasAnyData);
+        
+        if (!hasAnyData) {
+          console.log("ℹ️ LiveView: No data found in database - LiveView will show empty state");
+        } else {
+          console.log("ℹ️ LiveView: Found data - activities:", activitiesSnapshot.docs.length, "orders:", ordersSnapshot.docs.length, "store orders:", storeOrdersSnapshot.docs.length);
         }
       } catch (error) {
         console.log("Could not check for existing data:", error);
+        setHasNoData(true);
       }
     };
     
-    generateInitialData();
+    checkExistingData();
 
     // Listen to orders
     const unsubscribeOrders = onSnapshot(
@@ -362,6 +437,7 @@ const LiveView: React.FC<LiveViewProps> = ({ user, appId }) => {
           createdAt: doc.data().createdAt?.toDate() || new Date(),
           updatedAt: doc.data().updatedAt?.toDate() || new Date(),
         })) as Order[];
+        console.log("Fetched orders:", fetchedOrders.length, fetchedOrders);
         setOrders(fetchedOrders);
       },
       (error) => {
@@ -380,9 +456,8 @@ const LiveView: React.FC<LiveViewProps> = ({ user, appId }) => {
           updatedAt: doc.data().updatedAt?.toDate() || new Date(),
         })) as Order[];
         
-        // Combine all orders
-        const allOrders = [...orders, ...fetchedStoreOrders];
-        setOrders(allOrders);
+        console.log("Fetched store orders:", fetchedStoreOrders.length, fetchedStoreOrders);
+        setStoreOrders(fetchedStoreOrders);
       },
       (error) => {
         console.error("Error fetching store orders:", error);
@@ -401,6 +476,7 @@ const LiveView: React.FC<LiveViewProps> = ({ user, appId }) => {
             ...doc.data(),
             timestamp: doc.data().timestamp?.toDate() || new Date(),
           })) as UserActivity[];
+          console.log("Fetched user activities:", fetchedActivities.length, fetchedActivities);
           setUserActivities(fetchedActivities);
         },
         (error) => {
@@ -440,7 +516,10 @@ const LiveView: React.FC<LiveViewProps> = ({ user, appId }) => {
       activity => activity.activity === "view"
     ).length;
 
-    const totalSales = orders.reduce((sum, order) => 
+    // Combine all orders for calculations
+    const allOrders = [...orders, ...storeOrders];
+    
+    const totalSales = allOrders.reduce((sum, order) => 
       sum + (order.totalAmount || order.totalPrice || 0), 0
     );
 
@@ -448,7 +527,7 @@ const LiveView: React.FC<LiveViewProps> = ({ user, appId }) => {
       activity => activity.activity === "view"
     ).length;
 
-    const totalOrders = orders.length;
+    const totalOrders = allOrders.length;
 
     const activeCarts = userActivities.filter(
       activity => activity.activity === "cart"
@@ -462,7 +541,7 @@ const LiveView: React.FC<LiveViewProps> = ({ user, appId }) => {
       activity => activity.activity === "purchase"
     ).length;
 
-    setStats({
+    const calculatedStats = {
       visitorsNow,
       totalSales,
       totalSessions,
@@ -470,7 +549,10 @@ const LiveView: React.FC<LiveViewProps> = ({ user, appId }) => {
       activeCarts,
       checkingOut,
       purchased,
-    });
+    };
+    
+    console.log("Calculated stats:", calculatedStats);
+    setStats(calculatedStats);
 
     // Calculate top locations
     const locationCounts: { [key: string]: number } = {};
@@ -506,7 +588,7 @@ const LiveView: React.FC<LiveViewProps> = ({ user, appId }) => {
 
     // Calculate top products
     const productSales: { [key: string]: number } = {};
-    orders.forEach(order => {
+    allOrders.forEach(order => {
       const productName = order.productName || order.title || "Unknown Product";
       productSales[productName] = (productSales[productName] || 0) + (order.totalAmount || order.totalPrice || 0);
     });
@@ -526,7 +608,7 @@ const LiveView: React.FC<LiveViewProps> = ({ user, appId }) => {
     const locations: Array<{ lat: number; lng: number; type: string; locationName?: string }> = [];
     
     // Add order locations
-    orders.forEach(order => {
+    allOrders.forEach(order => {
       if (order.location?.latitude && order.location?.longitude) {
         const locationName = order.location.city && order.location.country 
           ? `${order.location.city}, ${order.location.country}`
@@ -559,7 +641,7 @@ const LiveView: React.FC<LiveViewProps> = ({ user, appId }) => {
 
     setUserLocations(locations);
 
-  }, [orders, userActivities]);
+  }, [orders, storeOrders, userActivities]);
 
   if (loading) {
     return (
@@ -629,6 +711,43 @@ const LiveView: React.FC<LiveViewProps> = ({ user, appId }) => {
             </Button>
           </div>
         </div>
+
+        {/* Empty State */}
+        {hasNoData && (
+          <Card className="border-0 shadow-premium rounded-xl">
+            <CardContent className="p-8 text-center">
+              <div className="max-w-md mx-auto">
+                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Database className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">No Data Available</h3>
+                <p className="text-sm text-muted-foreground mb-6">
+                  The LiveView dashboard is currently empty. To see live statistics and activity on the globe, you can generate sample data for testing purposes.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <Button 
+                    onClick={handleGenerateSampleData}
+                    disabled={generatingSampleData}
+                    className="flex items-center gap-2"
+                  >
+                    {generatingSampleData ? (
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    ) : (
+                      <Database className="h-4 w-4" />
+                    )}
+                    {generatingSampleData ? "Generating..." : "Generate Sample Data"}
+                  </Button>
+                  <Button variant="outline" asChild>
+                    <a href="/database-management">View Database</a>
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-4">
+                  Sample data includes fake user activities and orders for demonstration purposes.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Panel - Statistics */}

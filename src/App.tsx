@@ -44,9 +44,7 @@ import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
 import Navigation from "@/components/Navigation";
 import AdminPanel from "./components/AdminPanel"; // Ensure this import path is correct
-import OrderQueuePage from "./pages/OrderQueuePage";
 import TeamChat from "./pages/TeamChat";
-import CreateDummyOrder from "./pages/CreateDummyOrder"; // Import CreateDummyOrder
 import DashboardSupport from "./pages/DashboardSupport";
 import PaymentPortalPage from "./pages/PaymentPortalPage"; // Import PaymentPortalPage
 import SuccessPage from "./pages/SuccessPage"; // Import the new SuccessPage component
@@ -56,6 +54,7 @@ import AdminStoreOrders from "./pages/AdminStoreOrders"; // Import AdminStoreOrd
 import CheckoutPage from "./pages/CheckoutPage"; // Import CheckoutPage
 import Analytics from "./pages/Analytics"; // Import Analytics
 import LiveView from "./pages/LiveView"; // Import LiveView
+import DatabaseManagement from "./pages/DatabaseManagement"; // Import DatabaseManagement
 
 import { CartProvider } from "@/contexts/CartContext";
 import CartPanel from "@/components/CartPanel";
@@ -169,9 +168,7 @@ const AppContent: React.FC<AppContentProps> = ({
     "/dashboard/notifications",
     "/ticket",
     "/admin", // Hide navbar for AdminPanel
-    "/dashboard/queue", // Hide navbar for OrderQueuePage
     "/team-chat", // Hide navbar for TeamChat
-    "/create-dummy-order", // Hide navbar for CreateDummyOrder
     "/dashboard/support",
     "/payment-portal", // Hide navbar on payment portal page
     "/success", // HIDE NAVBAR FOR THE SUCCESS PAGE
@@ -325,7 +322,7 @@ const AppContent: React.FC<AppContentProps> = ({
         />
         <Route
           path="/dashboard/notifications"
-          element={<DashboardNotifications user={user} appId={appId} />} // Pass user and appId
+          element={<DashboardNotifications user={user} appId={appId} userRole={userRoles.includes("admin") ? "admin" : userRoles.includes("team") ? "team" : "user"} />}
         />
         <Route
           path="/dashboard/settings"
@@ -390,25 +387,7 @@ const AppContent: React.FC<AppContentProps> = ({
           path="/team-chat"
           element={<TeamChat user={user} appId={appId} />}
         />
-        <Route
-          path="/create-dummy-order"
-          element={
-            <CreateDummyOrder
-              user={
-                user
-                  ? {
-                      uid: user.uid,
-                      email: user.email ?? "",
-                      displayName: user.displayName ?? user.email ?? "",
-                      roles: userRoles,
-                      photoURL: user.photoURL ?? undefined, // photoURL is now correctly recognized
-                    }
-                  : null
-              }
-              appId={appId}
-            />
-          }
-        />
+
         <Route
           path="/dashboard/support"
           element={
@@ -439,17 +418,7 @@ const AppContent: React.FC<AppContentProps> = ({
             )
           }
         />
-        {/* Order Queue Page Route - Protected for Team/Admin */}
-        <Route
-          path="/dashboard/queue"
-          element={
-            hasTeamOrAdminRole ? (
-              <OrderQueuePage userRoles={userRoles} user={user} />
-            ) : (
-              <Navigate to="/" replace />
-            )
-          }
-        />
+
         {/* Payment Portal Route */}
         <Route
           path="/payment-portal/:ticketId"
@@ -491,7 +460,21 @@ const AppContent: React.FC<AppContentProps> = ({
           }
         />
         {/* Checkout Route */}
-        <Route path="/checkout" element={<CheckoutPage />} />
+        <Route 
+          path="/checkout" 
+          element={
+            <CheckoutPage 
+              user={user ? {
+                uid: user.uid,
+                email: user.email ?? "",
+                displayName: user.displayName ?? user.email ?? "",
+                roles: userRoles,
+                photoURL: user.photoURL ?? undefined,
+              } : null}
+              appId={appId}
+            />
+          } 
+        />
 
         {/* Analytics Route - Protected for Admin Only */}
         <Route
@@ -524,6 +507,31 @@ const AppContent: React.FC<AppContentProps> = ({
           element={
             isAdmin ? (
               <LiveView
+                user={
+                  user
+                    ? {
+                        uid: user.uid,
+                        email: user.email ?? "",
+                        displayName: user.displayName ?? user.email ?? "",
+                        roles: userRoles,
+                        photoURL: user.photoURL ?? undefined,
+                      }
+                    : null
+                }
+                appId={appId}
+              />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+
+        {/* Database Management Route - Protected for Admin Only */}
+        <Route
+          path="/database-management"
+          element={
+            isAdmin ? (
+              <DatabaseManagement
                 user={
                   user
                     ? {
@@ -690,6 +698,23 @@ function App() {
         }
       });
     }
+  }, []);
+
+  // Suppress Stripe cookie warnings (these are normal browser security features)
+  useEffect(() => {
+    const originalWarn = console.warn;
+    console.warn = (...args) => {
+      const message = args[0];
+      if (typeof message === 'string' && message.includes('Cookie') && message.includes('SameSite')) {
+        // Suppress Stripe cookie warnings
+        return;
+      }
+      originalWarn.apply(console, args);
+    };
+
+    return () => {
+      console.warn = originalWarn;
+    };
   }, []);
 
   const appId =

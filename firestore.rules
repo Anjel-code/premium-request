@@ -47,8 +47,7 @@ service cloud.firestore {
         allow read: if true; // Anyone can read stock (public info)
         allow create: if request.auth != null && 
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['admin']); // Only admins can create new product stock entries
-        allow update: if request.auth != null && 
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['admin']); // Only admins can update stock
+        allow update: if request.auth != null; // Allow authenticated users to update stock (for reservations/purchases)
         allow delete: if false; // Stock should probably not be deleted by anyone
       }
 

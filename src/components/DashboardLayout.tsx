@@ -16,6 +16,7 @@ import {
   Users,
   BarChart3,
   Activity,
+  Database,
 } from "lucide-react";
 import { getUnreadNotificationCount } from "../lib/notificationUtils";
 
@@ -41,6 +42,7 @@ const adminMenuItems = [
 
 const analyticsMenuItem = { title: "Analytics", url: "/analytics", icon: BarChart3 };
 const liveViewMenuItem = { title: "Live View", url: "/live-view", icon: Activity };
+const databaseManagementMenuItem = { title: "Database", url: "/database-management", icon: Database };
 
 export function DashboardLayout({
   children,
@@ -157,6 +159,22 @@ export function DashboardLayout({
             >
               <liveViewMenuItem.icon className="h-5 w-5 flex-shrink-0" />
               {sidebarOpen && <span className="ml-3">{liveViewMenuItem.title}</span>}
+            </Link>
+          )}
+
+          {/* Database Management menu item for admins only */}
+          {isAdmin && (
+            <Link
+              key={databaseManagementMenuItem.title}
+              to={databaseManagementMenuItem.url}
+              className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                isActive(databaseManagementMenuItem.url)
+                  ? "bg-accent text-accent-foreground"
+                  : "hover:bg-accent/20"
+              }`}
+            >
+              <databaseManagementMenuItem.icon className="h-5 w-5 flex-shrink-0" />
+              {sidebarOpen && <span className="ml-3">{databaseManagementMenuItem.title}</span>}
             </Link>
           )}
 
