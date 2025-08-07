@@ -55,6 +55,7 @@ import DashboardStoreOrders from "./pages/DashboardStoreOrders"; // Import Dashb
 import StoreOrderDetail from "./pages/StoreOrderDetail"; // Import StoreOrderDetail
 import AdminStoreOrders from "./pages/AdminStoreOrders"; // Import AdminStoreOrders
 import CheckoutPage from "./pages/CheckoutPage"; // Import CheckoutPage
+import Analytics from "./pages/Analytics"; // Import Analytics
 
 import { CartProvider } from "@/contexts/CartContext";
 import CartPanel from "@/components/CartPanel";
@@ -491,6 +492,31 @@ const AppContent: React.FC<AppContentProps> = ({
         />
         {/* Checkout Route */}
         <Route path="/checkout" element={<CheckoutPage />} />
+
+        {/* Analytics Route - Protected for Admin Only */}
+        <Route
+          path="/analytics"
+          element={
+            isAdmin ? (
+              <Analytics
+                user={
+                  user
+                    ? {
+                        uid: user.uid,
+                        email: user.email ?? "",
+                        displayName: user.displayName ?? user.email ?? "",
+                        roles: userRoles,
+                        photoURL: user.photoURL ?? undefined,
+                      }
+                    : null
+                }
+                appId={appId}
+              />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
 
         {/* New Success Route */}
         <Route path="/success" element={<SuccessPage />} />

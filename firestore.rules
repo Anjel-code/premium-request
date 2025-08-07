@@ -31,7 +31,11 @@ service cloud.firestore {
           // Ensure only 'paymentStatus' and 'updatedAt' fields are being modified by the customer
           request.resource.data.keys().hasOnly(['paymentStatus', 'updatedAt'])
         );
-        allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+        // Allow delete for order owner OR admin users
+        allow delete: if request.auth != null && (
+          resource.data.userId == request.auth.uid ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['admin'])
+        );
       }
 
       // --- Store Orders Collection ---
@@ -39,7 +43,11 @@ service cloud.firestore {
         allow read: if request.auth != null;
         allow create: if request.auth != null;
         allow update: if request.auth != null;
-        allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+        // Allow delete for order owner OR admin users
+        allow delete: if request.auth != null && (
+          resource.data.userId == request.auth.uid ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['admin'])
+        );
       }
 
       // --- Product Stock Collection ---

@@ -14,6 +14,7 @@ import {
   Shield,
   MessageSquare,
   Users,
+  BarChart3, // <-- Add BarChart3 icon
 } from "lucide-react";
 import { getUnreadNotificationCount } from "../lib/notificationUtils";
 
@@ -36,6 +37,8 @@ const adminMenuItems = [
   { title: "Admin Panel", url: "/admin", icon: Shield },
   { title: "Team Portal", url: "/team", icon: Users },
 ];
+
+const analyticsMenuItem = { title: "Analytics", url: "/analytics", icon: BarChart3 };
 
 export function DashboardLayout({
   children,
@@ -71,6 +74,9 @@ export function DashboardLayout({
     return () => clearInterval(interval);
   }, [user, appId]);
 
+  // Determine admin status robustly
+  const isAdmin = userRole === "admin" || (user?.roles && user.roles.includes("admin"));
+
   return (
     <div className="min-h-screen flex w-full bg-background">
       {/* Sidebar */}
@@ -105,22 +111,38 @@ export function DashboardLayout({
                   : "hover:bg-accent/20"
               }`}
             >
-                             <div className="relative overflow-visible">
-                 <item.icon className="h-5 w-5 flex-shrink-0" />
-                                   {item.title === "Notifications" && notificationCount > 0 && (
-                    <Badge 
-                      variant="destructive" 
-                      className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs min-w-[20px] bg-primary text-primary-foreground"
-                    >
-                      {notificationCount > 99 ? "99+" : notificationCount}
-                    </Badge>
-                  )}
-               </div>
+              <div className="relative overflow-visible">
+                <item.icon className="h-5 w-5 flex-shrink-0" />
+                {item.title === "Notifications" && notificationCount > 0 && (
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs min-w-[20px] bg-primary text-primary-foreground"
+                  >
+                    {notificationCount > 99 ? "99+" : notificationCount}
+                  </Badge>
+                )}
+              </div>
               {sidebarOpen && <span className="ml-3">{item.title}</span>}
             </Link>
           ))}
 
-          {userRole === "admin" && (
+          {/* Analytics menu item for admins only */}
+          {isAdmin && (
+            <Link
+              key={analyticsMenuItem.title}
+              to={analyticsMenuItem.url}
+              className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                isActive(analyticsMenuItem.url)
+                  ? "bg-accent text-accent-foreground"
+                  : "hover:bg-accent/20"
+              }`}
+            >
+              <analyticsMenuItem.icon className="h-5 w-5 flex-shrink-0" />
+              {sidebarOpen && <span className="ml-3">{analyticsMenuItem.title}</span>}
+            </Link>
+          )}
+
+          {isAdmin && (
             <>
               <div className="border-t pt-4 mt-4">
                 {adminMenuItems.map((item) => (
@@ -152,7 +174,7 @@ export function DashboardLayout({
             <Button variant="ghost" size="icon" asChild className="relative overflow-visible">
               <Link to="/dashboard/notifications">
                 <Bell className="h-5 w-5" />
-                                                 {notificationCount > 0 && (
+                {notificationCount > 0 && (
                   <Badge 
                     variant="destructive" 
                     className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs min-w-[20px] bg-primary text-primary-foreground"
