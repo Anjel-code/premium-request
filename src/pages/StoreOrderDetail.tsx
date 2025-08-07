@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,6 +53,24 @@ const StoreOrderDetail: React.FC<StoreOrderDetailProps> = ({ user, appId }) => {
   const [isTrackingExpanded, setIsTrackingExpanded] = useState(
     searchParams.get("expand") === "tracking"
   );
+  const [isExpandedByButton, setIsExpandedByButton] = useState(false);
+  const [isTrackingLoading, setIsTrackingLoading] = useState(false);
+  const trackingTimelineRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to tracking timeline when expand=tracking is in URL
+  useEffect(() => {
+    if (searchParams.get("expand") === "tracking" && trackingTimelineRef.current) {
+      // Small delay to ensure the component is rendered
+      setTimeout(() => {
+        trackingTimelineRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 500);
+      // Reset button expansion state since this is from URL
+      setIsExpandedByButton(false);
+    }
+  }, [searchParams, isTrackingExpanded]);
 
   const handleSaveTrackingHistory = async (events: TrackingEvent[]) => {
     if (!order || !user) return;
@@ -210,17 +228,17 @@ const StoreOrderDetail: React.FC<StoreOrderDetailProps> = ({ user, appId }) => {
   const getStatusColor = (status: StoreOrder["status"]) => {
     switch (status) {
       case "pending":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+        return "bg-secondary/10 text-secondary border-secondary/20";
       case "paid":
-        return "bg-blue-100 text-blue-800 border-blue-200";
+        return "bg-accent/10 text-accent border-accent/20";
       case "shipped":
-        return "bg-purple-100 text-purple-800 border-purple-200";
+        return "bg-primary/10 text-primary border-primary/20";
       case "delivered":
-        return "bg-green-100 text-green-800 border-green-200";
+        return "bg-secondary/10 text-secondary border-secondary/20";
       case "cancelled":
-        return "bg-red-100 text-red-800 border-red-200";
+        return "bg-muted text-muted-foreground border-muted";
       default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
+        return "bg-muted text-muted-foreground border-muted";
     }
   };
 
@@ -244,15 +262,15 @@ const StoreOrderDetail: React.FC<StoreOrderDetailProps> = ({ user, appId }) => {
   const getTrackingStatusColor = (status: TrackingInfo["status"]) => {
     switch (status) {
       case "pending":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-secondary/10 text-secondary";
       case "in_transit":
-        return "bg-blue-100 text-blue-800";
+        return "bg-accent/10 text-accent";
       case "out_for_delivery":
-        return "bg-purple-100 text-purple-800";
+        return "bg-primary/10 text-primary";
       case "delivered":
-        return "bg-green-100 text-green-800";
+        return "bg-secondary/10 text-secondary";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-muted text-muted-foreground";
     }
   };
 
@@ -351,8 +369,12 @@ const StoreOrderDetail: React.FC<StoreOrderDetailProps> = ({ user, appId }) => {
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="text-center">
-                  <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                    <ShoppingBag className="h-6 w-6 text-yellow-600" />
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 ${
+                    order.status !== "cancelled" 
+                      ? "bg-primary/10 text-primary" 
+                      : "bg-muted text-muted-foreground"
+                  }`}>
+                    <ShoppingBag className="h-6 w-6" />
                   </div>
                   <p className="text-sm font-medium">Order Placed</p>
                   <p className="text-xs text-muted-foreground">
@@ -360,8 +382,12 @@ const StoreOrderDetail: React.FC<StoreOrderDetailProps> = ({ user, appId }) => {
                   </p>
                 </div>
                 <div className="text-center">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                    <CreditCard className="h-6 w-6 text-blue-600" />
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 ${
+                    order.paymentStatus === "completed" 
+                      ? "bg-secondary/10 text-secondary" 
+                      : "bg-muted text-muted-foreground"
+                  }`}>
+                    <CreditCard className="h-6 w-6" />
                   </div>
                   <p className="text-sm font-medium">Payment</p>
                   <p className="text-xs text-muted-foreground">
@@ -371,8 +397,12 @@ const StoreOrderDetail: React.FC<StoreOrderDetailProps> = ({ user, appId }) => {
                   </p>
                 </div>
                 <div className="text-center">
-                  <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                    <Truck className="h-6 w-6 text-purple-600" />
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 ${
+                    order.status === "shipped" || order.status === "delivered"
+                      ? "bg-accent/10 text-accent" 
+                      : "bg-muted text-muted-foreground"
+                  }`}>
+                    <Truck className="h-6 w-6" />
                   </div>
                   <p className="text-sm font-medium">Shipped</p>
                   <p className="text-xs text-muted-foreground">
@@ -382,8 +412,12 @@ const StoreOrderDetail: React.FC<StoreOrderDetailProps> = ({ user, appId }) => {
                   </p>
                 </div>
                 <div className="text-center">
-                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                    <Package className="h-6 w-6 text-green-600" />
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 ${
+                    order.status === "delivered" 
+                      ? "bg-primary/10 text-primary" 
+                      : "bg-muted text-muted-foreground"
+                  }`}>
+                    <Package className="h-6 w-6" />
                   </div>
                   <p className="text-sm font-medium">Delivered</p>
                   <p className="text-xs text-muted-foreground">
@@ -555,7 +589,31 @@ const StoreOrderDetail: React.FC<StoreOrderDetailProps> = ({ user, appId }) => {
                     <Button
                       className="w-full"
                       variant="outline"
-                      onClick={() => setIsTrackingExpanded(!isTrackingExpanded)}
+                      onClick={() => {
+                        if (!isTrackingExpanded) {
+                          // Set loading state and expand tracking
+                          setIsTrackingLoading(true);
+                          setIsTrackingExpanded(true);
+                          setIsExpandedByButton(true);
+                          
+                          // Scroll immediately when button is clicked
+                          setTimeout(() => {
+                            trackingTimelineRef.current?.scrollIntoView({
+                              behavior: "smooth",
+                              block: "center",
+                            });
+                          }, 100);
+                          
+                          // Simulate loading time for tracking data
+                          setTimeout(() => {
+                            setIsTrackingLoading(false);
+                          }, 1500); // 1.5 second loading time
+                        } else {
+                          // Just collapse without scrolling
+                          setIsTrackingExpanded(false);
+                          setIsExpandedByButton(false);
+                        }
+                      }}
                     >
                       <Truck className="mr-2 h-4 w-4" />
                       {isTrackingExpanded ? "Hide Tracking" : "Track Package"}
@@ -577,17 +635,20 @@ const StoreOrderDetail: React.FC<StoreOrderDetailProps> = ({ user, appId }) => {
 
         {/* Tracking Timeline */}
         {trackingInfo && isTrackingExpanded && (
-          <TrackingTimeline
-            trackingHistory={trackingInfo.trackingHistory || []}
-            currentStatus={trackingInfo.status}
-            isAdmin={
-              user?.roles?.includes("admin") ||
-              user?.roles?.includes("team_member")
-            }
-            isExpanded={isTrackingExpanded}
-            onToggleExpand={() => setIsTrackingExpanded(!isTrackingExpanded)}
-            onSaveTrackingHistory={handleSaveTrackingHistory}
-          />
+          <div ref={trackingTimelineRef}>
+            <TrackingTimeline
+              trackingHistory={trackingInfo.trackingHistory || []}
+              currentStatus={trackingInfo.status}
+              isAdmin={
+                user?.roles?.includes("admin") ||
+                user?.roles?.includes("team_member")
+              }
+              isExpanded={isTrackingExpanded}
+              onToggleExpand={() => setIsTrackingExpanded(!isTrackingExpanded)}
+              onSaveTrackingHistory={handleSaveTrackingHistory}
+              isLoading={isTrackingLoading}
+            />
+          </div>
         )}
 
         {/* Action Buttons */}

@@ -278,22 +278,7 @@ const AppContent: React.FC<AppContentProps> = ({
         />
         <Route
           path="/dashboard/store-orders"
-          element={
-            <DashboardStoreOrders
-              user={
-                user
-                  ? {
-                      uid: user.uid,
-                      email: user.email ?? "",
-                      displayName: user.displayName ?? user.email ?? "",
-                      roles: userRoles,
-                      photoURL: user.photoURL ?? undefined,
-                    }
-                  : null
-              }
-              appId={appId}
-            />
-          }
+          element={<Navigate to="/dashboard/orders" replace />}
         />
         <Route
           path="/dashboard/store-orders/:orderId"

@@ -480,23 +480,18 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
         {/* Note: These tabs are visually present but their content is simple placeholders.
             The actual "All Orders" view is handled by DashboardOrders.tsx via the link. */}
         <Tabs defaultValue="orders" className="w-full">
-          <TabsList className={`grid w-full bg-muted/50 rounded-lg p-1 mb-4 ${
-            hasAdminOrTeamRole 
-              ? 'grid-cols-2 lg:grid-cols-4' 
-              : 'grid-cols-3'
-          }`}>
+                     <TabsList className={`grid w-full bg-muted/50 rounded-lg p-1 mb-4 ${
+             hasAdminOrTeamRole 
+               ? 'grid-cols-3' 
+               : 'grid-cols-2'
+           }`}>
             <TabsTrigger
               value="orders"
               className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-md transition-all duration-200"
             >
               <ShoppingCart className="mr-2 h-4 w-4" /> Orders
             </TabsTrigger>
-            <TabsTrigger
-              value="store-orders"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-md transition-all duration-200"
-            >
-              <Package className="mr-2 h-4 w-4" /> Store Orders
-            </TabsTrigger>
+
             <TabsTrigger
               value="notifications"
               className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-md transition-all duration-200"
@@ -525,7 +520,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
             <Card className="border-0 shadow-premium rounded-xl">
               <CardHeader className="border-b border-border p-6">
                 <CardTitle className="text-2xl font-semibold text-primary">
-                  Your Recent Store Orders
+                  Your Recent Orders & Tickets
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
@@ -595,9 +590,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
                     {orders.length > 3 && (
                       <div className="text-center mt-6">
                         <Button asChild variant="outline">
-                          <Link to="/dashboard/store-orders">
-                            View All Orders
-                          </Link>
+                                                <Link to="/dashboard/orders">
+                        View All Orders
+                      </Link>
                         </Button>
                       </div>
                     )}
@@ -607,42 +602,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="store-orders" className="mt-6">
-            <Card className="border-0 shadow-premium rounded-xl">
-              <CardHeader className="border-b border-border p-6">
-                <CardTitle className="text-2xl font-semibold text-primary">
-                  Store Orders
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="text-center py-8">
-                  <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-muted-foreground mb-2">
-                    Product Purchases
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Track your product purchases and delivery status.
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                    <Button asChild variant="outline">
-                      <Link to="/dashboard/store-orders">
-                        View Store Orders
-                      </Link>
-                    </Button>
-                    <Button
-                      asChild
-                      className="bg-accent hover:bg-accent/90 text-accent-foreground"
-                    >
-                      <Link to="/store">
-                        <ShoppingCart className="mr-2 h-4 w-4" />
-                        Shop Now
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+
 
           <TabsContent value="notifications" className="mt-6">
             <Card className="border-0 shadow-premium rounded-xl">

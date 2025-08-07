@@ -124,6 +124,7 @@ const AdminTrackingManager: React.FC<AdminTrackingManagerProps> = ({
   const [eventStatus, setEventStatus] = useState("");
   const [eventDescription, setEventDescription] = useState("");
   const [eventTimestamp, setEventTimestamp] = useState("");
+  const [usePurpleColor, setUsePurpleColor] = useState(false);
 
   const handleAddEvent = () => {
     const newEvent: TrackingEvent = {
@@ -132,6 +133,7 @@ const AdminTrackingManager: React.FC<AdminTrackingManagerProps> = ({
       location: "New Location",
       status: "In Transit",
       description: "Package status update",
+      usePurpleColor: false,
     };
     setEditingEvent(newEvent);
     setEventLocation(newEvent.location);
@@ -139,6 +141,8 @@ const AdminTrackingManager: React.FC<AdminTrackingManagerProps> = ({
     setEventStatus(newEvent.status);
     setEventDescription(newEvent.description);
     setEventTimestamp(newEvent.timestamp.toISOString().slice(0, 16));
+    // Set purple color for Quibble by default
+    setUsePurpleColor(false);
     setIsEditDialogOpen(true);
   };
 
@@ -149,6 +153,11 @@ const AdminTrackingManager: React.FC<AdminTrackingManagerProps> = ({
     setEventStatus(event.status);
     setEventDescription(event.description);
     setEventTimestamp(event.timestamp.toISOString().slice(0, 16));
+    // Set purple color based on existing setting or auto-rules
+    const shouldUsePurple = event.usePurpleColor || 
+                           event.location === "Quibble" || 
+                           (event.location === "Customer" && event.status === "Delivered");
+    setUsePurpleColor(shouldUsePurple);
     setIsEditDialogOpen(true);
   };
 
@@ -166,9 +175,13 @@ const AdminTrackingManager: React.FC<AdminTrackingManagerProps> = ({
       status: eventStatus,
       description: eventDescription,
       timestamp: new Date(eventTimestamp || Date.now()),
+      usePurpleColor,
     };
 
-    if (editingEvent.id.startsWith("event_")) {
+    // Check if this event already exists in the events array
+    const existingEventIndex = events.findIndex(event => event.id === editingEvent.id);
+    
+    if (existingEventIndex === -1) {
       // New event - add to events and sort
       const newEvents = [...events, updatedEvent];
       const sortedEvents = newEvents.sort((a, b) => {
@@ -189,12 +202,10 @@ const AdminTrackingManager: React.FC<AdminTrackingManagerProps> = ({
       });
       setEvents(sortedEvents);
     } else {
-      // Existing event
-      setEvents(
-        events.map((event) =>
-          event.id === editingEvent.id ? updatedEvent : event
-        )
-      );
+      // Existing event - update it
+      const newEvents = [...events];
+      newEvents[existingEventIndex] = updatedEvent;
+      setEvents(newEvents);
     }
 
     setIsEditDialogOpen(false);
@@ -371,19 +382,28 @@ const AdminTrackingManager: React.FC<AdminTrackingManagerProps> = ({
             <div className="space-y-4">
               <div>
                 <Label htmlFor="location">Location</Label>
-                <Select value={eventLocation} onValueChange={setEventLocation}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Quibble">Quibble</SelectItem>
-                    <SelectItem value="Distribution Center">
-                      Distribution Center
-                    </SelectItem>
-                    <SelectItem value="Customer">Customer</SelectItem>
-                    <SelectItem value="Custom">Custom Location</SelectItem>
-                  </SelectContent>
-                </Select>
+                                 <Select 
+                   value={eventLocation} 
+                   onValueChange={(value) => {
+                     setEventLocation(value);
+                     // Auto-set purple color for Quibble
+                     if (value === "Quibble") {
+                       setUsePurpleColor(true);
+                     }
+                   }}
+                 >
+                   <SelectTrigger>
+                     <SelectValue placeholder="Select location" />
+                   </SelectTrigger>
+                   <SelectContent>
+                     <SelectItem value="Quibble">Quibble</SelectItem>
+                     <SelectItem value="Distribution Center">
+                       Distribution Center
+                     </SelectItem>
+                     <SelectItem value="Customer">Customer</SelectItem>
+                     <SelectItem value="Custom">Custom Location</SelectItem>
+                   </SelectContent>
+                 </Select>
                 {eventLocation === "Custom" && (
                   <Input
                     id="customLocation"
@@ -396,28 +416,37 @@ const AdminTrackingManager: React.FC<AdminTrackingManagerProps> = ({
               </div>
               <div>
                 <Label htmlFor="status">Status</Label>
-                <Select value={eventStatus} onValueChange={setEventStatus}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Order Processed">
-                      Order Processed
-                    </SelectItem>
-                    <SelectItem value="Package Picked Up">
-                      Package Picked Up
-                    </SelectItem>
-                    <SelectItem value="In Transit">In Transit</SelectItem>
-                    <SelectItem value="Out for Delivery">
-                      Out for Delivery
-                    </SelectItem>
-                    <SelectItem value="To Be Delivered">
-                      To Be Delivered
-                    </SelectItem>
-                    <SelectItem value="Delivered">Delivered</SelectItem>
-                    <SelectItem value="Custom">Custom</SelectItem>
-                  </SelectContent>
-                </Select>
+                                 <Select 
+                   value={eventStatus} 
+                   onValueChange={(value) => {
+                     setEventStatus(value);
+                     // Auto-set purple color for Customer when status is Delivered
+                     if (value === "Delivered" && eventLocation === "Customer") {
+                       setUsePurpleColor(true);
+                     }
+                   }}
+                 >
+                   <SelectTrigger>
+                     <SelectValue placeholder="Select status" />
+                   </SelectTrigger>
+                   <SelectContent>
+                     <SelectItem value="Order Processed">
+                       Order Processed
+                     </SelectItem>
+                     <SelectItem value="Package Picked Up">
+                       Package Picked Up
+                     </SelectItem>
+                     <SelectItem value="In Transit">In Transit</SelectItem>
+                     <SelectItem value="Out for Delivery">
+                       Out for Delivery
+                     </SelectItem>
+                     <SelectItem value="To Be Delivered">
+                       To Be Delivered
+                     </SelectItem>
+                     <SelectItem value="Delivered">Delivered</SelectItem>
+                     <SelectItem value="Custom">Custom</SelectItem>
+                   </SelectContent>
+                 </Select>
               </div>
               <div>
                 <Label htmlFor="description">Description</Label>
@@ -436,6 +465,18 @@ const AdminTrackingManager: React.FC<AdminTrackingManagerProps> = ({
                   value={eventTimestamp}
                   onChange={(e) => setEventTimestamp(e.target.value)}
                 />
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="usePurpleColor"
+                  checked={usePurpleColor}
+                  onChange={(e) => setUsePurpleColor(e.target.checked)}
+                  className="rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <Label htmlFor="usePurpleColor" className="text-sm">
+                  Use purple color for this timeline point
+                </Label>
               </div>
             </div>
             <DialogFooter>

@@ -8,6 +8,7 @@ export interface TrackingEvent {
   location: string;
   status: string;
   description: string;
+  usePurpleColor?: boolean; // Optional flag to use purple color for this timeline point
 }
 
 // Interface for tracking information

@@ -23,6 +23,7 @@ interface TrackingEvent {
   location: string;
   status: string;
   description: string;
+  usePurpleColor?: boolean;
 }
 
 interface TrackingTimelineProps {
@@ -34,6 +35,7 @@ interface TrackingTimelineProps {
   isAdmin?: boolean;
   isExpanded?: boolean;
   onToggleExpand?: () => void;
+  isLoading?: boolean;
 }
 
 const TrackingTimeline: React.FC<TrackingTimelineProps> = ({
@@ -45,6 +47,7 @@ const TrackingTimeline: React.FC<TrackingTimelineProps> = ({
   isAdmin = false,
   isExpanded = false,
   onToggleExpand,
+  isLoading = false,
 }) => {
   const [animationProgress, setAnimationProgress] = useState(0);
   const [isAdminManagerOpen, setIsAdminManagerOpen] = useState(false);
@@ -75,9 +78,9 @@ const TrackingTimeline: React.FC<TrackingTimelineProps> = ({
     };
   }, []);
 
-  // Animation effect - only trigger when expanded AND in viewport AND hasn't animated yet
+  // Animation effect - trigger when expanded AND in viewport AND hasn't animated yet AND not loading
   useEffect(() => {
-    if (isExpanded && isInViewport && !hasAnimated) {
+    if (isExpanded && isInViewport && !hasAnimated && !isLoading) {
       // Reset animation to 0 first
       setAnimationProgress(0);
 
@@ -91,34 +94,38 @@ const TrackingTimeline: React.FC<TrackingTimelineProps> = ({
       setAnimationProgress(0);
       setHasAnimated(false);
     }
-  }, [isExpanded, isInViewport, hasAnimated]);
-  const getStatusIcon = (status: string) => {
+  }, [isExpanded, isInViewport, hasAnimated, isLoading]);
+  const getStatusIcon = (status: string, usePurpleColor?: boolean) => {
+    if (usePurpleColor) {
+      return <Package className="h-5 w-5 text-purple-600" />;
+    }
+    
     switch (status.toLowerCase()) {
       case "delivered":
-        return <CheckCircle className="h-5 w-5 text-green-600" />;
+        return <CheckCircle className="h-5 w-5 text-secondary" />;
       case "out for delivery":
-        return <Truck className="h-5 w-5 text-blue-600" />;
+        return <Truck className="h-5 w-5 text-accent" />;
       case "in transit":
-        return <Truck className="h-5 w-5 text-purple-600" />;
+        return <Truck className="h-5 w-5 text-primary" />;
       case "pending":
-        return <Clock className="h-5 w-5 text-yellow-600" />;
+        return <Clock className="h-5 w-5 text-secondary" />;
       default:
-        return <Package className="h-5 w-5 text-gray-600" />;
+        return <Package className="h-5 w-5 text-muted-foreground" />;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case "delivered":
-        return "bg-green-100 text-green-800 border-green-200";
+        return "bg-secondary/10 text-secondary border-secondary/20";
       case "out for delivery":
-        return "bg-blue-100 text-blue-800 border-blue-200";
+        return "bg-accent/10 text-accent border-accent/20";
       case "in transit":
-        return "bg-purple-100 text-purple-800 border-purple-200";
+        return "bg-primary/10 text-primary border-primary/20";
       case "pending":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+        return "bg-secondary/10 text-secondary border-secondary/20";
       default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
+        return "bg-muted text-muted-foreground border-muted";
     }
   };
 
@@ -178,7 +185,20 @@ const TrackingTimeline: React.FC<TrackingTimelineProps> = ({
     if (!a.timestamp && b.timestamp) return 1;
 
     return 0;
-  });
+  }).map((event) => ({
+    ...event,
+    usePurpleColor: event.usePurpleColor !== undefined ? event.usePurpleColor : (event.location === "Quibble" || (event.location === "Customer" && event.status === "Delivered")),
+  }));
+
+  // Show skeleton content when loading, but keep the timeline structure
+  const showSkeleton = isLoading;
+
+  // Reset animation when loading finishes
+  useEffect(() => {
+    if (!isLoading && isExpanded && isInViewport) {
+      setHasAnimated(false);
+    }
+  }, [isLoading, isExpanded, isInViewport]);
 
   return (
     <Card className="border-0 shadow-premium rounded-xl">
@@ -240,105 +260,170 @@ const TrackingTimeline: React.FC<TrackingTimelineProps> = ({
           </div>
         ) : (
           <div className="relative" ref={timelineRef}>
-            {/* Animated Timeline line */}
-            <div
-              className="absolute left-6 top-0 w-0.5 transition-all duration-1000 ease-out"
-              style={{
-                height: `${animationProgress}%`,
-                background: `linear-gradient(to bottom, hsl(var(--primary)) 0%, hsl(var(--primary)) ${animationProgress}%, hsl(var(--muted-foreground) / 0.2) ${animationProgress}%, hsl(var(--muted-foreground) / 0.2) 100%)`,
-              }}
-            ></div>
+            {/* Individual line segments between dots */}
+            {!showSkeleton && sortedEvents.slice(0, -1).map((event, index) => {
+              const nextEvent = sortedEvents[index + 1];
+              const segmentHeight = 100 / (sortedEvents.length - 1);
+              const segmentTop = (index * 100) / (sortedEvents.length - 1);
+              
+              // Calculate if this segment should be visible based on animation progress
+              const segmentProgress = (index + 1) * segmentHeight;
+              const isSegmentVisible = animationProgress >= segmentProgress;
+              
+              // Determine line color based on the next dot (the one we're connecting to)
+              const isNextDotPurple = nextEvent && nextEvent.usePurpleColor;
+              const isNextDotGray = nextEvent && !nextEvent.usePurpleColor && 
+                nextEvent.status !== "Delivered" && nextEvent.status !== "delivered";
+              
+              let lineColor = "hsl(var(--primary))"; // Default primary color
+              if (isNextDotPurple) {
+                lineColor = "hsl(var(--primary))"; // Purple for purple dots
+              } else if (isNextDotGray) {
+                lineColor = "#6b7280"; // Gray for gray dots
+              }
+              
+              return (
+                <div
+                  key={`segment-${index}`}
+                  className="absolute left-14 w-0.5 transition-all duration-1000 ease-out"
+                  style={{
+                    top: `${segmentTop}%`,
+                    height: `${segmentHeight}%`,
+                    backgroundColor: isSegmentVisible ? lineColor : "transparent",
+                  }}
+                />
+              );
+            })}
 
             <div
               className="space-y-8"
               key={`timeline-${isExpanded}-${animationProgress}`}
             >
-              {sortedEvents.map((event, index) => (
-                <div key={event.id} className="relative flex items-start gap-6">
-                  {/* Timeline dot with animation */}
-                  <div className="relative z-10 flex-shrink-0">
+              {showSkeleton ? (
+                // Show skeleton timeline items
+                Array.from({ length: 3 }).map((_, index) => (
+                  <div key={index} className="relative flex items-start gap-8">
+                    {/* Timeline dot skeleton */}
+                    <div className="relative z-10 flex-shrink-0 ml-8">
+                      <div className="w-12 h-12 rounded-full bg-muted animate-pulse" />
+                      
+                      {/* Location name under dot skeleton */}
+                      <div className="absolute top-16 left-1/2 transform -translate-x-1/2">
+                        <div className="w-20 h-6 rounded-md bg-muted animate-pulse" />
+                      </div>
+                    </div>
+
+                    {/* Event content skeleton */}
+                    <div className="flex-grow bg-muted/30 rounded-lg p-4 border border-border/50">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="h-6 w-24 rounded-full bg-muted animate-pulse" />
+                          <div className="h-6 w-6 rounded bg-muted animate-pulse" />
+                        </div>
+                        <div className="h-4 w-32 bg-muted animate-pulse" />
+                      </div>
+
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="h-4 w-4 bg-muted animate-pulse" />
+                        <div className="h-4 w-32 bg-muted animate-pulse" />
+                      </div>
+
+                      <div className="h-4 w-full bg-muted animate-pulse" />
+                      <div className="h-4 w-3/4 mt-2 bg-muted animate-pulse" />
+                    </div>
+                  </div>
+                ))
+              ) : (
+                // Show actual timeline items
+                sortedEvents.map((event, index) => (
+                  <div key={event.id} className="relative flex items-start gap-8">
+                    {/* Timeline dot with animation */}
+                    <div className="relative z-10 flex-shrink-0 ml-8">
+                                             <div
+                         className={`w-12 h-12 rounded-full bg-white border-4 flex items-center justify-center shadow-lg ${
+                           event.usePurpleColor
+                             ? "border-purple-500"
+                             : event.status === "Delivered" || event.status === "delivered"
+                             ? "border-secondary"
+                             : "border-muted-foreground/20"
+                         }`}
+                       >
+                        {getStatusIcon(event.status, event.usePurpleColor)}
+                      </div>
+
+                      {/* Location name under dot */}
+                      <div className="absolute top-16 left-1/2 transform -translate-x-1/2 whitespace-nowrap z-20">
+                        <div className="bg-white px-2 py-1 rounded-md shadow-sm border text-xs font-medium text-primary">
+                          {event.location}
+                        </div>
+                      </div>
+
+                      {/* Individual connector lines removed - main animated line handles connections */}
+                    </div>
+
+                    {/* Event content with animation */}
                     <div
-                      className={`w-12 h-12 rounded-full bg-white border-4 flex items-center justify-center shadow-lg transition-all duration-500 ${
+                      className={`flex-grow bg-muted/30 rounded-lg p-4 border border-border/50 transition-all duration-500 ${
                         (index * 100) / (events.length - 1) <= animationProgress
-                          ? "border-primary scale-110"
-                          : "border-muted-foreground/20 scale-100"
+                          ? "opacity-100 translate-x-0"
+                          : "opacity-50 translate-x-4"
                       }`}
                     >
-                      {getStatusIcon(event.status)}
-                    </div>
-
-                    {/* Location name under dot */}
-                    <div className="absolute top-16 left-1/2 transform -translate-x-1/2 whitespace-nowrap z-20">
-                      <div className="bg-white px-2 py-1 rounded-md shadow-sm border text-xs font-medium text-primary">
-                        {event.location}
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center gap-2">
+                          <Badge className={getStatusColor(event.status)}>
+                            {event.status}
+                          </Badge>
+                          {isAdmin && onEditEvent && (
+                            <Button
+                              onClick={() => onEditEvent(event.id)}
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0 hover:bg-primary/10"
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                        <span className="text-sm text-muted-foreground">
+                          {event.location === "Customer" &&
+                          event.status !== "Delivered" ? (
+                            "Pending"
+                          ) : event.timestamp ? (
+                            <>
+                              {(event.timestamp instanceof Date
+                                ? event.timestamp
+                                : new Date(event.timestamp)
+                              ).toLocaleDateString()}{" "}
+                              {(event.timestamp instanceof Date
+                                ? event.timestamp
+                                : new Date(event.timestamp)
+                              ).toLocaleTimeString()}
+                            </>
+                          ) : (
+                            "Pending"
+                          )}
+                        </span>
                       </div>
-                    </div>
 
-                    {/* Individual connector lines removed - main animated line handles connections */}
-                  </div>
-
-                  {/* Event content with animation */}
-                  <div
-                    className={`flex-grow bg-muted/30 rounded-lg p-4 border border-border/50 transition-all duration-500 ${
-                      (index * 100) / (events.length - 1) <= animationProgress
-                        ? "opacity-100 translate-x-0"
-                        : "opacity-50 translate-x-4"
-                    }`}
-                  >
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="flex items-center gap-2">
-                        <Badge className={getStatusColor(event.status)}>
-                          {event.status}
-                        </Badge>
-                        {isAdmin && onEditEvent && (
-                          <Button
-                            onClick={() => onEditEvent(event.id)}
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 w-6 p-0 hover:bg-primary/10"
-                          >
-                            <Edit className="h-3 w-3" />
-                          </Button>
-                        )}
+                      <div className="flex items-center gap-2 mb-2">
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium text-primary">
+                          {event.location}
+                        </span>
                       </div>
-                      <span className="text-sm text-muted-foreground">
-                        {event.location === "Customer" &&
-                        event.status !== "Delivered" ? (
-                          "Pending"
-                        ) : event.timestamp ? (
-                          <>
-                            {(event.timestamp instanceof Date
-                              ? event.timestamp
-                              : new Date(event.timestamp)
-                            ).toLocaleDateString()}{" "}
-                            {(event.timestamp instanceof Date
-                              ? event.timestamp
-                              : new Date(event.timestamp)
-                            ).toLocaleTimeString()}
-                          </>
-                        ) : (
-                          "Pending"
-                        )}
-                      </span>
-                    </div>
 
-                    <div className="flex items-center gap-2 mb-2">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium text-primary">
-                        {event.location}
-                      </span>
+                      <p className="text-sm text-muted-foreground">
+                        {event.description}
+                      </p>
                     </div>
-
-                    <p className="text-sm text-muted-foreground">
-                      {event.description}
-                    </p>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
 
             {/* End cap - only show if there are more events after Customer */}
-            {events.length > 0 &&
+            {!showSkeleton && events.length > 0 &&
               events[events.length - 1].location !== "Customer" && (
                 <div className="relative flex items-center gap-4 mt-6">
                   <div className="w-12 h-12 rounded-full bg-muted border-4 border-muted-foreground/20 flex items-center justify-center">

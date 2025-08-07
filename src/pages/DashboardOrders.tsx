@@ -24,6 +24,9 @@ import {
   ArrowLeft, // Added for back button
   Trash2,
   Eye,
+  Package,
+  Truck,
+  ShoppingCart,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 
@@ -38,6 +41,7 @@ import {
   doc,
 } from "firebase/firestore";
 import { db } from "../firebase"; // Ensure this path is correct for your firebase.js
+import { StoreOrder } from "@/lib/storeUtils";
 
 // Define the Order interface
 interface Order {
@@ -62,6 +66,14 @@ interface Order {
   conversation?: Array<{ text: string; isBot: boolean; timestamp: string }>;
 }
 
+// Combined order type for display
+interface CombinedOrder {
+  id: string;
+  type: "ticket" | "store";
+  order: Order | StoreOrder;
+  createdAt: Date;
+}
+
 // Define the UserProfile interface
 interface UserProfile {
   uid: string;
@@ -81,6 +93,8 @@ interface OrdersPageProps {
 const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [storeOrders, setStoreOrders] = useState<StoreOrder[]>([]);
+  const [combinedOrders, setCombinedOrders] = useState<CombinedOrder[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -97,77 +111,87 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
       return;
     }
 
-    // Fetch store orders instead of regular orders
-    const storeOrdersCollectionRef = collection(
+    // Fetch both regular orders and store orders
+    const regularOrdersRef = collection(
+      db,
+      `artifacts/${appId}/public/data/orders`
+    );
+
+    const storeOrdersRef = collection(
       db,
       `artifacts/${appId}/public/data/store-orders`
     );
 
-    // All users can see their own store orders
-    const storeOrdersQuery = query(
-      storeOrdersCollectionRef,
+    const regularOrdersQuery = query(
+      regularOrdersRef,
       where("userId", "==", user.uid),
       orderBy("createdAt", "desc")
     );
 
-    const unsubscribe = onSnapshot(
-      storeOrdersQuery,
+    const storeOrdersQuery = query(
+      storeOrdersRef,
+      where("userId", "==", user.uid),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsubscribeRegular = onSnapshot(
+      regularOrdersQuery,
       (snapshot) => {
-        const fetchedOrders: Order[] = snapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            userId: data.userId,
-            userEmail: data.userEmail,
-            userName: data.userName,
-            title: data.productName, // Use productName as title
-            summary: `Quantity: ${data.quantity}`, // Use quantity as summary
-            status:
-              data.status === "paid"
-                ? "accepted"
-                : data.status === "shipped"
-                ? "completed"
-                : data.status === "delivered"
-                ? "completed"
-                : data.status === "cancelled"
-                ? "dismissed"
-                : "pending",
-            createdAt: data.createdAt?.toDate(),
-            updatedAt: data.updatedAt?.toDate(),
-            ticketNumber: doc.id.slice(-8).toUpperCase(), // Use order ID as ticket number
-            estimatedCompletion: null,
-            budget: `$${(data.totalAmount || data.totalPrice || 0).toFixed(2)}`,
-            progress:
-              data.status === "pending"
-                ? 25
-                : data.status === "paid"
-                ? 50
-                : data.status === "shipped"
-                ? 75
-                : data.status === "delivered"
-                ? 100
-                : 0,
-            lastUpdate: data.updatedAt?.toDate().toLocaleDateString() || "N/A",
-            assignedTo: null,
-            assignedDate: null,
-            dismissedBy: null,
-            dismissedDate: null,
-          };
-        }) as Order[];
+        const fetchedOrders: Order[] = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate(),
+          updatedAt: doc.data().updatedAt?.toDate(),
+        })) as Order[];
         setOrders(fetchedOrders);
-        setLoadingOrders(false);
       },
       (err) => {
-        console.error("Error fetching store orders:", err);
-        setError(
-          "Failed to load store orders. Please check your internet connection and Firebase rules."
-        );
-        setLoadingOrders(false);
+        console.error("Error fetching regular orders:", err);
       }
     );
 
-    return () => unsubscribe();
+    const unsubscribeStore = onSnapshot(
+      storeOrdersQuery,
+      (snapshot) => {
+        const fetchedStoreOrders: StoreOrder[] = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate(),
+          updatedAt: doc.data().updatedAt?.toDate(),
+        })) as StoreOrder[];
+        setStoreOrders(fetchedStoreOrders);
+      },
+      (err) => {
+        console.error("Error fetching store orders:", err);
+      }
+    );
+
+    return () => {
+      unsubscribeRegular();
+      unsubscribeStore();
+    };
   }, [db, user, appId, userRoles]);
+
+  // Combine and sort orders by creation date
+  useEffect(() => {
+    const combined = [
+      ...orders.map(order => ({
+        id: order.id,
+        type: "ticket" as const,
+        order,
+        createdAt: order.createdAt,
+      })),
+      ...storeOrders.map(order => ({
+        id: order.id,
+        type: "store" as const,
+        order,
+        createdAt: order.createdAt,
+      })),
+    ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+    setCombinedOrders(combined);
+    setLoadingOrders(false);
+  }, [orders, storeOrders]);
 
   // --- Helper Functions for UI ---
   const getStatusColor = (status: Order["status"]) => {
@@ -303,10 +327,10 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
               </Link>
             </Button>
             <h1 className="text-4xl font-bold text-primary mb-2">
-              All Store Orders
+              Orders & Tickets
             </h1>
             <p className="text-lg text-muted-foreground">
-              A comprehensive list of all your product purchases and orders.
+              View and manage your store orders and support tickets.
             </p>
           </div>
         </div>
@@ -314,13 +338,13 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
         <Card className="border-0 shadow-premium rounded-xl">
           <CardHeader className="border-b border-border p-6">
             <CardTitle className="text-2xl font-semibold text-primary">
-              Store Order List
+              Orders & Tickets
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
-            {orders.length === 0 ? (
+            {combinedOrders.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
-                No store orders found.
+                No orders or tickets found.
                 <Link
                   to="/store"
                   className="text-accent hover:underline ml-1 font-medium"
@@ -330,65 +354,144 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
               </p>
             ) : (
               <div className="space-y-4">
-                {orders.map((order) => (
-                  <Card
-                    key={order.id}
-                    className="border shadow-sm rounded-lg hover:shadow-md transition-shadow"
-                  >
-                    <CardContent className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                      <div className="flex-grow">
-                        <h3 className="font-semibold text-lg text-primary">
-                          {order.title || `Order ${order.ticketNumber}`}
-                        </h3>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1">
-                          <Clock className="h-3 w-3 inline-block" /> Created:{" "}
-                          {order.createdAt
-                            ? new Date(order.createdAt).toLocaleDateString()
-                            : "N/A"}
-                        </p>
-                        <div className="text-sm text-muted-foreground flex items-center gap-1">
-                          <AlertCircle className="h-3 w-3 inline-block" />{" "}
-                          Status:{" "}
-                          <Badge className={getStatusColor(order.status)}>
-                            <div className="flex items-center gap-1">
-                              {getStatusIcon(order.status)}
-                              {formatStatus(order.status)}
+                {combinedOrders.map((combinedOrder) => {
+                  if (combinedOrder.type === "ticket") {
+                    const order = combinedOrder.order as Order;
+                    return (
+                      <Card
+                        key={order.id}
+                        className="border shadow-sm rounded-lg hover:shadow-md transition-shadow"
+                      >
+                        <CardContent className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                          <div className="flex-grow">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                Ticket Request
+                              </Badge>
+                              <h3 className="font-semibold text-lg text-primary">
+                                {order.title || `Order ${order.ticketNumber}`}
+                              </h3>
                             </div>
-                          </Badge>
-                        </div>
-                        <div className="text-sm text-muted-foreground flex items-center gap-1">
-                          <Progress
-                            value={order.progress}
-                            className="h-2 w-24 inline-block mr-2"
-                          />{" "}
-                          Progress: {order.progress}%
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          asChild
-                          variant="outline"
-                          size="sm"
-                          className="border-primary text-primary hover:bg-primary/10 rounded-md"
-                        >
-                          <Link to={`/dashboard/store-orders/${order.id}`}>
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Details
-                          </Link>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-red-600 text-red-600 hover:bg-red-50 rounded-md"
-                          onClick={() => handleDeleteClick(order)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                            <p className="text-sm text-muted-foreground flex items-center gap-1">
+                              <Clock className="h-3 w-3 inline-block" /> Created:{" "}
+                              {order.createdAt
+                                ? new Date(order.createdAt).toLocaleDateString()
+                                : "N/A"}
+                            </p>
+                            <div className="text-sm text-muted-foreground flex items-center gap-1">
+                              <AlertCircle className="h-3 w-3 inline-block" />{" "}
+                              Status:{" "}
+                              <Badge className={getStatusColor(order.status)}>
+                                <div className="flex items-center gap-1">
+                                  {getStatusIcon(order.status)}
+                                  {formatStatus(order.status)}
+                                </div>
+                              </Badge>
+                            </div>
+                            <div className="text-sm text-muted-foreground flex items-center gap-1">
+                              <Progress
+                                value={order.progress}
+                                className="h-2 w-24 inline-block mr-2"
+                              />{" "}
+                              Progress: {order.progress}%
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              asChild
+                              variant="outline"
+                              size="sm"
+                              className="border-primary text-primary hover:bg-primary/10 rounded-md"
+                            >
+                              <Link to={`/order/${order.id}`}>
+                                <Eye className="h-4 w-4 mr-2" />
+                                View Details
+                              </Link>
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-red-600 text-red-600 hover:bg-red-50 rounded-md"
+                              onClick={() => handleDeleteClick(order)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  } else {
+                    const storeOrder = combinedOrder.order as StoreOrder;
+                    return (
+                      <Card
+                        key={storeOrder.id}
+                        className="border shadow-sm rounded-lg hover:shadow-md transition-shadow"
+                      >
+                        <CardContent className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                          <div className="flex-grow">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                <ShoppingCart className="h-3 w-3 mr-1" />
+                                Store Order
+                              </Badge>
+                              <h3 className="font-semibold text-lg text-primary">
+                                {storeOrder.productName}
+                              </h3>
+                            </div>
+                            <p className="text-sm text-muted-foreground flex items-center gap-1">
+                              <Clock className="h-3 w-3 inline-block" /> Created:{" "}
+                              {storeOrder.createdAt
+                                ? new Date(storeOrder.createdAt).toLocaleDateString()
+                                : "N/A"}
+                            </p>
+                            <div className="text-sm text-muted-foreground flex items-center gap-1">
+                              <Package className="h-3 w-3 inline-block" />{" "}
+                              Status:{" "}
+                              <Badge className={getStatusColor(storeOrder.status as any)}>
+                                <div className="flex items-center gap-1">
+                                  {getStatusIcon(storeOrder.status as any)}
+                                  {storeOrder.status.charAt(0).toUpperCase() + storeOrder.status.slice(1)}
+                                </div>
+                              </Badge>
+                            </div>
+                            <div className="text-sm text-muted-foreground flex items-center gap-1">
+                              <span>Quantity: {storeOrder.quantity}</span>
+                              <span>•</span>
+                              <span>Total: ${(storeOrder.totalAmount || storeOrder.totalPrice || 0).toFixed(2)}</span>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              asChild
+                              variant="outline"
+                              size="sm"
+                              className="border-primary text-primary hover:bg-primary/10 rounded-md"
+                            >
+                              <Link to={`/dashboard/store-orders/${storeOrder.id}`}>
+                                <Eye className="h-4 w-4 mr-2" />
+                                View Details
+                              </Link>
+                            </Button>
+                            {storeOrder.trackingInfo && (
+                              <Button
+                                asChild
+                                variant="outline"
+                                size="sm"
+                                className="border-purple-600 text-purple-600 hover:bg-purple-50"
+                              >
+                                <Link to={`/dashboard/store-orders/${storeOrder.id}?expand=tracking`}>
+                                  <Truck className="h-4 w-4 mr-2" />
+                                  Track Package
+                                </Link>
+                              </Button>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  }
+                })}
               </div>
             )}
           </CardContent>

@@ -511,6 +511,21 @@ const AdminStoreOrders: React.FC<AdminStoreOrdersProps> = ({ user, appId }) => {
                                 to={`/dashboard/store-orders/${order.id}?expand=tracking`}
                               >
                                 <MapPin className="h-4 w-4 mr-2" />
+                                Track Package
+                              </Link>
+                            </Button>
+                          )}
+                          {order.trackingInfo && (
+                            <Button
+                              asChild
+                              variant="outline"
+                              size="sm"
+                              className="border-purple-600 text-purple-600 hover:bg-purple-50"
+                            >
+                              <Link
+                                to={`/dashboard/store-orders/${order.id}?expand=tracking`}
+                              >
+                                <MapPin className="h-4 w-4 mr-2" />
                                 Manage Timeline
                               </Link>
                             </Button>
