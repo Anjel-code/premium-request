@@ -27,7 +27,7 @@ const Footer = () => {
               <li>
                 <Link
                   to="/store"
-                  className="hover:text-accent transition-colors"
+                  className="hover:text-white transition-colors"
                 >
                   Store
                 </Link>
@@ -35,7 +35,7 @@ const Footer = () => {
               <li>
                 <Link
                   to="/about"
-                  className="hover:text-accent transition-colors"
+                  className="hover:text-white transition-colors"
                 >
                   About Us
                 </Link>
@@ -43,7 +43,7 @@ const Footer = () => {
               <li>
                 <Link
                   to="/contact"
-                  className="hover:text-accent transition-colors"
+                  className="hover:text-white transition-colors"
                 >
                   Contact
                 </Link>
@@ -51,7 +51,7 @@ const Footer = () => {
               <li>
                 <Link
                   to="/dashboard"
-                  className="hover:text-accent transition-colors"
+                  className="hover:text-white transition-colors"
                 >
                   Dashboard
                 </Link>

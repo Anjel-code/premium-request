@@ -34,6 +34,10 @@ import { useNavigate, Link } from "react-router-dom";
 import {
   createStoreOrder,
   createStoreOrderNotification,
+  getProductStock,
+  updateProductStock,
+  reserveStock,
+  releaseReservedStock,
 } from "@/lib/storeUtils";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
@@ -43,6 +47,7 @@ import ReviewsEditor from "@/components/ReviewsEditor";
 import VideoEditor from "@/components/VideoEditor";
 import Footer from "@/components/Footer";
 import { isAdmin } from "@/lib/userUtils";
+import { checkStorageQuota, clearAllStorage } from "@/lib/storageUtils";
 
 // Product data interface - this will be easily configurable
 interface VideoReview {
@@ -283,8 +288,11 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [carouselRef, setCarouselRef] = useState<HTMLDivElement | null>(null);
   const [hoveredVideo, setHoveredVideo] = useState<string | null>(null);
+  const [storageWarning, setStorageWarning] = useState(false);
+  const [realTimeStock, setRealTimeStock] = useState<number | null>(null);
+  const [isLoadingStock, setIsLoadingStock] = useState(true);
   const navigate = useNavigate();
-  const { addToCart } = useCart();
+  const { addToCart, items } = useCart();
   const { toast } = useToast();
 
   // Check if user is admin by querying the database
@@ -314,6 +322,25 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
     checkAdminStatus();
   }, [user?.uid]);
 
+  // Check storage quota and show warning if needed
+  useEffect(() => {
+    const checkStorage = () => {
+      const quota = checkStorageQuota();
+      const localStorageMB = quota.localStorage / (1024 * 1024);
+      
+      // Show warning if localStorage is more than 4MB (approaching 5MB limit)
+      if (localStorageMB > 4) {
+        setStorageWarning(true);
+      }
+    };
+
+    checkStorage();
+  }, []);
+
+
+
+
+
   // Load product data - check for admin-saved data first, then fall back to mock data
   const loadProductData = (): ProductData => {
     const adminProduct = localStorage.getItem('adminStoreProduct');
@@ -333,6 +360,57 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   };
 
   const product = loadProductData();
+  
+  // Load real-time stock from database
+  const loadRealTimeStock = async () => {
+    if (!appId) return;
+    
+    try {
+      setIsLoadingStock(true);
+      const stockCount = await getProductStock(appId, product.id);
+      setRealTimeStock(stockCount);
+    } catch (error) {
+      console.error("Error loading stock:", error);
+      setRealTimeStock(product.stockCount); // Fallback to mock data
+    } finally {
+      setIsLoadingStock(false);
+    }
+  };
+  
+  // Calculate available stock considering items already in cart and real-time stock
+  const getAvailableStock = () => {
+    const itemsInCart = items.find(item => item.productId === product.id);
+    const cartQuantity = itemsInCart ? itemsInCart.quantity : 0;
+    const currentStock = realTimeStock !== null ? realTimeStock : product.stockCount;
+    return Math.max(0, currentStock - cartQuantity);
+  };
+  
+  const availableStock = getAvailableStock();
+  
+  // Load real-time stock on component mount
+  useEffect(() => {
+    loadRealTimeStock();
+  }, [appId, product.id]);
+  
+  // Recalculate available stock when cart items change
+  useEffect(() => {
+    const newAvailableStock = getAvailableStock();
+    if (quantity > newAvailableStock) {
+      setQuantity(newAvailableStock);
+    }
+  }, [items, product.id]);
+  
+  // Ensure quantity doesn't exceed available stock
+  useEffect(() => {
+    if (quantity > availableStock) {
+      setQuantity(availableStock);
+      toast({
+        title: "Quantity Adjusted",
+        description: `Quantity has been adjusted to available stock (${availableStock}).`,
+        variant: "default",
+      });
+    }
+  }, [availableStock, quantity, toast]);
   
   // Check if wellness discount is applied and not yet used
   const wellnessDiscountApplied = localStorage.getItem('wellnessDiscountApplied') === 'true';
@@ -376,7 +454,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   
   // Calculate final price with wellness discount if applied and not used
   const finalPrice = (wellnessDiscountApplied && !wellnessDiscountUsed && discountOffer.enabled)
-    ? product.price * (1 - wellnessDiscountPercentage / 100)
+    ? Math.round((product.price * (1 - wellnessDiscountPercentage / 100)) * 100) / 100
     : product.price;
     
   const discountPercentage = Math.round(
@@ -385,12 +463,14 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
 
   const handleBuyNow = () => {
     // Validate stock availability
-    if (quantity > product.stockCount) {
+    if (quantity > availableStock) {
       toast({
         title: "Insufficient Stock",
-        description: `Only ${product.stockCount} items available in stock.`,
+        description: `Only ${availableStock} items available in stock. Please reduce quantity.`,
         variant: "destructive",
       });
+      // Reset quantity to available stock
+      setQuantity(availableStock);
       return;
     }
 
@@ -414,29 +494,53 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
     navigate("/checkout");
   };
 
-  const handleAddToCart = () => {
+    const handleAddToCart = async () => {
     // Validate stock availability
-    if (quantity > product.stockCount) {
+    if (quantity > availableStock) {
       toast({
         title: "Insufficient Stock",
-        description: `Only ${product.stockCount} items available in stock.`,
+        description: `Only ${availableStock} items available in stock. Please reduce quantity.`,
         variant: "destructive",
       });
+      // Reset quantity to available stock
+      setQuantity(availableStock);
       return;
     }
 
-    addToCart({
-      productId: product.id,
-      name: product.name,
-      price: finalPrice,
-      quantity,
-      image: product.images[0],
-    });
+    try {
+      // Reserve stock in database
+      if (appId) {
+        const stockReserved = await reserveStock(appId, product.id, quantity);
+        if (!stockReserved) {
+          toast({
+            title: "Stock Unavailable",
+            description: "Not enough stock available. Please reduce quantity or try again later.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
 
-    toast({
-      title: "Added to cart",
-      description: `${product.name} has been added to your cart.`,
-    });
+      addToCart({
+          productId: product.id,
+        name: product.name,
+        price: finalPrice,
+          quantity,
+        image: product.images[0],
+      });
+
+      toast({
+        title: "Added to cart",
+        description: `${product.name} has been added to your cart.`,
+      });
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      toast({
+        title: "Error",
+        description: "Unable to add item to cart. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleGoalSelect = (goal: string) => {
@@ -492,6 +596,21 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
 
   const handleCancelVideos = () => {
     setShowVideoEditor(false);
+  };
+
+  const handleClearStorage = () => {
+    if (confirm('This will clear all stored data including admin settings, cart, and preferences. Are you sure?')) {
+      clearAllStorage();
+      window.location.reload();
+    }
+  };
+
+  const handleCheckStorage = () => {
+    const quota = checkStorageQuota();
+    const localStorageMB = (quota.localStorage / (1024 * 1024)).toFixed(2);
+    const sessionStorageMB = (quota.sessionStorage / (1024 * 1024)).toFixed(2);
+    
+    alert(`Storage Usage:\nlocalStorage: ${localStorageMB}MB\nsessionStorage: ${sessionStorageMB}MB`);
   };
 
   const handleVideoClick = (video: VideoReview) => {
@@ -635,6 +754,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
     return (
       <AdminStoreEditor
         product={product}
+        appId={appId}
         onSave={handleSaveStore}
         onCancel={handleCancelEdit}
       />
@@ -672,6 +792,24 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
               <Edit className="h-4 w-4" />
               Edit Store
             </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleCheckStorage}
+                variant="outline"
+                size="sm"
+                className="text-xs"
+              >
+                Check Storage
+              </Button>
+              <Button
+                onClick={handleClearStorage}
+                variant="outline"
+                size="sm"
+                className="text-xs text-red-600 hover:text-red-700"
+              >
+                Clear Storage
+              </Button>
+            </div>
           </div>
         </div>
       ) : null}
@@ -681,6 +819,32 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
           onClose={handlePopupClose}
           onGoalSelect={handleGoalSelect}
         />
+      )}
+
+      {/* Storage Warning */}
+      {storageWarning && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-orange-100 border border-orange-400 text-orange-700 px-4 py-3 rounded shadow-lg">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">⚠️ Storage Warning</span>
+            <button
+              onClick={() => setStorageWarning(false)}
+              className="text-orange-700 hover:text-orange-900"
+            >
+              ×
+            </button>
+          </div>
+          <p className="text-xs mt-1">
+            Browser storage is getting full. Some features may not work properly.
+            {isAdminUser && (
+              <button
+                onClick={handleClearStorage}
+                className="ml-2 underline hover:no-underline"
+              >
+                Clear storage
+              </button>
+            )}
+          </p>
+        </div>
       )}
       {/* Hero Section */}
       <section className="pt-24 pb-16 px-6 bg-gradient-to-br from-background via-background to-muted/20">
@@ -820,10 +984,10 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                       ${product.originalPrice}
                     </span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant="destructive" className="text-sm px-3 py-1 bg-red-500 text-white">
+                                    <div className="flex items-center gap-3">
+                    <Badge variant="secondary" className="text-sm px-3 py-1 bg-secondary text-white">
                       Save ${(product.originalPrice - finalPrice).toFixed(2)} ({discountPercentage}% OFF)
-                    </Badge>
+                  </Badge>
                     {(wellnessDiscountApplied && !wellnessDiscountUsed) && (
                       <Badge variant="secondary" className="text-sm px-3 py-1 bg-orange-500 text-white">
                         +{wellnessDiscountPercentage}% Extra Off
@@ -836,12 +1000,21 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                 </div>
 
                 {/* Stock Alert */}
-                {product.stockCount <= 20 && (
+                {isLoadingStock ? (
+                  <div className="bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20 rounded-xl p-4 mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-3 h-3 bg-primary rounded-full animate-ping"></div>
+                      <p className="text-sm font-medium text-primary">
+                        ⚠️ Loading stock information...
+                      </p>
+                    </div>
+                  </div>
+                ) : (availableStock <= 20 && availableStock > 0) && (
                   <div className="bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20 rounded-xl p-4 mb-6 animate-pulse">
                     <div className="flex items-center gap-3">
                       <div className="w-3 h-3 bg-primary rounded-full animate-ping"></div>
                       <p className="text-sm font-medium text-primary">
-                        ⚠️ Only {product.stockCount} left in stock! Order now to secure yours.
+                        ⚠️ Only {availableStock} left in stock! Order now to secure yours.
                       </p>
                     </div>
                   </div>
@@ -883,35 +1056,42 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                       >
                         <span className="text-xl font-bold">−</span>
                       </Button>
-                      <span className="px-6 py-3 text-lg font-bold text-primary bg-white min-w-[60px] text-center">
+                      <span className={`px-6 py-3 text-lg font-bold bg-white min-w-[60px] text-center ${
+                        quantity >= availableStock ? 'text-red-600' : 'text-primary'
+                      }`}>
                         {quantity}
                       </span>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setQuantity(Math.min(product.stockCount, quantity + 1))}
-                        className="px-4 py-3 hover:bg-primary/10 transition-colors"
-                        disabled={quantity >= product.stockCount}
+                        onClick={() => setQuantity(Math.min(availableStock, quantity + 1))}
+                        className="px-4 py-3 hover:bg-primary/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={quantity >= availableStock}
                       >
                         <span className="text-xl font-bold">+</span>
                       </Button>
                     </div>
-                    {quantity >= product.stockCount && (
-                      <span className="text-sm text-orange-600 font-medium bg-orange-50 px-3 py-1 rounded-full">
-                        Max available: {product.stockCount}
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm text-muted-foreground">
+                        {availableStock - quantity} left in stock
                       </span>
-                    )}
+                      {quantity >= availableStock && (
+                        <span className="text-sm text-red-600 font-medium bg-red-50 px-3 py-1 rounded-full">
+                          Max available: {availableStock}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
                                                  {/* Primary CTA */}
                 <div className="space-y-4 mb-8">
-                  <Button
+                                  <Button
                     onClick={handleBuyNow}
-                    disabled={isProcessing || quantity > product.stockCount}
-                    size="lg"
+                    disabled={isProcessing || quantity > availableStock}
+                  size="lg"
                     className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 text-primary-foreground text-xl py-8 rounded-2xl shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 transform hover:scale-[1.02] font-bold"
-                  >
+                >
                     {isProcessing ? (
                       <>
                         <Loader2 className="mr-3 h-6 w-6 animate-spin" />
@@ -927,10 +1107,10 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
 
                   <Button
                     onClick={handleAddToCart}
-                    disabled={isProcessing || quantity > product.stockCount}
+                    disabled={isProcessing || quantity > availableStock}
                     variant="outline"
                     size="lg"
-                    className="w-full border-2 border-primary/30 text-primary hover:bg-primary/5 text-lg py-6 rounded-2xl transition-all duration-300 transform hover:scale-[1.02] font-semibold"
+                    className="w-full border-2 border-primary/30 text-primary hover:bg-primary/5 hover:text-primary text-lg py-6 rounded-2xl transition-all duration-300 transform hover:scale-[1.02] font-semibold"
                   >
                     <ShoppingCart className="mr-3 h-5 w-5" />
                     Add to Cart - ${(finalPrice * quantity).toFixed(2)}
@@ -987,17 +1167,17 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                         <p className="text-xs text-muted-foreground">Risk-free purchase</p>
                       </div>
                     </div>
-                    <div className="flex items-center justify-center gap-6 pt-2">
+                                        <div className="flex items-center justify-center gap-6 pt-2">
                       <div className="flex items-center gap-2 bg-white/70 px-3 py-2 rounded-lg">
-                        <CreditCard className="h-4 w-4 text-primary" />
+                        <CreditCard className="h-4 w-4 text-accent" />
                         <span className="text-xs font-medium text-primary">Visa</span>
-                      </div>
+                </div>
                       <div className="flex items-center gap-2 bg-white/70 px-3 py-2 rounded-lg">
-                        <CreditCard className="h-4 w-4 text-secondary" />
+                        <CreditCard className="h-4 w-4 text-accent" />
                         <span className="text-xs font-medium text-primary">Mastercard</span>
                       </div>
                       <div className="flex items-center gap-2 bg-white/70 px-3 py-2 rounded-lg">
-                        <Lock className="h-4 w-4 text-primary" />
+                        <Lock className="h-4 w-4 text-accent" />
                         <span className="text-xs font-medium text-primary">SSL Secure</span>
                       </div>
                     </div>
@@ -1283,14 +1463,14 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                                      key={i}
                                      className={`h-3 w-3 ${
                                        i < review.rating
-                                         ? "text-yellow-400 fill-current"
+                                         ? "text-primary fill-current"
                                          : "text-gray-300"
                                      }`}
                                    />
                                  ))}
                                </div>
                                {review.verified && (
-                                 <CheckCircle className="h-3 w-3 text-green-600" />
+                                 <CheckCircle className="h-3 w-3 text-secondary" />
                                )}
                              </div>
                            </div>
@@ -1342,14 +1522,14 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                                      key={i}
                                      className={`h-3 w-3 ${
                                        i < review.rating
-                                         ? "text-yellow-400 fill-current"
+                                         ? "text-primary fill-current"
                                          : "text-gray-300"
                                      }`}
                                    />
                                  ))}
                                </div>
                                {review.verified && (
-                                 <CheckCircle className="h-3 w-3 text-green-600" />
+                                 <CheckCircle className="h-3 w-3 text-secondary" />
                                )}
                              </div>
                            </div>
@@ -1401,14 +1581,14 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                                      key={i}
                                      className={`h-3 w-3 ${
                                        i < review.rating
-                                         ? "text-yellow-400 fill-current"
+                                         ? "text-primary fill-current"
                                          : "text-gray-300"
-                                     }`}
+                                       }`}
                                    />
                                  ))}
                                </div>
                                {review.verified && (
-                                 <CheckCircle className="h-3 w-3 text-green-600" />
+                                 <CheckCircle className="h-3 w-3 text-secondary" />
                                )}
                              </div>
                            </div>
@@ -1460,14 +1640,14 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                                      key={i}
                                      className={`h-3 w-3 ${
                                        i < review.rating
-                                         ? "text-yellow-400 fill-current"
+                                         ? "text-primary fill-current"
                                          : "text-gray-300"
                                      }`}
                                    />
                                  ))}
                                </div>
                                {review.verified && (
-                                 <CheckCircle className="h-3 w-3 text-green-600" />
+                                 <CheckCircle className="h-3 w-3 text-secondary" />
                                )}
                              </div>
                            </div>
@@ -1540,12 +1720,12 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                 now and enjoy free shipping with our 30-day money-back guarantee.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                <Button
+                          <Button
                   onClick={handleBuyNow}
-                  disabled={quantity > product.stockCount}
-                  size="lg"
+                  disabled={quantity > availableStock}
+            size="lg"
                   className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 text-primary-foreground text-xl px-12 py-8 rounded-2xl shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 transform hover:scale-105 font-bold"
-                >
+          >
                   <CreditCard className="mr-3 h-6 w-6" />
                   Buy Now - ${finalPrice.toFixed(2)}
                 </Button>

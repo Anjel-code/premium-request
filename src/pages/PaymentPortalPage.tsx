@@ -86,7 +86,7 @@ const PaymentPortalPage: React.FC<PaymentPortalPageProps> = ({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            amount: parseFloat(amount),
+            amount: Math.round(parseFloat(amount) * 100) / 100, // Round to 2 decimal places
             ticketId: ticketId || orderId, // Use orderId for store orders
             orderTitle,
             customerEmail: user?.email,

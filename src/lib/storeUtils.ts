@@ -1,4 +1,4 @@
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, setDoc, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
 
 // Interface for tracking event
@@ -64,6 +64,160 @@ export interface StoreNotification {
   read: boolean;
   priority: "low" | "medium" | "high";
 }
+
+// Interface for product stock data
+export interface ProductStock {
+  productId: string;
+  stockCount: number;
+  lastUpdated: Date;
+  reservedStock: number; // Stock reserved in carts but not yet purchased
+}
+
+// Function to get current stock count
+export const getProductStock = async (appId: string, productId: string): Promise<number> => {
+  if (!db) {
+    throw new Error("Firestore not initialized");
+  }
+
+  try {
+    const stockRef = doc(db, `artifacts/${appId}/public/data/product-stock`, productId);
+    const stockDoc = await getDoc(stockRef);
+    
+    if (stockDoc.exists()) {
+      return stockDoc.data().stockCount || 0;
+    } else {
+      // If no stock document exists, create one with default stock
+      await setDoc(stockRef, {
+        productId,
+        stockCount: 15, // Default stock
+        lastUpdated: serverTimestamp(),
+        reservedStock: 0,
+      });
+      return 15;
+    }
+  } catch (error) {
+    console.error("Error getting product stock:", error);
+    return 0;
+  }
+};
+
+// Function to update product stock
+export const updateProductStock = async (appId: string, productId: string, newStockCount: number): Promise<void> => {
+  if (!db) {
+    throw new Error("Firestore not initialized");
+  }
+
+  try {
+    const stockRef = doc(db, `artifacts/${appId}/public/data/product-stock`, productId);
+    
+    // First check if document exists
+    const stockDoc = await getDoc(stockRef);
+    
+    if (stockDoc.exists()) {
+      // Document exists, update it
+      await updateDoc(stockRef, {
+        productId,
+        stockCount: newStockCount,
+        lastUpdated: serverTimestamp(),
+      });
+    } else {
+      // Document doesn't exist, create it
+      await setDoc(stockRef, {
+        productId,
+        stockCount: newStockCount,
+        lastUpdated: serverTimestamp(),
+        reservedStock: 0,
+      });
+    }
+  } catch (error) {
+    console.error("Error updating product stock:", error);
+    throw error;
+  }
+};
+
+// Function to reserve stock (when added to cart)
+export const reserveStock = async (appId: string, productId: string, quantity: number): Promise<boolean> => {
+  if (!db) {
+    throw new Error("Firestore not initialized");
+  }
+
+  try {
+    const stockRef = doc(db, `artifacts/${appId}/public/data/product-stock`, productId);
+    const stockDoc = await getDoc(stockRef);
+    
+    if (stockDoc.exists()) {
+      const currentStock = stockDoc.data().stockCount || 0;
+      const reservedStock = stockDoc.data().reservedStock || 0;
+      const availableStock = currentStock - reservedStock;
+      
+      if (availableStock >= quantity) {
+        await updateDoc(stockRef, {
+          reservedStock: reservedStock + quantity,
+          lastUpdated: serverTimestamp(),
+        });
+        return true;
+      }
+    }
+    return false;
+  } catch (error) {
+    console.error("Error reserving stock:", error);
+    return false;
+  }
+};
+
+// Function to release reserved stock (when removed from cart)
+export const releaseReservedStock = async (appId: string, productId: string, quantity: number): Promise<void> => {
+  if (!db) {
+    throw new Error("Firestore not initialized");
+  }
+
+  try {
+    const stockRef = doc(db, `artifacts/${appId}/public/data/product-stock`, productId);
+    const stockDoc = await getDoc(stockRef);
+    
+    if (stockDoc.exists()) {
+      const reservedStock = stockDoc.data().reservedStock || 0;
+      const newReservedStock = Math.max(0, reservedStock - quantity);
+      
+      await updateDoc(stockRef, {
+        reservedStock: newReservedStock,
+        lastUpdated: serverTimestamp(),
+      });
+    }
+  } catch (error) {
+    console.error("Error releasing reserved stock:", error);
+  }
+};
+
+// Function to purchase stock (when payment is successful)
+export const purchaseStock = async (appId: string, productId: string, quantity: number): Promise<void> => {
+  if (!db) {
+    throw new Error("Firestore not initialized");
+  }
+
+  try {
+    const stockRef = doc(db, `artifacts/${appId}/public/data/product-stock`, productId);
+    const stockDoc = await getDoc(stockRef);
+    
+    if (stockDoc.exists()) {
+      const currentStock = stockDoc.data().stockCount || 0;
+      const reservedStock = stockDoc.data().reservedStock || 0;
+      
+      // Reduce both actual stock and reserved stock
+      const newStockCount = Math.max(0, currentStock - quantity);
+      const newReservedStock = Math.max(0, reservedStock - quantity);
+      
+      await updateDoc(stockRef, {
+        stockCount: newStockCount,
+        reservedStock: newReservedStock,
+        lastUpdated: serverTimestamp(),
+      });
+    }
+  } catch (error) {
+    console.error("Error purchasing stock:", error);
+    throw error;
+  }
+};
 
 // Function to create a store order
 export const createStoreOrder = async (
@@ -133,10 +287,15 @@ export const handleStorePaymentSuccess = async (
   userName: string,
   productName: string,
   amount: number,
-  orderId: string
+  orderId: string,
+  productId: string,
+  quantity: number
 ) => {
   try {
-    // Create payment success notification only
+    // Purchase the stock (reduce actual stock count)
+    await purchaseStock(appId, productId, quantity);
+
+    // Create payment success notification
     await createStoreNotification(appId, {
       userId,
       type: "store_payment",

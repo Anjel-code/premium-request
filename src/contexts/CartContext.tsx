@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { safeSetItem, safeGetItem } from '@/lib/storageUtils';
+import { releaseReservedStock } from '@/lib/storeUtils';
 
 interface CartItem {
   id: string;
@@ -39,21 +41,27 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
-  // Load cart from localStorage on mount
+  // Load cart from storage on mount
   useEffect(() => {
-    const savedCart = localStorage.getItem('cart');
-    if (savedCart) {
-      try {
-        setItems(JSON.parse(savedCart));
-      } catch (error) {
-        console.error('Error loading cart from localStorage:', error);
-      }
+    const savedCart = safeGetItem('cart');
+    if (savedCart && Array.isArray(savedCart)) {
+      setItems(savedCart);
     }
   }, []);
 
-  // Save cart to localStorage whenever items change
+  // Save cart to storage whenever items change
   useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(items));
+    if (items.length > 0) {
+      safeSetItem('cart', items);
+    } else {
+      // Clear storage when cart is empty
+      try {
+        localStorage.removeItem('cart');
+        sessionStorage.removeItem('cart');
+      } catch (error) {
+        console.warn('Error clearing cart storage:', error);
+      }
+    }
   }, [items]);
 
   const addToCart = (newItem: Omit<CartItem, 'id'>) => {
@@ -75,7 +83,19 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   };
 
   const removeFromCart = (id: string) => {
-    setItems(prevItems => prevItems.filter(item => item.id !== id));
+    setItems(prevItems => {
+      const itemToRemove = prevItems.find(item => item.id === id);
+      if (itemToRemove) {
+        // Release reserved stock when item is removed from cart
+        const appId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
+        if (appId) {
+          releaseReservedStock(appId, itemToRemove.productId, itemToRemove.quantity).catch(error => {
+            console.error('Error releasing reserved stock:', error);
+          });
+        }
+      }
+      return prevItems.filter(item => item.id !== id);
+    });
   };
 
   const updateQuantity = (id: string, quantity: number) => {
@@ -84,15 +104,46 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       return;
     }
     
-    setItems(prevItems =>
-      prevItems.map(item =>
+    setItems(prevItems => {
+      const currentItem = prevItems.find(item => item.id === id);
+      if (currentItem) {
+        const quantityDifference = quantity - currentItem.quantity;
+        const appId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
+        
+        // If quantity increased, we need to reserve more stock
+        // If quantity decreased, we need to release some stock
+        if (appId && quantityDifference !== 0) {
+          if (quantityDifference > 0) {
+            // Quantity increased - reserve more stock
+            // This would need to be handled in the component that calls updateQuantity
+          } else {
+            // Quantity decreased - release some stock
+            releaseReservedStock(appId, currentItem.productId, Math.abs(quantityDifference)).catch(error => {
+              console.error('Error releasing reserved stock:', error);
+            });
+          }
+        }
+      }
+      
+      return prevItems.map(item =>
         item.id === id ? { ...item, quantity } : item
-      )
-    );
+      );
+    });
   };
 
   const clearCart = () => {
-    setItems([]);
+    setItems(prevItems => {
+      // Release all reserved stock when cart is cleared
+      const appId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
+      if (appId) {
+        prevItems.forEach(item => {
+          releaseReservedStock(appId, item.productId, item.quantity).catch(error => {
+            console.error('Error releasing reserved stock:', error);
+          });
+        });
+      }
+      return [];
+    });
   };
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);

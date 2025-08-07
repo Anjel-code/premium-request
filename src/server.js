@@ -40,6 +40,14 @@ app.post("/api/create-checkout-session", async (req, res) => {
     });
   }
 
+  // Validate amount is a valid number
+  const numericAmount = parseFloat(amount);
+  if (isNaN(numericAmount) || numericAmount <= 0) {
+    return res.status(400).json({
+      error: "Invalid amount. Please provide a valid positive number.",
+    });
+  }
+
   try {
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
@@ -50,7 +58,7 @@ app.post("/api/create-checkout-session", async (req, res) => {
             product_data: {
               name: orderTitle,
             },
-            unit_amount: amount * 100, // Amount in cents (Stripe expects cents)
+            unit_amount: Math.round(numericAmount * 100), // Amount in cents (Stripe expects cents) - rounded to avoid floating point issues
           },
           quantity: 1,
         },

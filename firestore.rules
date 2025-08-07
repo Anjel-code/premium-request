@@ -6,13 +6,14 @@ service cloud.firestore {
 
     // --- User Profiles (Top-level 'users' collection) ---
     match /users/{userId} {
-      // Allow read and update if:
-      // 1. The request is authenticated AND
-      // 2. The user is reading/updating their own profile (request.auth.uid == userId) OR
-      // 3. The user is an admin/team member (simplified - allow all authenticated users for now)
-      allow read, update: if request.auth != null;
-      // Allow create if the request is authenticated and the user is creating their own profile
+      // Allow users to read and update their own profiles
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId;
       allow create: if request.auth != null && request.auth.uid == userId;
+
+      // Admins can read and update any user profile (needed for role checking)
+      allow read, update: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['admin']);
     }
 
     // --- Public Data for Applications ---
@@ -39,6 +40,16 @@ service cloud.firestore {
         allow create: if request.auth != null;
         allow update: if request.auth != null;
         allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      }
+
+      // --- Product Stock Collection ---
+      match /product-stock/{productId} {
+        allow read: if true; // Anyone can read stock (public info)
+        allow create: if request.auth != null && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['admin']); // Only admins can create new product stock entries
+        allow update: if request.auth != null && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['admin']); // Only admins can update stock
+        allow delete: if false; // Stock should probably not be deleted by anyone
       }
 
       // --- Order Conversations Subcollection ---

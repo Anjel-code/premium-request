@@ -50,19 +50,19 @@ const NotificationCard = memo<NotificationCardProps>(({
   const getNotificationIcon = (type: Notification["type"]) => {
     switch (type) {
       case "order_status":
-        return <Package className="h-5 w-5 text-blue-600" />;
+        return <Package className="h-5 w-5 text-primary" />;
       case "payment":
-        return <DollarSign className="h-5 w-5 text-green-600" />;
+        return <DollarSign className="h-5 w-5 text-secondary" />;
       case "support":
-        return <MessageSquare className="h-5 w-5 text-purple-600" />;
+        return <MessageSquare className="h-5 w-5 text-accent" />;
       case "assignment":
-        return <CheckCircle className="h-5 w-5 text-accent" />;
+        return <CheckCircle className="h-5 w-5 text-primary" />;
       case "completion":
-        return <CheckCircle className="h-5 w-5 text-green-600" />;
+        return <CheckCircle className="h-5 w-5 text-secondary" />;
       case "message":
-        return <Bell className="h-5 w-5 text-orange-600" />;
+        return <Bell className="h-5 w-5 text-accent" />;
       default:
-        return <Bell className="h-5 w-5 text-gray-600" />;
+        return <Bell className="h-5 w-5 text-muted-foreground" />;
     }
   };
 
@@ -70,11 +70,11 @@ const NotificationCard = memo<NotificationCardProps>(({
   const getPriorityColor = (priority: Notification["priority"]) => {
     switch (priority) {
       case "high":
-        return "border-red-200 bg-red-50";
+        return "border-primary/20 bg-primary/5";
       case "medium":
-        return "border-yellow-200 bg-yellow-50";
+        return "border-secondary/20 bg-secondary/5";
       case "low":
-        return "border-green-200 bg-green-50";
+        return "border-accent/20 bg-accent/5";
       default:
         return "";
     }

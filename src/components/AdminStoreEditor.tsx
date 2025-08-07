@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import FileUpload from "./FileUpload";
+import { updateProductStock } from "@/lib/storeUtils";
 
 interface ProductData {
   id: string;
@@ -89,12 +90,14 @@ interface DiscountOffer {
 
 interface AdminStoreEditorProps {
   product: ProductData;
+  appId?: string;
   onSave: (updatedProduct: ProductData, discountOffer: DiscountOffer) => void;
   onCancel: () => void;
 }
 
 const AdminStoreEditor: React.FC<AdminStoreEditorProps> = ({
   product,
+  appId,
   onSave,
   onCancel,
 }) => {
@@ -232,6 +235,32 @@ const AdminStoreEditor: React.FC<AdminStoreEditorProps> = ({
     localStorage.setItem('adminDiscountOffer', JSON.stringify(discountOffer));
     // Call onCancel to exit edit mode and show preview
     onCancel();
+  };
+
+  const handleUpdateStock = async (newStockCount: number) => {
+    if (!appId) {
+      toast({
+        title: "Error",
+        description: "App ID not available. Cannot update stock.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await updateProductStock(appId, product.id, newStockCount);
+      toast({
+        title: "Stock Updated",
+        description: `Stock count updated to ${newStockCount} items.`,
+      });
+    } catch (error) {
+      console.error("Error updating stock:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update stock. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -416,6 +445,57 @@ const AdminStoreEditor: React.FC<AdminStoreEditorProps> = ({
                         placeholder="e.g., Easy returns within 30 days"
                       />
                     </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Stock Management */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Stock Management</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="stockCount">Current Stock Count</Label>
+                      <Input
+                        id="stockCount"
+                        type="number"
+                        min="0"
+                        value={editedProduct.stockCount}
+                        onChange={(e) => handleNumberInputChange('stockCount', e.target.value)}
+                        placeholder="Enter stock count"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Database Stock Update</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min="0"
+                          placeholder="New stock count"
+                          id="dbStockCount"
+                        />
+                        <Button
+                          onClick={() => {
+                            const input = document.getElementById('dbStockCount') as HTMLInputElement;
+                            const newStock = parseInt(input.value);
+                            if (!isNaN(newStock) && newStock >= 0) {
+                              handleUpdateStock(newStock);
+                              input.value = '';
+                            }
+                          }}
+                          className="flex items-center gap-2"
+                        >
+                          Update DB
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    <p>• Local stock count: Updates the product data in localStorage</p>
+                    <p>• Database stock update: Updates the real-time stock count in the database</p>
+                    <p>• Database stock takes precedence over local stock for all users</p>
                   </div>
                 </CardContent>
               </Card>

@@ -327,7 +327,9 @@ const SuccessPage: React.FC = () => {
         orderInfo.customerInfo ? `${orderInfo.customerInfo.firstName} ${orderInfo.customerInfo.lastName}`.trim() : orderInfo.userName || "Customer",
         orderInfo.items ? `Cart Order - ${orderInfo.items.length} items` : orderInfo.productName || "Product",
         orderInfo.totalPrice || orderInfo.amount || 0,
-        orderInfo.orderId
+        orderInfo.orderId,
+        orderInfo.items?.[0]?.productId || "premium-wireless-headphones", // Default product ID
+        orderInfo.items?.[0]?.quantity || 1 // Default quantity
       );
 
       setLoading(false);
