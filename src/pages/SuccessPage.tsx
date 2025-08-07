@@ -33,11 +33,13 @@ const SuccessPage: React.FC = () => {
     const idFromUrl = queryParams.get("ticketId");
     const orderIdFromUrl = queryParams.get("orderId");
 
-    // Check if this is a store order or cart order
+    // Check if this is a store order, cart order, or direct order
     const storedOrderInfo = sessionStorage.getItem("storeOrderInfo");
     const cartOrderInfo = sessionStorage.getItem("cartOrderInfo");
+    const directOrderInfo = sessionStorage.getItem("directOrderInfo");
     console.log("Stored order info:", storedOrderInfo);
     console.log("Cart order info:", cartOrderInfo);
+    console.log("Direct order info:", directOrderInfo);
     console.log(
       "URL params - ticketId:",
       idFromUrl,
@@ -49,7 +51,25 @@ const SuccessPage: React.FC = () => {
     let storeOrderInfoLocal: any = null;
     let ticketIdLocal: string | null = null;
 
-         if (cartOrderInfo) {
+         if (directOrderInfo) {
+       try {
+         const parsedInfo = JSON.parse(directOrderInfo);
+         console.log("Raw direct order info from sessionStorage:", directOrderInfo);
+         console.log("Parsed direct order info:", parsedInfo);
+         console.log("Items in parsed info:", parsedInfo.items);
+         console.log("Total price in parsed info:", parsedInfo.totalPrice);
+         storeOrderInfoLocal = parsedInfo;
+         isStoreOrderLocal = true;
+         ticketIdLocal = parsedInfo.orderId;
+         setStoreOrderInfo(parsedInfo);
+         setIsStoreOrder(true);
+         setTicketId(parsedInfo.orderId);
+         // Clear the stored info
+         sessionStorage.removeItem("directOrderInfo");
+       } catch (error) {
+         console.error("Error parsing direct order info:", error);
+       }
+     } else if (cartOrderInfo) {
        try {
          const parsedInfo = JSON.parse(cartOrderInfo);
          console.log("Raw cart order info from sessionStorage:", cartOrderInfo);
@@ -82,23 +102,6 @@ const SuccessPage: React.FC = () => {
        } catch (error) {
          console.error("Error parsing stored order info:", error);
        }
-       try {
-         const parsedInfo = JSON.parse(cartOrderInfo);
-         console.log("Raw cart order info from sessionStorage:", cartOrderInfo);
-         console.log("Parsed cart order info:", parsedInfo);
-         console.log("Items in parsed info:", parsedInfo.items);
-         console.log("Total price in parsed info:", parsedInfo.totalPrice);
-        storeOrderInfoLocal = parsedInfo;
-        isStoreOrderLocal = true;
-        ticketIdLocal = parsedInfo.orderId;
-        setStoreOrderInfo(parsedInfo);
-        setIsStoreOrder(true);
-        setTicketId(parsedInfo.orderId);
-        // Clear the stored info
-        sessionStorage.removeItem("cartOrderInfo");
-      } catch (error) {
-        console.error("Error parsing cart order info:", error);
-      }
     } else if (orderIdFromUrl) {
       // If orderId is in URL but no sessionStorage, create a basic order info
       console.log("Using orderId from URL:", orderIdFromUrl);
@@ -217,13 +220,13 @@ const SuccessPage: React.FC = () => {
         `artifacts/${appId}/public/data/store-orders`
       );
 
-      // Check if this is a cart order (starts with "cart_")
-      const isCartOrder = orderInfo.orderId && orderInfo.orderId.startsWith("cart_");
+      // Check if this is a cart order (starts with "cart_") or direct order (starts with "direct_")
+      const isNewOrder = orderInfo.orderId && (orderInfo.orderId.startsWith("cart_") || orderInfo.orderId.startsWith("direct_"));
       
-             if (isCartOrder) {
-         // For cart orders, create the order document
-         console.log("Processing cart order:", orderInfo.orderId);
-         console.log("Cart order info:", orderInfo);
+      if (isNewOrder) {
+         // For new orders (cart or direct), create the order document
+         console.log("Processing new order:", orderInfo.orderId);
+         console.log("Order info:", orderInfo);
          console.log("Items:", orderInfo.items);
          console.log("Total price:", orderInfo.totalPrice);
          console.log("Customer info:", orderInfo.customerInfo);
@@ -233,7 +236,7 @@ const SuccessPage: React.FC = () => {
           orderInfo.orderId
         );
 
-                 // Create the cart order document
+         // Create the new order document
          await setDoc(orderRef, {
            orderId: orderInfo.orderId,
            userId: currentUserId,
@@ -268,11 +271,13 @@ const SuccessPage: React.FC = () => {
             }),
          });
 
-                 console.log("Cart order created successfully:", orderInfo.orderId);
+         console.log("New order created successfully:", orderInfo.orderId);
          
-         // Clear the cart after successful cart order payment
-         clearCart();
-         console.log("Cart cleared after successful payment");
+         // Clear the cart after successful cart order payment (only for cart orders)
+         if (orderInfo.orderId.startsWith("cart_")) {
+           clearCart();
+           console.log("Cart cleared after successful payment");
+         }
        } else {
          // For existing store orders, update the payment status
         const orderRef = doc(

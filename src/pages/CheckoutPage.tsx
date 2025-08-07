@@ -39,12 +39,26 @@ const CheckoutPage: React.FC = () => {
   });
   
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isDirectOrder, setIsDirectOrder] = useState(false);
+  const [directOrderInfo, setDirectOrderInfo] = useState<any>(null);
 
-  // Redirect if cart is empty
+  // Check for direct order or cart items
   useEffect(() => {
-    if (items.length === 0) {
+    const storedDirectOrder = sessionStorage.getItem("directOrderInfo");
+    
+    if (storedDirectOrder) {
+      try {
+        const parsedOrder = JSON.parse(storedDirectOrder);
+        setDirectOrderInfo(parsedOrder);
+        setIsDirectOrder(true);
+        // Clear the stored direct order info
+        sessionStorage.removeItem("directOrderInfo");
+      } catch (error) {
+        console.error("Error parsing direct order info:", error);
+      }
+    } else if (items.length === 0) {
       toast({
-        title: "Cart is empty",
+        title: "No items to checkout",
         description: "Please add items to your cart before checkout.",
         variant: "destructive",
       });
@@ -79,35 +93,51 @@ const CheckoutPage: React.FC = () => {
     setIsProcessing(true);
 
     try {
-      // Create a unique order ID
-      const orderId = `cart_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
-      // Store order info for payment portal
-      const orderInfo = {
-        orderId,
-        items: items.map(item => ({
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity,
-          image: item.image,
-        })),
-        totalPrice,
-        customerInfo: formData,
-        createdAt: new Date().toISOString(),
-      };
+      if (isDirectOrder && directOrderInfo) {
+        // Handle direct order (Buy Now)
+        const orderInfo = {
+          ...directOrderInfo,
+          customerInfo: formData,
+        };
 
-      // Store in sessionStorage for payment portal
-      console.log("Storing cart order info:", orderInfo);
-      sessionStorage.setItem("cartOrderInfo", JSON.stringify(orderInfo));
-      
-             // Navigate to payment portal
-       const searchParams = new URLSearchParams({
-         amount: totalPrice.toString(),
-         title: `Cart Order - ${items.length} items`,
-         orderId: orderId,
-       });
+        console.log("Storing direct order info:", orderInfo);
+        sessionStorage.setItem("cartOrderInfo", JSON.stringify(orderInfo));
+        
+        const searchParams = new URLSearchParams({
+          amount: directOrderInfo.totalPrice.toString(),
+          title: directOrderInfo.items[0].name,
+          orderId: directOrderInfo.orderId,
+        });
 
-       navigate(`/payment-portal/${orderId}?${searchParams.toString()}`);
+        navigate(`/payment-portal/${directOrderInfo.orderId}?${searchParams.toString()}`);
+      } else {
+        // Handle cart order
+        const orderId = `cart_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        const orderInfo = {
+          orderId,
+          items: items.map(item => ({
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+            image: item.image,
+          })),
+          totalPrice,
+          customerInfo: formData,
+          createdAt: new Date().toISOString(),
+        };
+
+        console.log("Storing cart order info:", orderInfo);
+        sessionStorage.setItem("cartOrderInfo", JSON.stringify(orderInfo));
+        
+        const searchParams = new URLSearchParams({
+          amount: totalPrice.toString(),
+          title: `Cart Order - ${items.length} items`,
+          orderId: orderId,
+        });
+
+        navigate(`/payment-portal/${orderId}?${searchParams.toString()}`);
+      }
       
     } catch (error) {
       console.error("Error processing checkout:", error);
@@ -121,7 +151,7 @@ const CheckoutPage: React.FC = () => {
     }
   };
 
-  if (items.length === 0) {
+  if (!isDirectOrder && items.length === 0) {
     return null; // Will redirect due to useEffect
   }
 
@@ -155,32 +185,59 @@ const CheckoutPage: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {items.map((item) => (
-                  <div key={item.id} className="flex items-center gap-4 p-3 border rounded-lg">
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="w-16 h-16 object-cover rounded-md"
-                    />
-                    <div className="flex-1">
-                      <h3 className="font-medium">{item.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Qty: {item.quantity} × ${item.price.toFixed(2)}
-                      </p>
+                {isDirectOrder && directOrderInfo ? (
+                  // Direct order items
+                  directOrderInfo.items.map((item: any, index: number) => (
+                    <div key={index} className="flex items-center gap-4 p-3 border rounded-lg">
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-16 h-16 object-cover rounded-md"
+                      />
+                      <div className="flex-1">
+                        <h3 className="font-medium">{item.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Qty: {item.quantity} × ${item.price.toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium">
+                          ${(item.price * item.quantity).toFixed(2)}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-medium">
-                        ${(item.price * item.quantity).toFixed(2)}
-                      </p>
+                  ))
+                ) : (
+                  // Cart items
+                  items.map((item) => (
+                    <div key={item.id} className="flex items-center gap-4 p-3 border rounded-lg">
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-16 h-16 object-cover rounded-md"
+                      />
+                      <div className="flex-1">
+                        <h3 className="font-medium">{item.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Qty: {item.quantity} × ${item.price.toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium">
+                          ${(item.price * item.quantity).toFixed(2)}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
                 
                 <Separator />
                 
                 <div className="flex justify-between items-center text-lg font-bold">
                   <span>Total:</span>
-                  <span className="text-primary">${totalPrice.toFixed(2)}</span>
+                  <span className="text-primary">
+                    ${isDirectOrder && directOrderInfo ? directOrderInfo.totalPrice.toFixed(2) : totalPrice.toFixed(2)}
+                  </span>
                 </div>
               </CardContent>
             </Card>

@@ -194,73 +194,25 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
     ((product.originalPrice - product.price) / product.originalPrice) * 100
   );
 
-  const handleBuyNow = async () => {
-    if (!user || !appId) {
-      // If user is not logged in, redirect to payment portal
-      const totalAmount = product.price * quantity;
-      navigate(
-        `/payment-portal/store-order?amount=${totalAmount}&title=${encodeURIComponent(
-          product.name
-        )}`
-      );
-      return;
-    }
-
-    setIsProcessing(true);
-
-    try {
-      console.log("Creating store order with appId:", appId);
-      console.log("User info:", {
-        uid: user.uid,
-        email: user.email,
-        displayName: user.displayName,
-      });
-
-      // Create store order
-      const orderId = await createStoreOrder(appId, {
-        userId: user.uid,
-        userEmail: user.email,
-        userName: user.displayName,
-        productId: product.id,
-        productName: product.name,
+  const handleBuyNow = () => {
+    // Create order info for direct purchase (not cart)
+    const orderInfo = {
+      orderId: `direct_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      items: [{
+        name: product.name,
+        price: product.price,
         quantity,
-        totalAmount: product.price * quantity,
-        status: "pending",
-        paymentStatus: "pending",
-      });
+        image: product.images[0],
+      }],
+      totalPrice: product.price * quantity,
+      createdAt: new Date().toISOString(),
+    };
 
-      console.log("Store order created with ID:", orderId);
-
-      // Create notification
-      await createStoreOrderNotification(
-        appId,
-        user.uid,
-        user.email,
-        user.displayName,
-        product.name,
-        product.price * quantity,
-        orderId
-      );
-
-      // Navigate to payment portal
-      const totalAmount = product.price * quantity;
-      navigate(
-        `/payment-portal/store-order?amount=${totalAmount}&title=${encodeURIComponent(
-          product.name
-        )}&orderId=${orderId}`
-      );
-    } catch (error) {
-      console.error("Error creating store order:", error);
-      // Fallback to direct payment portal
-      const totalAmount = product.price * quantity;
-      navigate(
-        `/payment-portal/store-order?amount=${totalAmount}&title=${encodeURIComponent(
-          product.name
-        )}`
-      );
-    } finally {
-      setIsProcessing(false);
-    }
+    // Store in sessionStorage for checkout page
+    sessionStorage.setItem("directOrderInfo", JSON.stringify(orderInfo));
+    
+    // Navigate to checkout page
+    navigate("/checkout");
   };
 
   const handleAddToCart = () => {
