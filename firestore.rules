@@ -34,7 +34,11 @@ service cloud.firestore {
       match /store-orders/{orderId} {
         allow read: if request.auth != null;
         allow create: if request.auth != null;
-        allow update: if request.auth != null;
+        // Allow update for order owner OR admin users (for refund operations)
+        allow update: if request.auth != null && (
+          resource.data.userId == request.auth.uid ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['admin'])
+        );
         // Allow delete for order owner OR admin users
         allow delete: if request.auth != null && (
           resource.data.userId == request.auth.uid ||
@@ -78,14 +82,16 @@ service cloud.firestore {
         // 1. The request is authenticated AND
         // 2. The notification is being created for the authenticated user OR
         // 3. The notification is being created for support purposes (support notifications) OR
-        // 4. The notification is being created for store purposes (store notifications)
+        // 4. The notification is being created for store purposes (store notifications) OR
+        // 5. The notification is being created for refund purposes (refund notifications)
         allow create: if request.auth != null && (
           request.resource.data.userId == request.auth.uid ||
           request.resource.data.type == "support" ||
           request.resource.data.type == "store_payment" ||
           request.resource.data.type == "store_order" ||
           request.resource.data.type == "store_shipping" ||
-          request.resource.data.type == "store_delivery"
+          request.resource.data.type == "store_delivery" ||
+          request.resource.data.type == "store_refund"
         );
         
         // Allow update if:

@@ -17,6 +17,7 @@ import {
   BarChart3,
   Activity,
   Database,
+  RefreshCw,
 } from "lucide-react";
 import { getUnreadNotificationCount } from "../lib/notificationUtils";
 
@@ -30,6 +31,7 @@ interface DashboardLayoutProps {
 const userMenuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Orders", url: "/dashboard/orders", icon: Package },
+  { title: "Refunds", url: "/refunds", icon: RefreshCw },
   { title: "Notifications", url: "/dashboard/notifications", icon: Bell },
   { title: "Support", url: "/dashboard/support", icon: MessageSquare },
   { title: "Settings", url: "/dashboard/settings", icon: Settings },
@@ -37,6 +39,7 @@ const userMenuItems = [
 
 const adminMenuItems = [
   { title: "Admin Panel", url: "/admin", icon: Shield },
+  { title: "Refund Management", url: "/admin/refunds", icon: RefreshCw },
   { title: "Team Portal", url: "/team", icon: Users },
 ];
 

@@ -27,6 +27,7 @@ import {
   Package,
   Truck,
   ShoppingCart,
+  RefreshCw,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 
@@ -460,6 +461,21 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
                               <span>•</span>
                               <span>Total: ${(storeOrder.totalAmount || storeOrder.totalPrice || 0).toFixed(2)}</span>
                             </div>
+                            
+                            {/* Refund Status */}
+                            {storeOrder.refundStatus && storeOrder.refundStatus !== "none" && (
+                              <div className="text-sm flex items-center gap-1 mt-2">
+                                <RefreshCw className="h-3 w-3 text-orange-600" />
+                                <span className="text-orange-600 font-medium">
+                                  Refund {storeOrder.refundStatus.charAt(0).toUpperCase() + storeOrder.refundStatus.slice(1)}
+                                </span>
+                                {storeOrder.refundReason && (
+                                  <span className="text-muted-foreground ml-2">
+                                    - {storeOrder.refundReason}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
                           <div className="flex gap-2">
                             <Button
@@ -473,6 +489,24 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
                                 View Details
                               </Link>
                             </Button>
+                            
+                            {/* Request Refund Button - Only show for completed orders that haven't been refunded */}
+                            {storeOrder.paymentStatus === "completed" && 
+                             storeOrder.status !== "refunded" && 
+                             (!storeOrder.refundStatus || storeOrder.refundStatus === "none") && (
+                              <Button
+                                asChild
+                                variant="outline"
+                                size="sm"
+                                className="border-orange-600 text-orange-600 hover:bg-orange-50"
+                              >
+                                <Link to="/refunds">
+                                  <RefreshCw className="h-4 w-4 mr-2" />
+                                  Request Refund
+                                </Link>
+                              </Button>
+                            )}
+                            
                             {storeOrder.trackingInfo && (
                               <Button
                                 asChild

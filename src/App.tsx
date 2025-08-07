@@ -55,6 +55,8 @@ import CheckoutPage from "./pages/CheckoutPage"; // Import CheckoutPage
 import Analytics from "./pages/Analytics"; // Import Analytics
 import LiveView from "./pages/LiveView"; // Import LiveView
 import DatabaseManagement from "./pages/DatabaseManagement"; // Import DatabaseManagement
+import RefundPage from "./pages/RefundPage"; // Import RefundPage
+import AdminRefundManagement from "./pages/AdminRefundManagement"; // Import AdminRefundManagement
 
 import { CartProvider } from "@/contexts/CartContext";
 import CartPanel from "@/components/CartPanel";
@@ -540,6 +542,48 @@ const AppContent: React.FC<AppContentProps> = ({
                         displayName: user.displayName ?? user.email ?? "",
                         roles: userRoles,
                         photoURL: user.photoURL ?? undefined,
+                      }
+                    : null
+                }
+                appId={appId}
+              />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+
+        {/* Refund Page Route - For Users */}
+        <Route
+          path="/refunds"
+          element={
+            <RefundPage
+              user={
+                user
+                  ? {
+                      uid: user.uid,
+                      email: user.email ?? "",
+                      displayName: user.displayName ?? user.email ?? "",
+                    }
+                  : null
+              }
+              appId={appId}
+            />
+          }
+        />
+
+        {/* Admin Refund Management Route - Protected for Admin Only */}
+        <Route
+          path="/admin/refunds"
+          element={
+            isAdmin ? (
+              <AdminRefundManagement
+                user={
+                  user
+                    ? {
+                        uid: user.uid,
+                        email: user.email ?? "",
+                        displayName: user.displayName ?? user.email ?? "",
                       }
                     : null
                 }

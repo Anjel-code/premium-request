@@ -1,4 +1,4 @@
-import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, setDoc, onSnapshot } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, setDoc, onSnapshot, query, where, orderBy, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
 import { trackUserActivity } from "./liveViewUtils";
 
@@ -33,8 +33,14 @@ export interface StoreOrder {
   quantity: number;
   totalAmount: number;
   totalPrice?: number;
-  status: "pending" | "paid" | "shipped" | "delivered" | "cancelled";
-  paymentStatus: "pending" | "completed" | "failed";
+  status: "pending" | "paid" | "shipped" | "delivered" | "cancelled" | "refunded";
+  paymentStatus: "pending" | "completed" | "failed" | "refunded";
+  refundStatus?: "none" | "requested" | "approved" | "processed" | "rejected";
+  refundReason?: string;
+  refundAmount?: number;
+  refundRequestDate?: Date;
+  refundProcessedDate?: Date;
+  refundProcessedBy?: string;
   createdAt: Date;
   updatedAt: Date;
   trackingInfo?: TrackingInfo;
@@ -56,7 +62,7 @@ export interface StoreOrder {
 export interface StoreNotification {
   id: string;
   userId: string;
-  type: "store_order" | "store_payment" | "store_shipping" | "store_delivery";
+  type: "store_order" | "store_payment" | "store_shipping" | "store_delivery" | "store_refund";
   title: string;
   message: string;
   orderId?: string;
@@ -410,5 +416,280 @@ export const createStoreDeliveryNotification = async (
     });
   } catch (error) {
     console.error("Error creating store delivery notification:", error);
+  }
+};
+
+// Function to request a refund (for users)
+export const requestRefund = async (
+  appId: string,
+  orderId: string,
+  userId: string,
+  userEmail: string,
+  userName: string,
+  productName: string,
+  amount: number,
+  reason: string
+) => {
+  if (!db) {
+    throw new Error("Firestore not initialized");
+  }
+
+  try {
+    const orderRef = doc(db, `artifacts/${appId}/public/data/store-orders`, orderId);
+    
+    // Update the order with refund request
+    await updateDoc(orderRef, {
+      refundStatus: "requested",
+      refundReason: reason,
+      refundRequestDate: serverTimestamp(),
+      refundAmount: amount,
+      updatedAt: serverTimestamp(),
+    });
+
+    // Create refund request notification for user
+    await createStoreNotification(appId, {
+      userId,
+      type: "store_refund",
+      title: "Refund Request Submitted",
+      message: `Your refund request for ${productName} has been submitted. We'll review it within 2-3 business days.`,
+      orderId,
+      productName,
+      amount,
+      read: false,
+      priority: "high",
+    });
+
+    console.log(`Refund request submitted for order ${orderId}`);
+  } catch (error) {
+    console.error("Error requesting refund:", error);
+    throw error;
+  }
+};
+
+// Function to approve refund (for admins)
+export const approveRefund = async (
+  appId: string,
+  orderId: string,
+  userId: string,
+  userEmail: string,
+  userName: string,
+  productName: string,
+  amount: number,
+  adminId: string,
+  adminName: string
+) => {
+  if (!db) {
+    throw new Error("Firestore not initialized");
+  }
+
+  try {
+    const orderRef = doc(db, `artifacts/${appId}/public/data/store-orders`, orderId);
+    const orderDoc = await getDoc(orderRef);
+    
+    if (!orderDoc.exists()) {
+      throw new Error("Order not found");
+    }
+
+    const orderData = orderDoc.data();
+    const { productId, quantity } = orderData;
+
+    // Update the order with refund approval
+    await updateDoc(orderRef, {
+      refundStatus: "approved",
+      refundProcessedDate: serverTimestamp(),
+      refundProcessedBy: adminName,
+      status: "refunded",
+      paymentStatus: "refunded",
+      updatedAt: serverTimestamp(),
+    });
+
+    // Restore stock (add back the quantity that was purchased)
+    await updateProductStock(appId, productId, (orderData.stockCount || 0) + quantity);
+
+    // Create refund approval notification for user
+    await createStoreNotification(appId, {
+      userId,
+      type: "store_refund",
+      title: "Refund Approved",
+      message: `Your refund request for ${productName} has been approved. $${amount.toFixed(2)} will be refunded to your original payment method within 5-10 business days.`,
+      orderId,
+      productName,
+      amount,
+      read: false,
+      priority: "high",
+    });
+
+    console.log(`Refund approved for order ${orderId} by admin ${adminName}`);
+  } catch (error) {
+    console.error("Error approving refund:", error);
+    throw error;
+  }
+};
+
+// Function to reject refund (for admins)
+export const rejectRefund = async (
+  appId: string,
+  orderId: string,
+  userId: string,
+  userEmail: string,
+  userName: string,
+  productName: string,
+  adminId: string,
+  adminName: string,
+  rejectionReason: string
+) => {
+  if (!db) {
+    throw new Error("Firestore not initialized");
+  }
+
+  try {
+    const orderRef = doc(db, `artifacts/${appId}/public/data/store-orders`, orderId);
+    
+    // Update the order with refund rejection
+    await updateDoc(orderRef, {
+      refundStatus: "rejected",
+      refundReason: rejectionReason,
+      refundProcessedDate: serverTimestamp(),
+      refundProcessedBy: adminName,
+      updatedAt: serverTimestamp(),
+    });
+
+    // Create refund rejection notification for user
+    await createStoreNotification(appId, {
+      userId,
+      type: "store_refund",
+      title: "Refund Request Denied",
+      message: `Your refund request for ${productName} has been denied. Reason: ${rejectionReason}. Please contact support if you have any questions.`,
+      orderId,
+      productName,
+      read: false,
+      priority: "high",
+    });
+
+    console.log(`Refund rejected for order ${orderId} by admin ${adminName}`);
+  } catch (error) {
+    console.error("Error rejecting refund:", error);
+    throw error;
+  }
+};
+
+// Function to process refund (for admins - final step after approval)
+export const processRefund = async (
+  appId: string,
+  orderId: string,
+  userId: string,
+  userEmail: string,
+  userName: string,
+  productName: string,
+  amount: number,
+  adminId: string,
+  adminName: string
+) => {
+  if (!db) {
+    throw new Error("Firestore not initialized");
+  }
+
+  try {
+    const orderRef = doc(db, `artifacts/${appId}/public/data/store-orders`, orderId);
+    
+    // Update the order with refund processed
+    await updateDoc(orderRef, {
+      refundStatus: "processed",
+      refundProcessedDate: serverTimestamp(),
+      refundProcessedBy: adminName,
+      updatedAt: serverTimestamp(),
+    });
+
+    // Create refund processed notification for user
+    await createStoreNotification(appId, {
+      userId,
+      type: "store_refund",
+      title: "Refund Processed",
+      message: `Your refund of $${amount.toFixed(2)} for ${productName} has been processed and will appear in your account within 5-10 business days.`,
+      orderId,
+      productName,
+      amount,
+      read: false,
+      priority: "high",
+    });
+
+    console.log(`Refund processed for order ${orderId} by admin ${adminName}`);
+  } catch (error) {
+    console.error("Error processing refund:", error);
+    throw error;
+  }
+};
+
+// Function to get refundable orders (for users)
+export const getRefundableOrders = async (appId: string, userId: string): Promise<StoreOrder[]> => {
+  if (!db) {
+    throw new Error("Firestore not initialized");
+  }
+
+  try {
+    const ordersRef = collection(db, `artifacts/${appId}/public/data/store-orders`);
+    const q = query(
+      ordersRef,
+      where("userId", "==", userId),
+      where("paymentStatus", "==", "completed"),
+      where("status", "in", ["paid", "shipped", "delivered"]),
+      orderBy("createdAt", "desc")
+    );
+
+    const snapshot = await getDocs(q);
+    const orders: StoreOrder[] = [];
+
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      // Only include orders that haven't been refunded or don't have a refund request
+      if (!data.refundStatus || data.refundStatus === "none") {
+        orders.push({
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate(),
+          updatedAt: data.updatedAt?.toDate(),
+        } as StoreOrder);
+      }
+    });
+
+    return orders;
+  } catch (error) {
+    console.error("Error getting refundable orders:", error);
+    throw error;
+  }
+};
+
+// Function to get refund requests (for admins)
+export const getRefundRequests = async (appId: string): Promise<StoreOrder[]> => {
+  if (!db) {
+    throw new Error("Firestore not initialized");
+  }
+
+  try {
+    const ordersRef = collection(db, `artifacts/${appId}/public/data/store-orders`);
+    const q = query(
+      ordersRef,
+      where("refundStatus", "==", "requested"),
+      orderBy("refundRequestDate", "desc")
+    );
+
+    const snapshot = await getDocs(q);
+    const orders: StoreOrder[] = [];
+
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      orders.push({
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate(),
+        updatedAt: data.updatedAt?.toDate(),
+        refundRequestDate: data.refundRequestDate?.toDate(),
+      } as StoreOrder);
+    });
+
+    return orders;
+  } catch (error) {
+    console.error("Error getting refund requests:", error);
+    throw error;
   }
 };
