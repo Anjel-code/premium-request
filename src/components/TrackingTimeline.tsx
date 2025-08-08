@@ -97,20 +97,20 @@ const TrackingTimeline: React.FC<TrackingTimelineProps> = ({
   }, [isExpanded, isInViewport, hasAnimated, isLoading]);
   const getStatusIcon = (status: string, usePurpleColor?: boolean) => {
     if (usePurpleColor) {
-      return <Package className="h-5 w-5 text-purple-600" />;
+      return <Package className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />;
     }
     
     switch (status.toLowerCase()) {
       case "delivered":
-        return <CheckCircle className="h-5 w-5 text-secondary" />;
+        return <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-secondary" />;
       case "out for delivery":
-        return <Truck className="h-5 w-5 text-accent" />;
+        return <Truck className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />;
       case "in transit":
-        return <Truck className="h-5 w-5 text-primary" />;
+        return <Truck className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />;
       case "pending":
-        return <Clock className="h-5 w-5 text-secondary" />;
+        return <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-secondary" />;
       default:
-        return <Package className="h-5 w-5 text-muted-foreground" />;
+        return <Package className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />;
     }
   };
 
@@ -283,15 +283,28 @@ const TrackingTimeline: React.FC<TrackingTimelineProps> = ({
               }
               
               return (
-                <div
-                  key={`segment-${index}`}
-                  className="absolute left-14 w-0.5 transition-all duration-1000 ease-out"
-                  style={{
-                    top: `${segmentTop}%`,
-                    height: `${segmentHeight}%`,
-                    backgroundColor: isSegmentVisible ? lineColor : "transparent",
-                  }}
-                />
+                <React.Fragment key={`segment-${index}`}>
+                  {/* Mobile line */}
+                  <div
+                    className="absolute w-0.5 transition-all duration-1000 ease-out sm:hidden"
+                    style={{
+                      left: '2rem', // ml-4 (1rem) + w-8/2 (1rem) = 2rem
+                      top: `${segmentTop}%`,
+                      height: `${segmentHeight}%`,
+                      backgroundColor: isSegmentVisible ? lineColor : "transparent",
+                    }}
+                  />
+                  {/* Desktop line */}
+                  <div
+                    className="absolute w-0.5 transition-all duration-1000 ease-out hidden sm:block"
+                    style={{
+                      left: '3.5rem', // ml-8 (2rem) + w-12/2 (1.5rem) = 3.5rem
+                      top: `${segmentTop}%`,
+                      height: `${segmentHeight}%`,
+                      backgroundColor: isSegmentVisible ? lineColor : "transparent",
+                    }}
+                  />
+                </React.Fragment>
               );
             })}
 
@@ -302,58 +315,58 @@ const TrackingTimeline: React.FC<TrackingTimelineProps> = ({
               {showSkeleton ? (
                 // Show skeleton timeline items
                 Array.from({ length: 3 }).map((_, index) => (
-                  <div key={index} className="relative flex items-start gap-8">
+                  <div key={index} className="relative flex items-start gap-6 sm:gap-8">
                     {/* Timeline dot skeleton */}
-                    <div className="relative z-10 flex-shrink-0 ml-8">
-                      <div className="w-12 h-12 rounded-full bg-muted animate-pulse" />
+                    <div className="relative z-10 flex-shrink-0 ml-4 sm:ml-8">
+                      <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-muted animate-pulse" />
                       
                       {/* Location name under dot skeleton */}
-                      <div className="absolute top-16 left-1/2 transform -translate-x-1/2">
-                        <div className="w-20 h-6 rounded-md bg-muted animate-pulse" />
+                      <div className="absolute top-12 sm:top-16 left-1/2 transform -translate-x-1/2">
+                        <div className="w-16 h-4 sm:w-20 sm:h-6 rounded-md bg-muted animate-pulse" />
                       </div>
                     </div>
 
                     {/* Event content skeleton */}
-                    <div className="flex-grow bg-muted/30 rounded-lg p-4 border border-border/50">
-                      <div className="flex justify-between items-start mb-3">
+                    <div className="flex-grow bg-muted/30 rounded-lg p-3 sm:p-4 border border-border/50">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-0 mb-3">
                         <div className="flex items-center gap-2">
-                          <div className="h-6 w-24 rounded-full bg-muted animate-pulse" />
-                          <div className="h-6 w-6 rounded bg-muted animate-pulse" />
+                          <div className="h-5 w-20 sm:h-6 sm:w-24 rounded-full bg-muted animate-pulse" />
+                          <div className="h-5 w-5 sm:h-6 sm:w-6 rounded bg-muted animate-pulse" />
                         </div>
-                        <div className="h-4 w-32 bg-muted animate-pulse" />
+                        <div className="h-3 w-24 sm:h-4 sm:w-32 bg-muted animate-pulse" />
                       </div>
 
                       <div className="flex items-center gap-2 mb-2">
-                        <div className="h-4 w-4 bg-muted animate-pulse" />
-                        <div className="h-4 w-32 bg-muted animate-pulse" />
+                        <div className="h-3 w-3 sm:h-4 sm:w-4 bg-muted animate-pulse" />
+                        <div className="h-3 w-20 sm:h-4 sm:w-32 bg-muted animate-pulse" />
                       </div>
 
-                      <div className="h-4 w-full bg-muted animate-pulse" />
-                      <div className="h-4 w-3/4 mt-2 bg-muted animate-pulse" />
+                      <div className="h-3 w-full sm:h-4 bg-muted animate-pulse" />
+                      <div className="h-3 w-3/4 mt-2 sm:h-4 bg-muted animate-pulse" />
                     </div>
                   </div>
                 ))
               ) : (
                 // Show actual timeline items
                 sortedEvents.map((event, index) => (
-                  <div key={event.id} className="relative flex items-start gap-8">
+                  <div key={event.id} className="relative flex items-start gap-6 sm:gap-8">
                     {/* Timeline dot with animation */}
-                    <div className="relative z-10 flex-shrink-0 ml-8">
-                                             <div
-                         className={`w-12 h-12 rounded-full bg-white border-4 flex items-center justify-center shadow-lg ${
-                           event.usePurpleColor
-                             ? "border-purple-500"
-                             : event.status === "Delivered" || event.status === "delivered"
-                             ? "border-secondary"
-                             : "border-muted-foreground/20"
-                         }`}
-                       >
+                    <div className="relative z-10 flex-shrink-0 ml-4 sm:ml-8">
+                      <div
+                        className={`w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-white border-4 flex items-center justify-center shadow-lg ${
+                          event.usePurpleColor
+                            ? "border-purple-500"
+                            : event.status === "Delivered" || event.status === "delivered"
+                            ? "border-secondary"
+                            : "border-muted-foreground/20"
+                        }`}
+                      >
                         {getStatusIcon(event.status, event.usePurpleColor)}
                       </div>
 
                       {/* Location name under dot */}
-                      <div className="absolute top-16 left-1/2 transform -translate-x-1/2 whitespace-nowrap z-20">
-                        <div className="bg-white px-2 py-1 rounded-md shadow-sm border text-xs font-medium text-primary">
+                      <div className="absolute top-12 sm:top-16 left-1/2 transform -translate-x-1/2 z-20">
+                        <div className="bg-white px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md shadow-sm border text-xs font-medium text-primary text-center max-w-24 sm:max-w-32">
                           {event.location}
                         </div>
                       </div>
@@ -369,7 +382,7 @@ const TrackingTimeline: React.FC<TrackingTimelineProps> = ({
                           : "opacity-50 translate-x-4"
                       }`}
                     >
-                      <div className="flex justify-between items-start mb-3">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-0 mb-3">
                         <div className="flex items-center gap-2">
                           <Badge className={getStatusColor(event.status)}>
                             {event.status}
@@ -385,7 +398,7 @@ const TrackingTimeline: React.FC<TrackingTimelineProps> = ({
                             </Button>
                           )}
                         </div>
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-xs sm:text-sm text-muted-foreground">
                           {event.location === "Customer" &&
                           event.status !== "Delivered" ? (
                             "Pending"
@@ -407,7 +420,7 @@ const TrackingTimeline: React.FC<TrackingTimelineProps> = ({
                       </div>
 
                       <div className="flex items-center gap-2 mb-2">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        <MapPin className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                         <span className="text-sm font-medium text-primary">
                           {event.location}
                         </span>
@@ -425,11 +438,11 @@ const TrackingTimeline: React.FC<TrackingTimelineProps> = ({
             {/* End cap - only show if there are more events after Customer */}
             {!showSkeleton && events.length > 0 &&
               events[events.length - 1].location !== "Customer" && (
-                <div className="relative flex items-center gap-4 mt-6">
-                  <div className="w-12 h-12 rounded-full bg-muted border-4 border-muted-foreground/20 flex items-center justify-center">
-                    <Package className="h-5 w-5 text-muted-foreground" />
+                <div className="relative flex items-center gap-2 sm:gap-4 mt-6">
+                  <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-muted border-4 border-muted-foreground/20 flex items-center justify-center">
+                    <Package className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                   </div>
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-xs sm:text-sm text-muted-foreground">
                     Journey continues...
                   </div>
                 </div>
