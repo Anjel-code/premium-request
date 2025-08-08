@@ -64,7 +64,7 @@ import CartPanel from "@/components/CartPanel";
 
 // --- Tailwind-like styles for basic UI (kept for standalone functionality) ---
 const styles = `
-  body { font-family: sans-serif; background-color: #f3f4f6; color: #1f2937; margin: 0; padding: 0; }
+  body { font-family: var(--font-body); background-color: hsl(var(--background)); color: hsl(var(--foreground)); margin: 0; padding: 0; }
   .auth-container { max-width: 480px; margin: 2rem auto; padding: 2rem; background-color: #fff; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
   .auth-form, .logged-in-container { display: flex; flex-direction: column; gap: 1rem; }
   .input-field { padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 1rem; }
