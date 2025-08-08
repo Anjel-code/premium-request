@@ -325,6 +325,81 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   const [showLoyaltyInfo, setShowLoyaltyInfo] = useState(false);
   const [showLoyaltyFab, setShowLoyaltyFab] = useState(true);
 
+  // Before/After slider internal component
+  const BeforeAfterSlider: React.FC<{
+    leftImage: string;
+    rightImage: string;
+    leftLabel?: string;
+    rightLabel?: string;
+  }> = ({ leftImage, rightImage, leftLabel = "Before", rightLabel = "After" }) => {
+    const [position, setPosition] = useState(50); // percent
+    const containerRef = React.useRef<HTMLDivElement | null>(null);
+
+    const onPointerMove = (clientX: number) => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const x = Math.min(Math.max(clientX - rect.left, 0), rect.width);
+      setPosition(Math.round((x / rect.width) * 100));
+    };
+
+    const handlePointerDown: React.PointerEventHandler<HTMLDivElement> = (e) => {
+      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+      onPointerMove(e.clientX);
+    };
+
+    const handlePointerMove: React.PointerEventHandler<HTMLDivElement> = (e) => {
+      if (e.buttons !== 1) return; // dragging
+      onPointerMove(e.clientX);
+    };
+
+    const handleTouchMove: React.TouchEventHandler<HTMLDivElement> = (e) => {
+      if (!containerRef.current) return;
+      onPointerMove(e.touches[0].clientX);
+    };
+
+    return (
+      <div
+        ref={containerRef}
+        className="relative w-full aspect-[16/10] overflow-hidden rounded-xl border border-border bg-muted select-none"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onTouchMove={handleTouchMove}
+        role="slider"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={position}
+      >
+        {/* Right image as the base */}
+        <img src={rightImage} alt={rightLabel} className="absolute inset-0 w-full h-full object-cover object-center" />
+        {/* Left image clipped to the same scale as the right using clip-path */}
+        <img
+          src={leftImage}
+          alt={leftLabel}
+          className="absolute inset-0 w-full h-full object-cover object-center will-change-transform"
+          style={{ clipPath: `polygon(0% 0%, ${position}% 0%, ${position}% 100%, 0% 100%)` }}
+        />
+
+        {/* Divider handle */}
+        <div
+          className="absolute top-0 bottom-0 w-1 sm:w-1.5 bg-primary/90 shadow-[0_0_0_2px_rgba(255,255,255,0.8)]"
+          style={{ left: `calc(${position}% - 0.5px)` }}
+        >
+          <div className="absolute -left-3 sm:-left-3 top-1/2 -translate-y-1/2 bg-primary text-primary-foreground rounded-full h-6 w-6 sm:h-7 sm:w-7 flex items-center justify-center shadow-lg border border-primary/60">
+            <span className="text-xs">↔</span>
+          </div>
+        </div>
+
+        {/* Labels */}
+        <div className="absolute left-3 top-3 px-2 py-1 rounded bg-secondary text-secondary-foreground text-[10px] sm:text-xs font-semibold shadow">
+          {leftLabel}
+        </div>
+        <div className="absolute right-3 top-3 px-2 py-1 rounded bg-secondary text-secondary-foreground text-[10px] sm:text-xs font-semibold shadow">
+          {rightLabel}
+        </div>
+      </div>
+    );
+  };
+
   // Check if user is admin by querying the database
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -893,7 +968,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
       {/* Mobile Navigation Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-border shadow-sm">
         <div className="flex items-center justify-between px-4 py-3">
-          <Button
+            <Button
             variant="ghost"
             size="sm"
             onClick={toggleMobileMenu}
@@ -901,11 +976,11 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
           >
             <Menu className="h-5 w-5" />
             <span className="text-sm font-medium">Menu</span>
-          </Button>
+            </Button>
           <div className="text-lg font-bold text-primary">Store</div>
           <div className="w-20"></div> {/* Spacer for centering */}
+          </div>
         </div>
-      </div>
 
       {/* Mobile Sidebar Menu */}
       <div className={`lg:hidden fixed inset-0 z-50 transition-opacity duration-300 ${
@@ -1135,7 +1210,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
               </div>
             </div>
 
-                          {/* Right Column - Product Info */}
+            {/* Right Column - Product Info */}
               <div className="space-y-6 sm:space-y-8 order-2 lg:order-2">
               <div>
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-4">
@@ -1183,7 +1258,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                   </div>
                 </div>
 
-                {/* Pricing */}
+                                {/* Pricing */}
                 <div className="bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8">
                   <div className="flex items-baseline gap-2 sm:gap-4 mb-3">
                     <span className="text-3xl sm:text-4xl lg:text-5xl font-bold text-primary">
@@ -1196,7 +1271,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                     <Badge variant="secondary" className="text-xs sm:text-sm px-2 sm:px-3 py-1 bg-secondary text-white">
                       Save ${(product.originalPrice - finalPrice).toFixed(2)} ({discountPercentage}% OFF)
-                    </Badge>
+                  </Badge>
                     {(wellnessDiscountApplied && !wellnessDiscountUsed) && (
                       <Badge variant="secondary" className="text-xs sm:text-sm px-2 sm:px-3 py-1 bg-orange-500 text-white">
                         +{wellnessDiscountPercentage}% Extra Off
@@ -1315,14 +1390,14 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                   </div>
                 </div>
 
-                {/* Primary CTA */}
+                                                 {/* Primary CTA */}
                 <div className="space-y-3 sm:space-y-4 mb-6 sm:mb-8">
-                  <Button
+                                  <Button
                     onClick={handleBuyNow}
                     disabled={isProcessing || quantity > availableStock}
-                    size="lg"
+                  size="lg"
                     className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 text-primary-foreground text-lg sm:text-xl py-6 sm:py-8 rounded-xl sm:rounded-2xl shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 transform hover:scale-[1.02] font-bold"
-                  >
+                >
                     {isProcessing ? (
                       <>
                         <Loader2 className="mr-2 sm:mr-3 h-5 w-5 sm:h-6 sm:w-6 animate-spin text-white" />
@@ -1348,7 +1423,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                   </Button>
                 </div>
 
-                {/* Secondary Actions */}
+                                                 {/* Secondary Actions */}
                 <div className="flex gap-2 sm:gap-3">
                   <Button
                     variant="ghost"
@@ -1412,7 +1487,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                       <div className="flex items-center gap-1 sm:gap-2 bg-white/70 px-2 sm:px-3 py-1 sm:py-2 rounded-lg">
                         <CreditCard className="h-3 w-3 sm:h-4 sm:w-4 text-accent" />
                         <span className="text-xs font-medium text-primary">Visa</span>
-                      </div>
+                </div>
                       <div className="flex items-center gap-1 sm:gap-2 bg-white/70 px-2 sm:px-3 py-1 sm:py-2 rounded-lg">
                         <CreditCard className="h-3 w-3 sm:h-4 sm:w-4 text-accent" />
                         <span className="text-xs font-medium text-primary">Mastercard</span>
@@ -1432,54 +1507,62 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
 
       {/* Detailed Information */}
       <section className="py-8 sm:py-16 px-4 sm:px-6 bg-gradient-to-br from-muted/20 via-background to-muted/10">
-        <div className="container mx-auto">
-          <div className="max-w-5xl mx-auto space-y-8 sm:space-y-12">
+        <div className="max-w-7xl mx-auto">
+          <div className="space-y-8 sm:space-y-12">
+            {/* Before/After Guarantee Section */}
             <div className="bg-white rounded-lg sm:rounded-2xl p-4 sm:p-8 shadow-lg border border-border/50">
-              <h2 className="text-2xl sm:text-3xl font-bold text-primary mb-4 sm:mb-6 flex items-center gap-3">
-                <FileText className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-                Product Description
-              </h2>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-10 items-center">
+                <div>
+                  <h2 className="text-3xl sm:text-5xl font-extrabold leading-tight text-primary tracking-tight">
+                    30 DAY MONEY BACK GUARANTEE
+                  </h2>
+                  <p className="mt-4 text-muted-foreground text-sm sm:text-base max-w-prose">
+                    If you are not completely satisfied, return your product within 30 days for a full refund. We stand behind the quality and results.
+                  </p>
+                </div>
+                <div>
+                  <BeforeAfterSlider
+                    leftImage={product.images?.[0] || "/placeholder.svg"}
+                    rightImage={product.images?.[1] || "/placeholder.svg"}
+                    leftLabel="Before"
+                    rightLabel="After"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="px-0">
               <p className="text-muted-foreground leading-relaxed text-base sm:text-lg">
                 {product.description}
               </p>
             </div>
 
-            {/* Features */}
-            <div className="bg-white rounded-lg sm:rounded-2xl p-4 sm:p-8 shadow-lg border border-border/50">
-              <h3 className="text-xl sm:text-2xl font-bold text-primary mb-4 sm:mb-6 flex items-center gap-3">
-                <Zap className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-                Key Features
-              </h3>
+            {/* Features (no card background, full-width) */}
+            <div className="px-0">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {product.features.map((feature, index) => (
-                  <div key={index} className="flex items-center gap-3 p-3 sm:p-4 rounded-lg sm:rounded-xl bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/20">
+                  <div key={index} className="flex items-center gap-3 p-3 sm:p-4 rounded-lg bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/20">
                     <div className="w-5 h-5 sm:w-6 sm:h-6 bg-secondary rounded-full flex items-center justify-center flex-shrink-0">
                       <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
                     </div>
-                    <span className="text-xs sm:text-sm font-medium text-primary">
-                      {feature}
-                    </span>
+                    <span className="text-xs sm:text-sm font-medium text-primary">{feature}</span>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Specifications */}
-            <div className="bg-white rounded-lg sm:rounded-2xl p-4 sm:p-8 shadow-lg border border-border/50">
-              <h3 className="text-xl sm:text-2xl font-bold text-primary mb-4 sm:mb-6 flex items-center gap-3">
-                <Wrench className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-                Technical Specifications
-              </h3>
-              <div className="bg-gradient-to-br from-muted to-primary/5 rounded-lg sm:rounded-xl border border-border overflow-hidden">
+            <div className="px-0">
+              <div className="rounded-lg sm:rounded-xl border border-border overflow-hidden">
                 {Object.entries(product.specifications).map(
                   ([key, value], index) => (
                     <div
                       key={key}
                       className={`flex flex-col sm:flex-row sm:justify-between py-3 sm:py-4 px-4 sm:px-6 ${
-                        index !== Object.entries(product.specifications).length - 1
-                          ? "border-b border-border"
-                          : ""
-                      }`}
+                         index !== Object.entries(product.specifications).length - 1
+                           ? "border-b border-border"
+                           : ""
+                       }`}
                     >
                       <span className="font-semibold text-primary text-sm sm:text-base mb-1 sm:mb-0">{key}</span>
                       <span className="text-xs sm:text-sm font-medium text-muted-foreground bg-white/70 px-2 sm:px-3 py-1 rounded-full self-start sm:self-auto">
@@ -1491,32 +1574,84 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
               </div>
             </div>
 
-            {/* Product Videos */}
+            {/* As Seen On + Ticker (appears before Product Video) */}
+            <div className="max-w-7xl mx-auto px-0">
+              <div className="text-center text-2xl sm:text-3xl font-extrabold text-primary mb-4 sm:mb-6">As Seen On</div>
+              <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-12 mb-6 sm:mb-8">
+                {['SHAPE','APTA','USA TODAY','BBC','FORBES'].map((name) => (
+                  <span
+                    key={name}
+                    className="text-xl sm:text-2xl font-black tracking-widest text-foreground/80 opacity-80 select-none"
+                    style={{ filter: 'grayscale(100%)' }}
+                  >
+                    {name}
+                  </span>
+                ))}
+              </div>
+              <div className="relative w-screen -mx-[calc((100vw-100%)/2)] bg-secondary text-secondary-foreground py-2 sm:py-3 border-y border-secondary/40">
+                {/* two synchronized tracks fill the whole viewport width and loop seamlessly */}
+                <div className="marquee font-semibold uppercase tracking-wide text-xs sm:text-sm h-5 sm:h-6">
+                  <div className="marquee__track">
+                    <span className="marquee__item">Empower Your Life</span>
+                    <span className="marquee__item">Revitalize Your Body</span>
+                    <span className="marquee__item">Recover Smarter</span>
+                    <span className="marquee__item">Empower Your Life</span>
+                    <span className="marquee__item">Revitalize Your Body</span>
+                    <span className="marquee__item">Recover Smarter</span>
+                  </div>
+                  <div className="marquee__track--alt">
+                    <span className="marquee__item">Empower Your Life</span>
+                    <span className="marquee__item">Revitalize Your Body</span>
+                    <span className="marquee__item">Recover Smarter</span>
+                    <span className="marquee__item">Empower Your Life</span>
+                    <span className="marquee__item">Revitalize Your Body</span>
+                    <span className="marquee__item">Recover Smarter</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Product Video + Accent Panel (full-width square composition) */}
             {product.videos.length > 0 && (
-              <div className="bg-white rounded-lg sm:rounded-2xl p-4 sm:p-8 shadow-lg border border-border/50">
-                <h3 className="text-xl sm:text-2xl font-bold text-primary mb-4 sm:mb-6 flex items-center gap-3">
-                  <Video className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-                  Product Video
-                </h3>
-                <div className="aspect-video bg-gradient-to-br from-muted/50 to-muted rounded-lg sm:rounded-xl overflow-hidden shadow-lg">
-                  {product.videos[0].startsWith('data:') ? (
-                    // Local video file
-                    <video
-                      src={product.videos[0]}
-                      controls
-                      className="w-full h-full"
-                    />
-                  ) : (
-                    // YouTube or external video
-                    <iframe
-                      src={product.videos[0]}
-                      title="Product Video"
-                      className="w-full h-full"
-                      frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
-                  )}
+              <div className="max-w-7xl mx-auto px-0">
+                <div className="relative aspect-square">
+                  {/* Left: video */}
+                  <div className="absolute inset-y-0 left-0 w-1/2">
+                    <div className="w-full h-full overflow-hidden rounded-none border-0 bg-black">
+                      {product.videos[0].startsWith('data:') ? (
+                        <video src={product.videos[0]} controls className="w-full h-full object-cover" />
+                      ) : (
+                        <iframe
+                          src={product.videos[0]}
+                          title="Product Video"
+                          className="w-full h-full"
+                          frameBorder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        />
+                      )}
+                    </div>
+                  </div>
+                  {/* Right: promo panel */}
+                  <div className="absolute inset-y-0 right-0 w-1/2">
+                    <div className="w-full h-full rounded-none bg-secondary text-secondary-foreground p-6 sm:p-10 flex flex-col justify-center border-0">
+                      <h3 className="text-2xl sm:text-4xl font-extrabold leading-tight">Feel The Difference</h3>
+                      <p className="mt-3 sm:mt-4 text-sm sm:text-base opacity-90 max-w-2xl">
+                        Discover how consistent, targeted recovery elevates your daily routine. Our device combines engineered pressure, heat management, and ergonomic design to help loosen tight muscles and restore natural mobility in minutes.
+                      </p>
+                      <p className="mt-3 text-sm sm:text-base opacity-90 max-w-2xl">
+                        Whether you are preparing for a workout, resetting after sitting all day, or winding down before bed, a few focused minutes can change the way your body feels. Most people notice improved range of motion, less stiffness, and a calmer, more relaxed state right away.
+                      </p>
+                      <p className="mt-3 text-sm sm:text-base opacity-90 max-w-2xl">
+                        Built with premium materials and tuned for everyday use, it is designed to be quiet, powerful, and reliable. And if you do not love it, our 30‑day money‑back guarantee makes it completely risk‑free to try.
+                      </p>
+                      <div className="mt-5 sm:mt-6 flex flex-wrap gap-2">
+                        <span className="px-3 py-1 rounded-full bg-secondary-foreground/10 text-secondary-foreground text-xs sm:text-sm font-semibold">Premium Build</span>
+                        <span className="px-3 py-1 rounded-full bg-secondary-foreground/10 text-secondary-foreground text-xs sm:text-sm font-semibold">Fast Relief</span>
+                        <span className="px-3 py-1 rounded-full bg-secondary-foreground/10 text-secondary-foreground text-xs sm:text-sm font-semibold">Trusted by Pros</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -1564,75 +1699,75 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                     key={`${video.id}-${repeatIndex}-${index}`} 
                     className="flex-shrink-0 w-56 sm:w-64"
                   >
-                    <div 
+                                         <div 
                       className="group relative bg-white rounded-lg sm:rounded-xl shadow-lg overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-105"
-                      onClick={() => handleVideoClick(video)}
-                      onMouseEnter={() => setHoveredVideo(video.id)}
-                      onMouseLeave={() => setHoveredVideo(null)}
-                    >
-                      <div className="aspect-[9/16] bg-muted relative">
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                        
-                        {/* Video Player - Shows on hover */}
-                        {hoveredVideo === video.id && (
-                          <div className="absolute inset-0 bg-black animate-in fade-in duration-300">
-                            {video.videoUrl.startsWith('data:') ? (
-                              // Local video file
-                              <video
-                                src={video.videoUrl}
-                                autoPlay
-                                muted
-                                loop
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              // YouTube or external video
-                              <iframe
-                                src={`${video.videoUrl}?autoplay=1&mute=1&controls=0&loop=1&playlist=${video.videoUrl.split('/').pop()}`}
-                                title={`Video testimonial by ${video.customerName}`}
-                                className="w-full h-full"
-                                frameBorder="0"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                                sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-                              />
-                            )}
-                          </div>
-                        )}
-                        
-                        {/* Thumbnail - Shows when not hovered */}
-                        {hoveredVideo !== video.id && (
-                          <>
-                            {/* Play overlay indicator */}
-                            <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                       onClick={() => handleVideoClick(video)}
+                       onMouseEnter={() => setHoveredVideo(video.id)}
+                       onMouseLeave={() => setHoveredVideo(null)}
+                     >
+                       <div className="aspect-[9/16] bg-muted relative">
+                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                         
+                         {/* Video Player - Shows on hover */}
+                         {hoveredVideo === video.id && (
+                           <div className="absolute inset-0 bg-black animate-in fade-in duration-300">
+                             {video.videoUrl.startsWith('data:') ? (
+                               // Local video file
+                               <video
+                                 src={video.videoUrl}
+                                 autoPlay
+                                 muted
+                                 loop
+                                 className="w-full h-full object-cover"
+                               />
+                             ) : (
+                               // YouTube or external video
+                               <iframe
+                                 src={`${video.videoUrl}?autoplay=1&mute=1&controls=0&loop=1&playlist=${video.videoUrl.split('/').pop()}`}
+                                 title={`Video testimonial by ${video.customerName}`}
+                                 className="w-full h-full"
+                                 frameBorder="0"
+                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                 allowFullScreen
+                                 sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                               />
+                             )}
+                           </div>
+                         )}
+                         
+                         {/* Thumbnail - Shows when not hovered */}
+                         {hoveredVideo !== video.id && (
+                           <>
+                             {/* Play overlay indicator */}
+                             <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center">
                                 <Play className="h-5 w-5 sm:h-6 sm:w-6 text-black ml-1" />
-                              </div>
-                            </div>
-                            
+                               </div>
+                             </div>
+                             
                             <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 right-2 sm:right-3">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-1">
+                               <div className="flex items-center justify-between">
+                                 <div className="flex items-center gap-1">
                                   <div className="w-5 h-5 sm:w-6 sm:h-6 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center cursor-pointer hover:bg-white/30 transition-colors">
                                     <Play className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white" />
-                                  </div>
+                                   </div>
                                   <div className="w-5 h-5 sm:w-6 sm:h-6 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center cursor-pointer hover:bg-white/30 transition-colors">
                                     <Volume2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white" />
-                                  </div>
-                                </div>
+                                   </div>
+                                 </div>
                                 <div className="w-5 h-5 sm:w-6 sm:h-6 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center cursor-pointer hover:bg-white/30 transition-colors">
                                   <Maximize2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white" />
-                                </div>
-                              </div>
-                            </div>
-                            <img
-                              src={video.thumbnail}
-                              alt={`Video testimonial by ${video.customerName}`}
-                              className="w-full h-full object-cover"
-                            />
-                          </>
-                        )}
-                      </div>
+                                 </div>
+                               </div>
+                             </div>
+                             <img
+                               src={video.thumbnail}
+                               alt={`Video testimonial by ${video.customerName}`}
+                               className="w-full h-full object-cover"
+                             />
+                           </>
+                         )}
+                       </div>
                       <div className="p-2 sm:p-3">
                         <p className="text-xs text-muted-foreground leading-relaxed">
                           "{video.testimonial}"
@@ -1728,242 +1863,242 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
 
           {/* Desktop Masonry Layout */}
           <div className="hidden sm:flex gap-4 lg:gap-6">
-            {/* Column 1 - Tall cards */}
+             {/* Column 1 - Tall cards */}
             <div className="flex-1 space-y-4 lg:space-y-6">
               {product.reviews.slice(0, displayedReviews).map((review, index) => {
-                if (index % 4 !== 0) return null; // Only show cards for column 1
-                return (
-                  <div key={review.id} className="transform transition-all duration-300 hover:scale-105">
-                    <Card className="border shadow-sm bg-white overflow-hidden h-[500px]">
-                      <div className="w-full">
-                        <img
-                          src={review.productImage || review.image || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=300&fit=crop"}
-                          alt="Product"
-                          className="w-full object-cover h-80"
-                        />
-                      </div>
-                      <CardContent className="p-3">
-                        <p className="text-xs text-muted-foreground mb-2 leading-relaxed">
-                          "{review.comment}"
-                        </p>
-                        <div className="flex items-center gap-3">
-                          <div className="flex-shrink-0">
-                            <img
-                              src={review.profileImage || review.image || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&crop=face"}
-                              alt={review.name}
-                              className="w-8 h-8 rounded-full object-cover"
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <span className="text-sm font-medium text-foreground">
-                              {review.name}
-                            </span>
-                            <div className="flex items-center gap-2 mt-1">
-                              <div className="flex items-center gap-1">
-                                {[...Array(5)].map((_, i) => (
-                                  <Star
-                                    key={i}
-                                    className={`h-3 w-3 ${
-                                      i < review.rating
-                                        ? "text-primary fill-current"
-                                        : "text-gray-300"
-                                    }`}
-                                  />
-                                ))}
-                              </div>
-                              {review.verified && (
-                                <CheckCircle className="h-3 w-3 text-secondary" />
-                              )}
-                            </div>
-                          </div>
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(review.date).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                );
-              })}
-            </div>
+                 if (index % 4 !== 0) return null; // Only show cards for column 1
+                 return (
+                   <div key={review.id} className="transform transition-all duration-300 hover:scale-105">
+                     <Card className="border shadow-sm bg-white overflow-hidden h-[500px]">
+                       <div className="w-full">
+                         <img
+                           src={review.productImage || review.image || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=300&fit=crop"}
+                           alt="Product"
+                           className="w-full object-cover h-80"
+                         />
+                       </div>
+                       <CardContent className="p-3">
+                         <p className="text-xs text-muted-foreground mb-2 leading-relaxed">
+                           "{review.comment}"
+                         </p>
+                         <div className="flex items-center gap-3">
+                           <div className="flex-shrink-0">
+                             <img
+                               src={review.profileImage || review.image || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&crop=face"}
+                               alt={review.name}
+                               className="w-8 h-8 rounded-full object-cover"
+                             />
+                           </div>
+                           <div className="flex-1">
+                             <span className="text-sm font-medium text-foreground">
+                               {review.name}
+                             </span>
+                             <div className="flex items-center gap-2 mt-1">
+                               <div className="flex items-center gap-1">
+                                 {[...Array(5)].map((_, i) => (
+                                   <Star
+                                     key={i}
+                                     className={`h-3 w-3 ${
+                                       i < review.rating
+                                         ? "text-primary fill-current"
+                                         : "text-gray-300"
+                                     }`}
+                                   />
+                                 ))}
+                               </div>
+                               {review.verified && (
+                                 <CheckCircle className="h-3 w-3 text-secondary" />
+                               )}
+                             </div>
+                           </div>
+                           <span className="text-xs text-muted-foreground">
+                             {new Date(review.date).toLocaleDateString()}
+                           </span>
+                         </div>
+                       </CardContent>
+                     </Card>
+                   </div>
+                 );
+               })}
+             </div>
 
-            {/* Column 2 - Short cards */}
+             {/* Column 2 - Short cards */}
             <div className="flex-1 space-y-4 lg:space-y-6">
               {product.reviews.slice(0, displayedReviews).map((review, index) => {
-                if (index % 4 !== 1) return null; // Only show cards for column 2
-                return (
-                  <div key={review.id} className="transform transition-all duration-300 hover:scale-105">
-                    <Card className="border shadow-sm bg-white overflow-hidden h-[450px]">
-                      <div className="w-full">
-                        <img
-                          src={review.productImage || review.image || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=300&fit=crop"}
-                          alt="Product"
-                          className="w-full object-cover h-72"
-                        />
-                      </div>
-                      <CardContent className="p-3">
-                        <p className="text-xs text-muted-foreground mb-2 leading-relaxed">
-                          "{review.comment}"
-                        </p>
-                        <div className="flex items-center gap-3">
-                          <div className="flex-shrink-0">
-                            <img
-                              src={review.profileImage || review.image || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&crop=face"}
-                              alt={review.name}
-                              className="w-8 h-8 rounded-full object-cover"
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <span className="text-sm font-medium text-foreground">
-                              {review.name}
-                            </span>
-                            <div className="flex items-center gap-2 mt-1">
-                              <div className="flex items-center gap-1">
-                                {[...Array(5)].map((_, i) => (
-                                  <Star
-                                    key={i}
-                                    className={`h-3 w-3 ${
-                                      i < review.rating
-                                        ? "text-primary fill-current"
-                                        : "text-gray-300"
-                                    }`}
-                                  />
-                                ))}
-                              </div>
-                              {review.verified && (
-                                <CheckCircle className="h-3 w-3 text-secondary" />
-                              )}
-                            </div>
-                          </div>
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(review.date).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                );
-              })}
-            </div>
+                 if (index % 4 !== 1) return null; // Only show cards for column 2
+                 return (
+                   <div key={review.id} className="transform transition-all duration-300 hover:scale-105">
+                     <Card className="border shadow-sm bg-white overflow-hidden h-[450px]">
+                       <div className="w-full">
+                         <img
+                           src={review.productImage || review.image || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=300&fit=crop"}
+                           alt="Product"
+                           className="w-full object-cover h-72"
+                         />
+                       </div>
+                       <CardContent className="p-3">
+                         <p className="text-xs text-muted-foreground mb-2 leading-relaxed">
+                           "{review.comment}"
+                         </p>
+                         <div className="flex items-center gap-3">
+                           <div className="flex-shrink-0">
+                             <img
+                               src={review.profileImage || review.image || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&crop=face"}
+                               alt={review.name}
+                               className="w-8 h-8 rounded-full object-cover"
+                             />
+                           </div>
+                           <div className="flex-1">
+                             <span className="text-sm font-medium text-foreground">
+                               {review.name}
+                             </span>
+                             <div className="flex items-center gap-2 mt-1">
+                               <div className="flex items-center gap-1">
+                                 {[...Array(5)].map((_, i) => (
+                                   <Star
+                                     key={i}
+                                     className={`h-3 w-3 ${
+                                       i < review.rating
+                                         ? "text-primary fill-current"
+                                         : "text-gray-300"
+                                     }`}
+                                   />
+                                 ))}
+                               </div>
+                               {review.verified && (
+                                 <CheckCircle className="h-3 w-3 text-secondary" />
+                               )}
+                             </div>
+                           </div>
+                           <span className="text-xs text-muted-foreground">
+                             {new Date(review.date).toLocaleDateString()}
+                           </span>
+                         </div>
+                       </CardContent>
+                     </Card>
+                   </div>
+                 );
+               })}
+             </div>
 
-            {/* Column 3 - Tall cards */}
+             {/* Column 3 - Tall cards */}
             <div className="flex-1 space-y-4 lg:space-y-6">
               {product.reviews.slice(0, displayedReviews).map((review, index) => {
-                if (index % 4 !== 2) return null; // Only show cards for column 3
-                return (
-                  <div key={review.id} className="transform transition-all duration-300 hover:scale-105">
-                    <Card className="border shadow-sm bg-white overflow-hidden h-[500px]">
-                      <div className="w-full">
-                        <img
-                          src={review.productImage || review.image || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=300&fit=crop"}
-                          alt="Product"
-                          className="w-full object-cover h-80"
-                        />
-                      </div>
-                      <CardContent className="p-3">
-                        <p className="text-xs text-muted-foreground mb-2 leading-relaxed">
-                          "{review.comment}"
-                        </p>
-                        <div className="flex items-center gap-3">
-                          <div className="flex-shrink-0">
-                            <img
-                              src={review.profileImage || review.image || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&crop=face"}
-                              alt={review.name}
-                              className="w-8 h-8 rounded-full object-cover"
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <span className="text-sm font-medium text-foreground">
-                              {review.name}
-                            </span>
-                            <div className="flex items-center gap-2 mt-1">
-                              <div className="flex items-center gap-1">
-                                {[...Array(5)].map((_, i) => (
-                                  <Star
-                                    key={i}
-                                    className={`h-3 w-3 ${
-                                      i < review.rating
-                                        ? "text-primary fill-current"
-                                        : "text-gray-300"
-                                    }`}
-                                  />
-                                ))}
-                              </div>
-                              {review.verified && (
-                                <CheckCircle className="h-3 w-3 text-secondary" />
-                              )}
-                            </div>
-                          </div>
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(review.date).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                );
-              })}
-            </div>
+                 if (index % 4 !== 2) return null; // Only show cards for column 3
+                 return (
+                   <div key={review.id} className="transform transition-all duration-300 hover:scale-105">
+                     <Card className="border shadow-sm bg-white overflow-hidden h-[500px]">
+                       <div className="w-full">
+                         <img
+                           src={review.productImage || review.image || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=300&fit=crop"}
+                           alt="Product"
+                           className="w-full object-cover h-80"
+                         />
+                       </div>
+                       <CardContent className="p-3">
+                         <p className="text-xs text-muted-foreground mb-2 leading-relaxed">
+                           "{review.comment}"
+                         </p>
+                         <div className="flex items-center gap-3">
+                           <div className="flex-shrink-0">
+                             <img
+                               src={review.profileImage || review.image || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&crop=face"}
+                               alt={review.name}
+                               className="w-8 h-8 rounded-full object-cover"
+                             />
+                           </div>
+                           <div className="flex-1">
+                             <span className="text-sm font-medium text-foreground">
+                               {review.name}
+                             </span>
+                             <div className="flex items-center gap-2 mt-1">
+                               <div className="flex items-center gap-1">
+                                 {[...Array(5)].map((_, i) => (
+                                   <Star
+                                     key={i}
+                                     className={`h-3 w-3 ${
+                                       i < review.rating
+                                         ? "text-primary fill-current"
+                                         : "text-gray-300"
+                                       }`}
+                                   />
+                                 ))}
+                               </div>
+                               {review.verified && (
+                                 <CheckCircle className="h-3 w-3 text-secondary" />
+                               )}
+                             </div>
+                           </div>
+                           <span className="text-xs text-muted-foreground">
+                             {new Date(review.date).toLocaleDateString()}
+                           </span>
+                         </div>
+                       </CardContent>
+                     </Card>
+                   </div>
+                 );
+               })}
+             </div>
 
-            {/* Column 4 - Short cards */}
+             {/* Column 4 - Short cards */}
             <div className="flex-1 space-y-4 lg:space-y-6">
               {product.reviews.slice(0, displayedReviews).map((review, index) => {
-                if (index % 4 !== 3) return null; // Only show cards for column 4
-                return (
-                  <div key={review.id} className="transform transition-all duration-300 hover:scale-105">
-                    <Card className="border shadow-sm bg-white overflow-hidden h-[450px]">
-                      <div className="w-full">
-                        <img
-                          src={review.productImage || review.image || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=300&fit=crop"}
-                          alt="Product"
-                          className="w-full object-cover h-72"
-                        />
-                      </div>
-                      <CardContent className="p-3">
-                        <p className="text-xs text-muted-foreground mb-2 leading-relaxed">
-                          "{review.comment}"
-                        </p>
-                        <div className="flex items-center gap-3">
-                          <div className="flex-shrink-0">
-                            <img
-                              src={review.profileImage || review.image || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&crop=face"}
-                              alt={review.name}
-                              className="w-8 h-8 rounded-full object-cover"
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <span className="text-sm font-medium text-foreground">
-                              {review.name}
-                            </span>
-                            <div className="flex items-center gap-2 mt-1">
-                              <div className="flex items-center gap-1">
-                                {[...Array(5)].map((_, i) => (
-                                  <Star
-                                    key={i}
-                                    className={`h-3 w-3 ${
-                                      i < review.rating
-                                        ? "text-primary fill-current"
-                                        : "text-gray-300"
-                                    }`}
-                                  />
-                                ))}
-                              </div>
-                              {review.verified && (
-                                <CheckCircle className="h-3 w-3 text-secondary" />
-                              )}
-                            </div>
-                          </div>
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(review.date).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+                 if (index % 4 !== 3) return null; // Only show cards for column 4
+                 return (
+                   <div key={review.id} className="transform transition-all duration-300 hover:scale-105">
+                     <Card className="border shadow-sm bg-white overflow-hidden h-[450px]">
+                       <div className="w-full">
+                         <img
+                           src={review.productImage || review.image || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=300&fit=crop"}
+                           alt="Product"
+                           className="w-full object-cover h-72"
+                         />
+                       </div>
+                       <CardContent className="p-3">
+                         <p className="text-xs text-muted-foreground mb-2 leading-relaxed">
+                           "{review.comment}"
+                         </p>
+                         <div className="flex items-center gap-3">
+                           <div className="flex-shrink-0">
+                             <img
+                               src={review.profileImage || review.image || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&crop=face"}
+                               alt={review.name}
+                               className="w-8 h-8 rounded-full object-cover"
+                             />
+                           </div>
+                           <div className="flex-1">
+                             <span className="text-sm font-medium text-foreground">
+                               {review.name}
+                             </span>
+                             <div className="flex items-center gap-2 mt-1">
+                               <div className="flex items-center gap-1">
+                                 {[...Array(5)].map((_, i) => (
+                                   <Star
+                                     key={i}
+                                     className={`h-3 w-3 ${
+                                       i < review.rating
+                                         ? "text-primary fill-current"
+                                         : "text-gray-300"
+                                     }`}
+                                   />
+                                 ))}
+                               </div>
+                               {review.verified && (
+                                 <CheckCircle className="h-3 w-3 text-secondary" />
+                               )}
+                             </div>
+                           </div>
+                           <span className="text-xs text-muted-foreground">
+                             {new Date(review.date).toLocaleDateString()}
+                           </span>
+                         </div>
+                       </CardContent>
+                     </Card>
+                   </div>
+                 );
+               })}
+             </div>
+                       </div>
 
           {/* Load More Button */}
           {displayedReviews < product.reviews.length && (
@@ -2009,7 +2144,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
         </div>
       </section>
 
-      {/* Final CTA Section */}
+            {/* Final CTA Section */}
       <section className="py-12 sm:py-16 md:py-20 px-4 sm:px-6 bg-gradient-to-br from-primary/5 via-accent/5 to-primary/10">
         <div className="container mx-auto text-center">
           <div className="max-w-4xl mx-auto">
@@ -2023,12 +2158,12 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                 now and enjoy free shipping with our 30-day money-back guarantee.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                <Button
+                          <Button
                   onClick={handleBuyNow}
                   disabled={quantity > availableStock}
-                  size="lg"
+            size="lg"
                   className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 text-primary-foreground text-base sm:text-lg md:text-xl px-6 sm:px-8 md:px-12 py-4 sm:py-6 md:py-8 rounded-xl sm:rounded-2xl shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 transform hover:scale-105 font-bold"
-                >
+          >
                   <CreditCard className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-white" />
                   Buy Now - ${finalPrice.toFixed(2)}
                 </Button>
@@ -2086,26 +2221,26 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
             </div>
             <div className="p-3 sm:p-4">
               <div className="aspect-video bg-muted rounded-lg overflow-hidden mb-3 sm:mb-4">
-                {selectedVideo.videoUrl.startsWith('data:') ? (
-                  // Local video file
-                  <video
-                    src={selectedVideo.videoUrl}
-                    controls
-                    className="w-full h-full"
-                  />
-                ) : (
-                  // YouTube or external video
-                  <iframe
-                    src={`${selectedVideo.videoUrl}?rel=0&modestbranding=1`}
-                    title={`Video testimonial by ${selectedVideo.customerName}`}
-                    className="w-full h-full"
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-                  />
-                )}
-              </div>
+                 {selectedVideo.videoUrl.startsWith('data:') ? (
+                   // Local video file
+                   <video
+                     src={selectedVideo.videoUrl}
+                     controls
+                     className="w-full h-full"
+                   />
+                 ) : (
+                   // YouTube or external video
+                   <iframe
+                     src={`${selectedVideo.videoUrl}?rel=0&modestbranding=1`}
+                     title={`Video testimonial by ${selectedVideo.customerName}`}
+                     className="w-full h-full"
+                     frameBorder="0"
+                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                     allowFullScreen
+                     sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                   />
+                 )}
+               </div>
               <div className="space-y-2">
                 <p className="text-base sm:text-lg font-medium text-primary">
                   {selectedVideo.customerName}

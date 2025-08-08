@@ -187,3 +187,21 @@
     @apply mb-0;
   }
 }
+
+/* Utility: seamless infinite marquee ticker (two synchronized tracks) */
+@keyframes marquee-a {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
+@keyframes marquee-b {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(0); }
+}
+
+.marquee { position: relative; overflow: hidden; width: 100%; }
+.marquee__track, .marquee__track--alt {
+  position: absolute; top: 0; left: 0; display: inline-flex; white-space: nowrap; min-width: 100%; will-change: transform;
+}
+.marquee__track { animation: marquee-a 20s linear infinite; }
+.marquee__track--alt { animation: marquee-b 20s linear infinite; }
+.marquee__item { margin-right: 2rem; }
