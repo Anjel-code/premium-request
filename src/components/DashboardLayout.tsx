@@ -282,6 +282,16 @@ export function DashboardLayout({
 
             {/* Navigation Links */}
             <div className="p-4 space-y-2">
+              {/* Home Link */}
+              <Link
+                to="/"
+                onClick={closeMobileMenu}
+                className="flex items-center px-3 py-3 rounded-md text-sm font-medium transition-colors hover:bg-accent/20"
+              >
+                <Home className="h-5 w-5 flex-shrink-0" />
+                <span className="ml-3">Home</span>
+              </Link>
+
               {userMenuItems.map((item) => (
                 <Link
                   key={item.title}
