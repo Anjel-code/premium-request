@@ -67,6 +67,8 @@ import Footer from "@/components/Footer";
 import { isAdmin } from "@/lib/userUtils";
 import { checkStorageQuota, clearAllStorage } from "@/lib/storageUtils";
 import { trackUserActivity } from "@/lib/liveViewUtils";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { db } from "../firebase";
 
 // Product data interface - this will be easily configurable
 interface VideoReview {
@@ -291,51 +293,52 @@ interface StoreProps {
 }
 
 const Store: React.FC<StoreProps> = ({ user, appId }) => {
-  const [selectedImage, setSelectedImage] = useState(0);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [quantity, setQuantity] = useState(1);
-  const [isWishlisted, setIsWishlisted] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [showPopupOffer, setShowPopupOffer] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [showReviewsEditor, setShowReviewsEditor] = useState(false);
-  const [showVideoEditor, setShowVideoEditor] = useState(false);
-  const [isAdminUser, setIsAdminUser] = useState(false);
-  const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
-  const [visibleReviews, setVisibleReviews] = useState(12);
-  const [selectedVideo, setSelectedVideo] = useState<VideoReview | null>(null);
-  const [showVideoModal, setShowVideoModal] = useState(false);
-  const [carouselRef, setCarouselRef] = useState<HTMLDivElement | null>(null);
-  const [hoveredVideo, setHoveredVideo] = useState<string | null>(null);
-  const [storageWarning, setStorageWarning] = useState(false);
-  const [realTimeStock, setRealTimeStock] = useState<number | null>(null);
-  const [isLoadingStock, setIsLoadingStock] = useState(true);
   const navigate = useNavigate();
   const { addToCart, items } = useCart();
   const { toast } = useToast();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [quantity, setQuantity] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isUserAdmin, setIsUserAdmin] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isEditingReviews, setIsEditingReviews] = useState(false);
+  const [isEditingVideos, setIsEditingVideos] = useState(false);
+  const [showPopupOffer, setShowPopupOffer] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState<string>("");
+  const [realTimeStock, setRealTimeStock] = useState<number | null>(null);
+  const [isLoadingStock, setIsLoadingStock] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState<VideoReview | null>(null);
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [displayedReviews, setDisplayedReviews] = useState(3);
+  const [userOrders, setUserOrders] = useState<any[]>([]);
+  const [loyaltyLevel, setLoyaltyLevel] = useState({ level: "Bronze", discount: 0 });
+  const [carouselRef, setCarouselRef] = useState<HTMLDivElement | null>(null);
+  const [storageWarning, setStorageWarning] = useState(false);
+  const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [hoveredVideo, setHoveredVideo] = useState<string | null>(null);
 
   // Check if user is admin by querying the database
   useEffect(() => {
     const checkAdminStatus = async () => {
       if (!user?.uid) {
-        setIsAdminUser(false);
-        setIsCheckingAdmin(false);
+        setIsUserAdmin(false);
         return;
       }
 
       try {
         const adminStatus = await isAdmin(user.uid);
-        setIsAdminUser(adminStatus);
+        setIsUserAdmin(adminStatus);
         
         if (adminStatus) {
           console.log('🔧 Admin role confirmed - Edit Store button should be visible');
         }
       } catch (error) {
         console.error('Error checking admin status:', error);
-        setIsAdminUser(false);
-      } finally {
-        setIsCheckingAdmin(false);
+        setIsUserAdmin(false);
       }
     };
 
@@ -368,9 +371,53 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
     checkStorage();
   }, []);
 
+  // Fetch user orders to calculate loyalty level
+  useEffect(() => {
+    const fetchUserOrders = async () => {
+      if (!user?.uid || !appId) {
+        setLoyaltyLevel({ level: "Bronze", discount: 0 });
+        return;
+      }
 
+      try {
+        const ordersRef = collection(db, `artifacts/${appId}/public/data/store-orders`);
+        const userOrdersQuery = query(ordersRef, where("userId", "==", user.uid));
+        
+        const unsubscribe = onSnapshot(userOrdersQuery, (snapshot) => {
+          const orders = snapshot.docs.map(doc => doc.data());
+          setUserOrders(orders);
+          
+          // Calculate loyalty level based on purchase count
+          const purchaseCount = orders.length;
+          let level = "Bronze";
+          let discount = 0;
+          
+          if (purchaseCount >= 7) {
+            level = "Diamond";
+            discount = 20;
+          } else if (purchaseCount >= 4) {
+            level = "Platinum";
+            discount = 15;
+          } else if (purchaseCount >= 1) {
+            level = "Gold";
+            discount = 10;
+          } else if (purchaseCount >= 0) {
+            level = "Silver";
+            discount = 5;
+          }
+          
+          setLoyaltyLevel({ level, discount });
+        });
 
+        return () => unsubscribe();
+      } catch (error) {
+        console.error("Error fetching user orders:", error);
+        setLoyaltyLevel({ level: "Bronze", discount: 0 });
+      }
+    };
 
+    fetchUserOrders();
+  }, [user?.uid, appId]);
 
   // Load product data - check for admin-saved data first, then fall back to mock data
   const loadProductData = (): ProductData => {
@@ -483,10 +530,18 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
     ? parseInt(appliedDiscountPercentage) 
     : discountOffer.percentage;
   
-  // Calculate final price with wellness discount if applied and not used
-  const finalPrice = (wellnessDiscountApplied && !wellnessDiscountUsed && discountOffer.enabled)
-    ? Math.round((product.price * (1 - wellnessDiscountPercentage / 100)) * 100) / 100
-    : product.price;
+  // Calculate final price with wellness discount and loyalty discount
+  let finalPrice = product.price;
+  
+  // Apply wellness discount if available
+  if (wellnessDiscountApplied && !wellnessDiscountUsed && discountOffer.enabled) {
+    finalPrice = Math.round((finalPrice * (1 - wellnessDiscountPercentage / 100)) * 100) / 100;
+  }
+  
+  // Apply loyalty discount
+  if (loyaltyLevel.discount > 0) {
+    finalPrice = Math.round((finalPrice * (1 - loyaltyLevel.discount / 100)) * 100) / 100;
+  }
     
   const discountPercentage = Math.round(
     ((product.originalPrice - product.price) / product.originalPrice) * 100
@@ -596,7 +651,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   };
 
   const handleEditStore = () => {
-    if (isAdminUser) {
+    if (isUserAdmin) {
       setIsEditing(true);
     } else {
       toast({
@@ -623,21 +678,21 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   const handleSaveReviews = (updatedReviews: Review[]) => {
     const updatedProduct = { ...product, reviews: updatedReviews };
     localStorage.setItem('adminStoreProduct', JSON.stringify(updatedProduct));
-    setShowReviewsEditor(false);
+    setIsEditingReviews(false);
   };
 
   const handleCancelReviews = () => {
-    setShowReviewsEditor(false);
+    setIsEditingReviews(false);
   };
 
   const handleSaveVideos = (updatedVideos: VideoReview[]) => {
     const updatedProduct = { ...product, videoReviews: updatedVideos };
     localStorage.setItem('adminStoreProduct', JSON.stringify(updatedProduct));
-    setShowVideoEditor(false);
+    setIsEditingVideos(false);
   };
 
   const handleCancelVideos = () => {
-    setShowVideoEditor(false);
+    setIsEditingVideos(false);
   };
 
   const handleClearStorage = () => {
@@ -666,9 +721,9 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   };
 
   const handleLoadMoreReviews = () => {
-    const remainingReviews = product.reviews.length - visibleReviews;
+    const remainingReviews = product.reviews.length - displayedReviews;
     const nextBatch = Math.min(12, remainingReviews);
-    setVisibleReviews(prev => prev + nextBatch);
+    setDisplayedReviews(prev => prev + nextBatch);
   };
 
   // Auto-scroll carousel functionality
@@ -740,14 +795,14 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   const nextImage = () => {
     if (isTransitioning) return;
     setIsTransitioning(true);
-    setSelectedImage((prev) => (prev + 1) % product.images.length);
+    setCurrentImageIndex((prev) => (prev + 1) % product.images.length);
     setTimeout(() => setIsTransitioning(false), 300);
   };
 
   const prevImage = () => {
     if (isTransitioning) return;
     setIsTransitioning(true);
-    setSelectedImage(
+    setCurrentImageIndex(
       (prev) => (prev - 1 + product.images.length) % product.images.length
     );
     setTimeout(() => setIsTransitioning(false), 300);
@@ -770,7 +825,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   }, [discountOffer.enabled]);
 
   // If in reviews editing mode, show the reviews editor
-  if (showReviewsEditor) {
+  if (isEditingReviews) {
     return (
       <ReviewsEditor
         reviews={product.reviews}
@@ -781,7 +836,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   }
 
   // If in video editing mode, show the video editor
-  if (showVideoEditor) {
+  if (isEditingVideos) {
     return (
       <VideoEditor
         videos={product.videoReviews}
@@ -804,11 +859,11 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   }
 
   const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
+    setMobileMenuOpen(!mobileMenuOpen);
   };
 
   const closeMobileMenu = () => {
-    setIsMobileMenuOpen(false);
+    setMobileMenuOpen(false);
   };
 
   const handleNavigation = (path: string) => {
@@ -837,7 +892,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
 
       {/* Mobile Sidebar Menu */}
       <div className={`lg:hidden fixed inset-0 z-50 transition-opacity duration-300 ${
-        isMobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        mobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
       }`}>
         {/* Backdrop */}
         <div 
@@ -847,7 +902,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
         
         {/* Sidebar */}
         <div className={`absolute left-0 top-0 h-full w-80 max-w-[85vw] bg-white shadow-xl transform transition-transform duration-300 ${
-          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}>
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-border">
@@ -929,7 +984,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
             </Button>
           </div>
         </div>
-      ) : isAdminUser ? (
+      ) : isUserAdmin ? (
         <div className="fixed top-4 right-4 z-50">
           <div className="flex flex-col items-end gap-2">
             <Badge variant="secondary" className="text-xs">
@@ -985,7 +1040,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
           </div>
           <p className="text-xs mt-1">
             Browser storage is getting full. Some features may not work properly.
-            {isAdminUser && (
+            {isUserAdmin && (
               <button
                 onClick={handleClearStorage}
                 className="ml-2 underline hover:no-underline"
@@ -1006,7 +1061,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
               <div className="space-y-4 sm:space-y-6">
                 <div className="relative aspect-square bg-gradient-to-br from-muted/50 to-muted rounded-xl sm:rounded-2xl overflow-hidden shadow-lg sm:shadow-2xl shadow-black/10 border border-border/50">
                   <img
-                    src={product.images[selectedImage]}
+                    src={product.images[currentImageIndex]}
                     alt={product.name}
                     className={`w-full h-full object-cover cursor-zoom-in transition-all duration-500 ease-out ${
                       isTransitioning ? 'opacity-50 scale-95' : 'opacity-100 scale-100'
@@ -1019,7 +1074,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                       modal.onclick = () => modal.remove();
                       
                       const img = document.createElement('img');
-                      img.src = product.images[selectedImage];
+                      img.src = product.images[currentImageIndex];
                       img.alt = product.name;
                       img.className = 'max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl';
                       
@@ -1057,11 +1112,11 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                       onClick={() => {
                         if (isTransitioning) return;
                         setIsTransitioning(true);
-                        setSelectedImage(index);
+                        setCurrentImageIndex(index);
                         setTimeout(() => setIsTransitioning(false), 300);
                       }}
                       className={`flex-shrink-0 w-16 h-16 sm:w-24 sm:h-24 rounded-lg sm:rounded-xl overflow-hidden border-2 transition-all duration-300 ease-out transform hover:scale-110 disabled:pointer-events-none shadow-md ${
-                        selectedImage === index
+                        currentImageIndex === index
                           ? "border-primary scale-110 shadow-lg shadow-primary/20"
                           : "border-border/30 hover:border-primary/50 hover:shadow-lg"
                       }`}
@@ -1143,6 +1198,12 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                     {(wellnessDiscountApplied && !wellnessDiscountUsed) && (
                       <Badge variant="secondary" className="text-xs sm:text-sm px-2 sm:px-3 py-1 bg-orange-500 text-white">
                         +{wellnessDiscountPercentage}% Extra Off
+                      </Badge>
+                    )}
+                    {loyaltyLevel.discount > 0 && (
+                      <Badge variant="secondary" className="text-xs sm:text-sm px-2 sm:px-3 py-1 bg-green-500 text-white">
+                        <Award className="h-3 w-3 mr-1" />
+                        {loyaltyLevel.level} Rank - {loyaltyLevel.discount}% Off
                       </Badge>
                     )}
                   </div>
@@ -1461,11 +1522,11 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                 See what our customers are saying about their experience with our premium headphones
               </p>
             </div>
-            {isAdminUser && (
+            {isUserAdmin && (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowVideoEditor(true)}
+                onClick={() => setIsEditingVideos(true)}
                 className="flex items-center gap-2"
               >
                 <Edit className="h-4 w-4 text-primary" />
@@ -1581,11 +1642,11 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
             <h2 className="text-2xl sm:text-3xl font-bold text-primary mb-4 sm:mb-0">
               Reviews
             </h2>
-            {isAdminUser && (
+            {isUserAdmin && (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowReviewsEditor(true)}
+                onClick={() => setIsEditingReviews(true)}
                 className="flex items-center gap-2"
               >
                 <Edit className="h-4 w-4 text-primary" />
@@ -1596,7 +1657,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
           
           {/* Mobile Grid Layout */}
           <div className="grid grid-cols-1 sm:hidden gap-4">
-            {product.reviews.slice(0, visibleReviews).map((review, index) => (
+            {product.reviews.slice(0, displayedReviews).map((review, index) => (
               <div key={review.id} className="transform transition-all duration-300 hover:scale-105">
                 <Card className="border shadow-sm bg-white overflow-hidden">
                   <div className="w-full">
@@ -1654,7 +1715,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
           <div className="hidden sm:flex gap-4 lg:gap-6">
             {/* Column 1 - Tall cards */}
             <div className="flex-1 space-y-4 lg:space-y-6">
-              {product.reviews.slice(0, visibleReviews).map((review, index) => {
+              {product.reviews.slice(0, displayedReviews).map((review, index) => {
                 if (index % 4 !== 0) return null; // Only show cards for column 1
                 return (
                   <div key={review.id} className="transform transition-all duration-300 hover:scale-105">
@@ -1713,7 +1774,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
 
             {/* Column 2 - Short cards */}
             <div className="flex-1 space-y-4 lg:space-y-6">
-              {product.reviews.slice(0, visibleReviews).map((review, index) => {
+              {product.reviews.slice(0, displayedReviews).map((review, index) => {
                 if (index % 4 !== 1) return null; // Only show cards for column 2
                 return (
                   <div key={review.id} className="transform transition-all duration-300 hover:scale-105">
@@ -1772,7 +1833,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
 
             {/* Column 3 - Tall cards */}
             <div className="flex-1 space-y-4 lg:space-y-6">
-              {product.reviews.slice(0, visibleReviews).map((review, index) => {
+              {product.reviews.slice(0, displayedReviews).map((review, index) => {
                 if (index % 4 !== 2) return null; // Only show cards for column 3
                 return (
                   <div key={review.id} className="transform transition-all duration-300 hover:scale-105">
@@ -1831,7 +1892,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
 
             {/* Column 4 - Short cards */}
             <div className="flex-1 space-y-4 lg:space-y-6">
-              {product.reviews.slice(0, visibleReviews).map((review, index) => {
+              {product.reviews.slice(0, displayedReviews).map((review, index) => {
                 if (index % 4 !== 3) return null; // Only show cards for column 4
                 return (
                   <div key={review.id} className="transform transition-all duration-300 hover:scale-105">
@@ -1890,7 +1951,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
           </div>
 
           {/* Load More Button */}
-          {visibleReviews < product.reviews.length && (
+          {displayedReviews < product.reviews.length && (
             <div className="flex justify-center mt-6 sm:mt-8">
               <Button
                 onClick={handleLoadMoreReviews}
@@ -1900,7 +1961,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
               >
                 Load More Reviews
                 <span className="ml-2 text-xs sm:text-sm text-muted-foreground">
-                  ({product.reviews.length - visibleReviews} remaining)
+                  ({product.reviews.length - displayedReviews} remaining)
                 </span>
               </Button>
             </div>
@@ -1985,13 +2046,13 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
             <div className="flex items-center justify-between p-3 sm:p-4 border-b">
               <h3 className="text-base sm:text-lg font-semibold">Video Testimonial</h3>
               <div className="flex gap-2">
-                {isAdminUser && (
+                {isUserAdmin && (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => {
                       setShowVideoModal(false);
-                      setShowVideoEditor(true);
+                      setIsEditingVideos(true);
                     }}
                     className="flex items-center gap-2 text-xs sm:text-sm"
                   >

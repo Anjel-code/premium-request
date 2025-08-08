@@ -37,6 +37,8 @@ import {
   onSnapshot,
   doc,
   getDoc,
+  updateDoc,
+  setDoc,
 } from "firebase/firestore";
 import { db } from "../firebase"; // Ensure this path is correct for your firebase.js
 import { getUnreadNotificationCount } from "../lib/notificationUtils";
@@ -89,6 +91,32 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
   const [loadingUserRole, setLoadingUserRole] = useState(true);
   const [error, setError] = useState<string | null>(null); // State for errors
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [satisfactionScore, setSatisfactionScore] = useState(0);
+  const [loadingSatisfaction, setLoadingSatisfaction] = useState(true);
+
+  // Calculate loyalty level based on purchase count
+  const calculateLoyaltyLevel = (purchaseCount: number) => {
+    if (purchaseCount >= 7) return { level: "Diamond", progress: 100, nextLevel: null, discount: 20 };
+    if (purchaseCount === 6) return { level: "75% Platinum", progress: 75, nextLevel: "Diamond", discount: 15 };
+    if (purchaseCount === 5) return { level: "50% Platinum", progress: 50, nextLevel: "75% Platinum", discount: 15 };
+    if (purchaseCount === 4) return { level: "Platinum", progress: 100, nextLevel: "50% Platinum", discount: 15 };
+    if (purchaseCount === 3) return { level: "75% Gold", progress: 75, nextLevel: "Platinum", discount: 10 };
+    if (purchaseCount === 2) return { level: "50% Gold", progress: 50, nextLevel: "75% Gold", discount: 10 };
+    if (purchaseCount === 1) return { level: "Gold", progress: 100, nextLevel: "50% Gold", discount: 10 };
+    if (purchaseCount === 0) return { level: "Bronze", progress: 0, nextLevel: "Silver", discount: 0 };
+    return { level: "Silver", progress: 0, nextLevel: "Gold", discount: 5 };
+  };
+
+  // Calculate completion rate from actual orders
+  const calculateCompletionRate = () => {
+    if (orders.length === 0) return 0;
+    const completedOrders = orders.filter(order => order.status === "completed").length;
+    return Math.round((completedOrders / orders.length) * 100);
+  };
+
+  // Get loyalty level data
+  const loyaltyData = calculateLoyaltyLevel(orders.length);
+  const completionRate = calculateCompletionRate();
 
   // Fetch user's role on component mount or when user changes
   useEffect(() => {
@@ -218,6 +246,55 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
 
     fetchUnreadCount();
   }, [user, appId]);
+
+  // Fetch satisfaction score from database
+  useEffect(() => {
+    const fetchSatisfactionScore = async () => {
+      if (!user || !appId) {
+        setLoadingSatisfaction(false);
+        return;
+      }
+
+      try {
+        const userSatisfactionRef = doc(db, `artifacts/${appId}/public/data/user-satisfaction`, user.uid);
+        const satisfactionDoc = await getDoc(userSatisfactionRef);
+        
+        if (satisfactionDoc.exists()) {
+          const data = satisfactionDoc.data();
+          setSatisfactionScore(data.score || 0);
+        } else {
+          setSatisfactionScore(0); // Default to 0 if no score exists
+        }
+      } catch (err) {
+        console.error("Error fetching satisfaction score:", err);
+        setSatisfactionScore(0);
+      } finally {
+        setLoadingSatisfaction(false);
+      }
+    };
+
+    fetchSatisfactionScore();
+  }, [user, appId]);
+
+  // Function to update satisfaction score
+  const updateSatisfactionScore = async (score: number) => {
+    if (!user || !appId) return;
+
+    try {
+      const userSatisfactionRef = doc(db, `artifacts/${appId}/public/data/user-satisfaction`, user.uid);
+      await setDoc(userSatisfactionRef, {
+        userId: user.uid,
+        userEmail: user.email,
+        userName: user.displayName,
+        score: score,
+        updatedAt: new Date(),
+      }, { merge: true });
+      
+      setSatisfactionScore(score);
+    } catch (err) {
+      console.error("Error updating satisfaction score:", err);
+    }
+  };
 
   // Determine if the user has admin or team_member role
   const hasAdminOrTeamRole =
@@ -429,7 +506,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
               <Target className="h-8 w-8 sm:h-12 sm:w-12 text-accent mx-auto mb-3 lg:mb-4" />
               <h3 className="text-sm sm:text-lg font-semibold mb-2">Completion Rate</h3>
               <AnimatedCounter
-                end={92}
+                end={completionRate}
                 suffix="%"
                 className="text-2xl sm:text-3xl font-bold text-accent"
                 duration={2000}
@@ -444,10 +521,22 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
             <CardContent className="p-4 lg:p-6 text-center">
               <Award className="h-8 w-8 sm:h-12 sm:w-12 text-accent mx-auto mb-3 lg:mb-4" />
               <h3 className="text-sm sm:text-lg font-semibold mb-2">Loyalty Level</h3>
-              <div className="text-2xl sm:text-3xl font-bold text-accent mb-2">Gold</div>
-              <Progress value={75} className="h-2" />
-              <p className="text-xs sm:text-sm text-muted-foreground mt-2">
-                25% to Platinum
+              <div className="text-2xl sm:text-3xl font-bold text-accent mb-2">
+                {loyaltyData.level}
+              </div>
+              {loyaltyData.discount > 0 && (
+                <div className="text-lg sm:text-xl font-bold text-green-600 mb-2">
+                  {loyaltyData.discount}% Discount
+                </div>
+              )}
+              <Progress value={loyaltyData.progress} className="h-2 mb-2" />
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                {loyaltyData.nextLevel ? `Next: ${loyaltyData.nextLevel}` : "You've reached the highest level!"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                {loyaltyData.discount > 0 
+                  ? `Your ${loyaltyData.level} rank gives you ${loyaltyData.discount}% off all purchases!`
+                  : "Make your first purchase to unlock Silver rank and 5% discount!"}
               </p>
             </CardContent>
           </Card>
@@ -456,13 +545,39 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
             <CardContent className="p-4 lg:p-6 text-center">
               <Star className="h-8 w-8 sm:h-12 sm:w-12 text-accent mx-auto mb-3 lg:mb-4" />
               <h3 className="text-sm sm:text-lg font-semibold mb-2">Satisfaction Score</h3>
-              <div className="flex justify-center mb-2">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="h-4 w-4 sm:h-6 sm:w-6 fill-accent text-accent" />
-                ))}
-              </div>
+              {loadingSatisfaction ? (
+                <div className="flex justify-center mb-2">
+                  <Loader2 className="h-4 w-4 sm:h-6 sm:w-6 animate-spin text-accent" />
+                </div>
+              ) : (
+                <div className="flex justify-center mb-2">
+                  {[...Array(5)].map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => updateSatisfactionScore(i + 1)}
+                      className="focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 rounded-sm transition-all duration-200 hover:scale-110"
+                    >
+                      <Star 
+                        className={`h-4 w-4 sm:h-6 sm:w-6 ${
+                          i < satisfactionScore 
+                            ? "fill-accent text-accent" 
+                            : "text-muted-foreground hover:text-accent/50"
+                        }`} 
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
               <p className="text-xs sm:text-sm text-muted-foreground">
-                Excellent feedback!
+                {satisfactionScore === 0 
+                  ? "Tap stars to rate your experience" 
+                  : satisfactionScore === 5 
+                    ? "Excellent feedback!" 
+                    : satisfactionScore >= 4 
+                      ? "Great feedback!" 
+                      : satisfactionScore >= 3 
+                        ? "Good feedback!" 
+                        : "Thanks for your feedback!"}
               </p>
             </CardContent>
           </Card>
