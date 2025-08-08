@@ -1681,7 +1681,36 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
             {/* Product Video + Accent Panel (full-width square composition) */}
             {product.videos.length > 0 && (
               <div className="max-w-7xl mx-auto px-0">
-                <div className="relative aspect-square">
+                {/* Mobile: Stacked layout (video on top, panel below) */}
+                <div className="block lg:hidden">
+                  {/* Video on top */}
+                  <div className="w-full aspect-video mb-4">
+                    <div className="w-full h-full overflow-hidden rounded-lg bg-black">
+                      {renderVideoContent(product.videos[0])}
+                    </div>
+                  </div>
+                  {/* Purple panel below */}
+                  <div className="w-full bg-secondary text-secondary-foreground p-6 sm:p-8 rounded-lg">
+                    <h3 className="text-2xl sm:text-3xl font-extrabold leading-tight">Feel The Difference</h3>
+                    <p className="mt-3 sm:mt-4 text-sm sm:text-base opacity-90">
+                      Discover how consistent, targeted recovery elevates your daily routine. Our device combines engineered pressure, heat management, and ergonomic design to help loosen tight muscles and restore natural mobility in minutes.
+                    </p>
+                    <p className="mt-3 text-sm sm:text-base opacity-90">
+                      Whether you are preparing for a workout, resetting after sitting all day, or winding down before bed, a few focused minutes can change the way your body feels. Most people notice improved range of motion, less stiffness, and a calmer, more relaxed state right away.
+                    </p>
+                    <p className="mt-3 text-sm sm:text-base opacity-90">
+                      Built with premium materials and tuned for everyday use, it is designed to be quiet, powerful, and reliable. And if you do not love it, our 30‑day money‑back guarantee makes it completely risk‑free to try.
+                    </p>
+                    <div className="mt-5 sm:mt-6 flex flex-wrap gap-2">
+                      <span className="px-3 py-1 rounded-full bg-secondary-foreground/10 text-secondary-foreground text-xs sm:text-sm font-semibold">Premium Build</span>
+                      <span className="px-3 py-1 rounded-full bg-secondary-foreground/10 text-secondary-foreground text-xs sm:text-sm font-semibold">Fast Relief</span>
+                      <span className="px-3 py-1 rounded-full bg-secondary-foreground/10 text-secondary-foreground text-xs sm:text-sm font-semibold">Trusted by Pros</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Desktop: Side-by-side layout */}
+                <div className="hidden lg:block relative aspect-square">
                   {/* Left: video */}
                   <div className="absolute inset-y-0 left-0 w-1/2">
                     <div className="w-full h-full overflow-hidden rounded-none border-0 bg-black">
@@ -2290,7 +2319,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
           <div className="max-w-4xl mx-auto">
             <div className="bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-12 shadow-2xl border border-primary/10">
               <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-primary mb-4 sm:mb-6 flex items-center justify-center gap-2 sm:gap-3">
-                <Rocket className="h-5 w-5 sm:h-6 sm:w-6 md:h-8 md:w-8 text-primary" />
+                <Rocket className="h-6 w-6 sm:h-6 sm:w-6 md:h-8 md:w-8 text-primary" />
                 Ready to Experience Premium Quality?
               </h2>
               <p className="text-sm sm:text-base md:text-xl text-muted-foreground mb-6 sm:mb-8 max-w-2xl mx-auto leading-relaxed">
