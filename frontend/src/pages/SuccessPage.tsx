@@ -18,6 +18,7 @@ import { auth, db } from "../firebase"; // Import the existing Firebase instance
 import { createPaymentNotification } from "../lib/notificationUtils";
 import { handleStorePaymentSuccess } from "../lib/storeUtils";
 import { useCart } from "@/contexts/CartContext";
+import { API_ENDPOINTS } from "@/lib/productionConfig";
 
 const SuccessPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -227,7 +228,7 @@ const SuccessPage: React.FC = () => {
 
       if (sessionId) {
         try {
-          const response = await fetch(`http://localhost:4242/api/get-payment-intent/${sessionId}`);
+          const response = await fetch(`${API_ENDPOINTS.GET_PAYMENT_INTENT}/${sessionId}`);
           if (response.ok) {
             const data = await response.json();
             paymentIntentId = data.paymentIntentId;

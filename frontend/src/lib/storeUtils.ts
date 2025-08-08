@@ -1,6 +1,7 @@
 import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, setDoc, onSnapshot, query, where, orderBy, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
 import { trackUserActivity } from "./liveViewUtils";
+import { API_ENDPOINTS } from "./productionConfig";
 
 // Interface for tracking event
 export interface TrackingEvent {
@@ -635,7 +636,7 @@ export const processRefund = async (
         const endDate = new Date(orderDate.getTime() + 24 * 60 * 60 * 1000); // 1 day after
         console.log("Search date range:", { startDate, endDate });
         
-        const findResponse = await fetch("http://localhost:4242/api/find-payment-intent", {
+        const findResponse = await fetch(API_ENDPOINTS.FIND_PAYMENT_INTENT, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -668,7 +669,7 @@ export const processRefund = async (
     }
 
     // Process the actual refund through Stripe
-    const refundResponse = await fetch("http://localhost:4242/api/process-refund", {
+    const refundResponse = await fetch(API_ENDPOINTS.PROCESS_REFUND, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -1,3 +1,5 @@
+import { API_ENDPOINTS } from "./productionConfig";
+
 // CSRF Token management utilities
 
 let csrfToken: string | null = null;
@@ -9,7 +11,7 @@ export const getCSRFToken = async (): Promise<string> => {
   }
 
   try {
-    const response = await fetch('http://localhost:4242/api/csrf-token', {
+    const response = await fetch(API_ENDPOINTS.CSRF_TOKEN, {
       method: 'GET',
       credentials: 'include'
     });

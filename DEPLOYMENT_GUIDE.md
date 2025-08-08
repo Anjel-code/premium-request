@@ -92,11 +92,11 @@ cancel_url: `${FRONTEND_URL}/cancel?${isStoreOrder ? "orderId" : "ticketId"}=${t
 #### **Client-side Changes:**
 ```javascript
 // Replace hardcoded localhost URLs in:
-// - src/pages/PaymentPortalPage.tsx
-// - src/pages/Order.tsx  
-// - src/lib/csrfUtils.ts
-// - src/lib/storeUtils.ts
-// - src/pages/SuccessPage.tsx
+// - frontend/src/pages/PaymentPortalPage.tsx
+// - frontend/src/pages/Order.tsx
+// - frontend/src/lib/csrfUtils.ts
+// - frontend/src/lib/storeUtils.ts
+// - frontend/src/pages/SuccessPage.tsx
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4242';
 ```
@@ -214,7 +214,7 @@ cp .env .env.production
 {
   "scripts": {
     "build": "vite build",
-    "start": "node src/server.js"
+    "start": "node server.js"
   }
 }
 ```

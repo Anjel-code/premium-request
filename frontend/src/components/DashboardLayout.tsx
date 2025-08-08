@@ -230,7 +230,7 @@ export function DashboardLayout({
 
           <h1 className="text-lg lg:text-xl font-semibold text-primary flex items-center gap-2">
             {/* Logo - White box with purple borders and purple dot inside */}
-            <div className="relative w-6 h-6 bg-white border-4 border-primary rounded-sm flex items-center justify-center">
+            <div className="relative w-6 h-6 bg-white border-4 border-primary rounded-lg flex items-center justify-center">
               <div className="w-1.5 h-1.5 bg-primary rounded-full"></div>
             </div>
             Quibble

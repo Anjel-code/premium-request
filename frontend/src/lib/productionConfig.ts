@@ -1,10 +1,10 @@
-// Production Configuration
+// Production Configuration for Netlify
 // This file centralizes all API URLs and makes them environment-aware
 
 export const getApiBaseUrl = (): string => {
-  // In production, use environment variable
+  // In production, use Netlify Functions
   if (import.meta.env.PROD) {
-    return import.meta.env.VITE_API_BASE_URL || 'https://your-backend.railway.app';
+    return import.meta.env.VITE_API_BASE_URL || '/.netlify/functions';
   }
   
   // In development, use localhost
@@ -14,7 +14,7 @@ export const getApiBaseUrl = (): string => {
 export const getFrontendUrl = (): string => {
   // In production, use environment variable
   if (import.meta.env.PROD) {
-    return import.meta.env.VITE_FRONTEND_URL || 'https://your-frontend.vercel.app';
+    return import.meta.env.VITE_FRONTEND_URL || window.location.origin;
   }
   
   // In development, use localhost
@@ -25,14 +25,14 @@ export const getStripePublishableKey = (): string => {
   return import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_TYooMQauvdEDq54NiTgbpRLL';
 };
 
-// API Endpoints
+// API Endpoints for Netlify Functions
 export const API_ENDPOINTS = {
-  CREATE_CHECKOUT_SESSION: `${getApiBaseUrl()}/api/create-checkout-session`,
-  PROCESS_REFUND: `${getApiBaseUrl()}/api/process-refund`,
-  FIND_PAYMENT_INTENT: `${getApiBaseUrl()}/api/find-payment-intent`,
-  GET_PAYMENT_INTENT: `${getApiBaseUrl()}/api/get-payment-intent`,
-  CHAT: `${getApiBaseUrl()}/api/chat`,
-  CSRF_TOKEN: `${getApiBaseUrl()}/api/csrf-token`,
+  CREATE_CHECKOUT_SESSION: `${getApiBaseUrl()}/create-checkout-session`,
+  PROCESS_REFUND: `${getApiBaseUrl()}/process-refund`,
+  FIND_PAYMENT_INTENT: `${getApiBaseUrl()}/find-payment-intent`,
+  GET_PAYMENT_INTENT: `${getApiBaseUrl()}/get-payment-intent`,
+  CHAT: `${getApiBaseUrl()}/chat`,
+  CSRF_TOKEN: `${getApiBaseUrl()}/csrf-token`,
 } as const;
 
 // Success/Cancel URLs for Stripe

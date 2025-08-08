@@ -16,6 +16,7 @@ import { Bot, Send, CheckCircle, Loader2 } from "lucide-react";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase"; // Corrected to "../firebase"
 import { secureFetch } from "@/lib/csrfUtils";
+import { API_ENDPOINTS } from "@/lib/productionConfig";
 
 // Define the Message interface for chat messages
 interface Message {
@@ -184,7 +185,7 @@ const Order: React.FC<OrderProps> = ({ user, appId }) => {
 
   // Function to call the server-side chat API with exponential backoff
   const callChatApi = async (payload: any, retries = 3, delay = 1000) => {
-    const apiUrl = "http://localhost:4242/api/chat";
+    const apiUrl = `${API_ENDPOINTS.CHAT}`;
 
     for (let i = 0; i < retries; i++) {
       try {

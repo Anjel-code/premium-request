@@ -76,9 +76,12 @@ if (process.env.NODE_ENV === 'production') {
 
 // --- CORS Configuration ---
 // Allow specific origins (recommended for production)
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:8080';
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:4242';
+
 app.use(
   cors({
-    origin: ["http://localhost:8080", "http://localhost:5173", "http://localhost:3000"], // Allow multiple frontend ports
+    origin: [FRONTEND_URL, "http://localhost:5173", "http://localhost:3000"], // Allow multiple frontend ports
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -148,10 +151,10 @@ app.post("/api/create-checkout-session", validateCSRF, async (req, res) => {
         },
       ],
       mode: "payment",
-      success_url: `http://localhost:8080/success?${
+      success_url: `${FRONTEND_URL}/success?${
         isStoreOrder ? "orderId" : "ticketId"
       }=${ticketId}&session_id={CHECKOUT_SESSION_ID}`, // Include session ID for payment intent lookup
-      cancel_url: `http://localhost:8080/cancel?${
+      cancel_url: `${FRONTEND_URL}/cancel?${
         isStoreOrder ? "orderId" : "ticketId"
       }=${ticketId}`, // Adjust cancel URL to your frontend
       customer_email: customerEmail, // Pre-fill customer email if available
@@ -361,7 +364,7 @@ app.post("/api/chat", validateCSRF, async (req, res) => {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,
-          "HTTP-Referer": req.headers.origin || "http://localhost:8080",
+          "HTTP-Referer": req.headers.origin || FRONTEND_URL,
           "X-Title": "Quibble Concierge",
           "Content-Type": "application/json",
         },

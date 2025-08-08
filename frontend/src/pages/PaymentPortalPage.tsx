@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { handleStorePaymentSuccess } from "@/lib/storeUtils";
+import { API_ENDPOINTS } from "@/lib/productionConfig";
 
 // Define the UserProfile interface (matching what's stored in Firestore)
 interface UserProfile {
@@ -80,20 +81,17 @@ const PaymentPortalPage: React.FC<PaymentPortalPageProps> = ({
 
     try {
       // --- IMPORTANT CHANGE HERE: Specify the full URL including the backend port ---
-      const response = await fetch(
-        "http://localhost:4242/api/create-checkout-session",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            amount: Math.round(parseFloat(amount) * 100) / 100, // Round to 2 decimal places
-            ticketId: ticketId || orderId, // Use orderId for store orders
-            orderTitle,
-            customerEmail: user?.email,
-            isStoreOrder: !!orderId, // Flag to indicate this is a store order
-          }),
-        }
-      );
+      const response = await fetch(API_ENDPOINTS.CREATE_CHECKOUT_SESSION, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: Math.round(parseFloat(amount) * 100) / 100, // Round to 2 decimal places
+          ticketId: ticketId || orderId, // Use orderId for store orders
+          orderTitle,
+          customerEmail: user?.email,
+          isStoreOrder: !!orderId, // Flag to indicate this is a store order
+        }),
+      });
       const session = await response.json();
       if (session.url) {
         // Store order info in sessionStorage for success page

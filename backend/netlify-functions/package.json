@@ -1,0 +1,12 @@
+{
+  "name": "quibble-netlify-functions",
+  "version": "1.0.0",
+  "description": "Netlify Functions for Quibble premium request system",
+  "main": "index.js",
+  "dependencies": {
+    "stripe": "^14.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+} 

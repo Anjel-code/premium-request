@@ -1,73 +1,78 @@
-# Welcome to your Lovable project
+# 🚀 Quibble - Premium Request Platform
 
-## Project info
+A modern, secure e-commerce platform built with React, Node.js, and Firebase.
 
-**URL**: https://lovable.dev/projects/f24dca90-2c25-4459-a126-7c04474bcfac
+## 📁 Project Structure
 
-## How can I edit this code?
+This project is separated into frontend and backend for easy deployment:
 
-There are several ways of editing your application.
+- **`frontend/`** - React application (deploy to Vercel)
+- **`backend/`** - Node.js API server (deploy to Railway)
 
-**Use Lovable**
+## 🚀 Quick Start
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/f24dca90-2c25-4459-a126-7c04474bcfac) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+### Frontend Development
+```bash
+cd frontend
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Backend Development
+```bash
+cd backend
+npm install
+npm run dev
+```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 🌐 Deployment
 
-**Use GitHub Codespaces**
+### Frontend (Vercel)
+- Deploy the `frontend/` directory to Vercel
+- See `frontend/README.md` for detailed instructions
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Backend (Railway)
+- Deploy the `backend/` directory to Railway
+- See `backend/README.md` for detailed instructions
 
-## What technologies are used for this project?
+### Complete Deployment Guide
+See `DEPLOYMENT_SEPARATED.md` for comprehensive deployment instructions.
 
-This project is built with:
+## 🔒 Security Features
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- Rate limiting
+- CSRF protection
+- Security headers
+- Input sanitization
+- Firebase security rules
 
-## How can I deploy this project?
+## 🛠️ Tech Stack
 
-Simply open [Lovable](https://lovable.dev/projects/f24dca90-2c25-4459-a126-7c04474bcfac) and click on Share -> Publish.
+- **Frontend**: React, TypeScript, Tailwind CSS, Shadcn UI
+- **Backend**: Node.js, Express, Stripe API
+- **Database**: Firebase Firestore
+- **Authentication**: Firebase Auth
+- **AI**: DeepSeek integration
+- **Payments**: Stripe
 
-## Can I connect a custom domain to my Lovable project?
+## 📚 Documentation
 
-Yes, you can!
+- `DEPLOYMENT_SEPARATED.md` - Complete deployment guide
+- `SECURITY.md` - Security implementation details
+- `frontend/README.md` - Frontend-specific guide
+- `backend/README.md` - Backend-specific guide
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## 🎯 Features
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+- User authentication
+- E-commerce store
+- Payment processing
+- AI-powered chat support
+- Admin dashboard
+- Order management
+- Refund processing
+- Real-time notifications
+
+## 📄 License
+
+All rights reserved © 2025 Quibble
