@@ -4,20 +4,35 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Mail, Phone, MapPin, Clock, Send } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Mail, Phone, MapPin, Clock, Send, Menu, X, Home, User, Info, MessageCircle, Shield } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import Footer from "@/components/Footer";
 // Removed: import Navigation from "@/components/Navigation"; // Navigation is now handled in App.jsx
 import { useToast } from "@/hooks/use-toast";
 
 const Contact = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     subject: "",
     message: "",
   });
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+  };
+
+  const handleNavigation = (path: string) => {
+    navigate(path);
+    closeMobileMenu();
+  };
 
   const handleSubmit = (e) => {
     // Removed React.FormEvent type for broader compatibility
@@ -42,6 +57,101 @@ const Contact = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Mobile Navigation Header */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-border shadow-sm">
+        <div className="flex items-center justify-between px-4 py-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleMobileMenu}
+            className="flex items-center gap-2 text-primary hover:text-primary/80"
+          >
+            <Menu className="h-5 w-5" />
+            <span className="text-sm font-medium">Menu</span>
+          </Button>
+          <div className="text-lg font-bold text-primary">Contact</div>
+          <div className="w-20"></div> {/* Spacer for centering */}
+        </div>
+      </div>
+
+      {/* Mobile Sidebar Menu */}
+      <div className={`lg:hidden fixed inset-0 z-50 transition-opacity duration-300 ${
+        isMobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+      }`}>
+        {/* Backdrop */}
+        <div
+          className="absolute inset-0 bg-black/50"
+          onClick={closeMobileMenu}
+        ></div>
+
+        {/* Sidebar */}
+        <div className={`absolute left-0 top-0 h-full w-80 max-w-[85vw] bg-white shadow-xl transform transition-transform duration-300 ${
+          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}>
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-border">
+            <h2 className="text-lg font-semibold text-primary">Navigation</h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={closeMobileMenu}
+              className="p-2"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+
+          {/* Navigation Links */}
+          <div className="p-4 space-y-2">
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 h-12 text-left"
+              onClick={() => handleNavigation('/')}
+            >
+              <Home className="h-5 w-5" />
+              <span>Home</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 h-12 text-left"
+              onClick={() => handleNavigation('/dashboard')}
+            >
+              <User className="h-5 w-5" />
+              <span>Dashboard</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 h-12 text-left"
+              onClick={() => handleNavigation('/store')}
+            >
+              <Shield className="h-5 w-5" />
+              <span>Store</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 h-12 text-left"
+              onClick={() => handleNavigation('/about')}
+            >
+              <Info className="h-5 w-5" />
+              <span>About</span>
+            </Button>
+          </div>
+
+          {/* Footer */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border">
+            <div className="text-sm text-muted-foreground text-center">
+              Premium Request Store
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Add top padding for mobile to account for fixed header */}
+      <div className="lg:hidden pt-16"></div>
+
       {/* Navigation component is now rendered at the App.jsx level, not here. */}
 
       {/* Hero Section */}

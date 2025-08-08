@@ -24,7 +24,6 @@ import {
   CreditCard,
   Lock,
   Loader2,
-  Settings,
   Edit,
   Volume2,
   Maximize2,
@@ -39,6 +38,15 @@ import {
   Wrench,
   Video,
   Rocket,
+  Clock,
+  Users,
+  Award,
+  ArrowLeft,
+  Home,
+  Menu,
+  User,
+  Info,
+  MessageCircle,
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -305,6 +313,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   const navigate = useNavigate();
   const { addToCart, items } = useCart();
   const { toast } = useToast();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Check if user is admin by querying the database
   useEffect(() => {
@@ -794,8 +803,116 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
     );
   }
 
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+  };
+
+  const handleNavigation = (path: string) => {
+    navigate(path);
+    closeMobileMenu();
+  };
+
   return (
     <div className="min-h-screen bg-background">
+      {/* Mobile Navigation Header */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-border shadow-sm">
+        <div className="flex items-center justify-between px-4 py-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleMobileMenu}
+            className="flex items-center gap-2 text-primary hover:text-primary/80"
+          >
+            <Menu className="h-5 w-5" />
+            <span className="text-sm font-medium">Menu</span>
+          </Button>
+          <div className="text-lg font-bold text-primary">Store</div>
+          <div className="w-20"></div> {/* Spacer for centering */}
+        </div>
+      </div>
+
+      {/* Mobile Sidebar Menu */}
+      <div className={`lg:hidden fixed inset-0 z-50 transition-opacity duration-300 ${
+        isMobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+      }`}>
+        {/* Backdrop */}
+        <div 
+          className="absolute inset-0 bg-black/50"
+          onClick={closeMobileMenu}
+        ></div>
+        
+        {/* Sidebar */}
+        <div className={`absolute left-0 top-0 h-full w-80 max-w-[85vw] bg-white shadow-xl transform transition-transform duration-300 ${
+          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}>
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-border">
+            <h2 className="text-lg font-semibold text-primary">Navigation</h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={closeMobileMenu}
+              className="p-2"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+
+          {/* Navigation Links */}
+          <div className="p-4 space-y-2">
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 h-12 text-left"
+              onClick={() => handleNavigation('/')}
+            >
+              <Home className="h-5 w-5" />
+              <span>Home</span>
+            </Button>
+            
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 h-12 text-left"
+              onClick={() => handleNavigation('/dashboard')}
+            >
+              <User className="h-5 w-5" />
+              <span>Dashboard</span>
+            </Button>
+            
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 h-12 text-left"
+              onClick={() => handleNavigation('/about')}
+            >
+              <Info className="h-5 w-5" />
+              <span>About</span>
+            </Button>
+            
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 h-12 text-left"
+              onClick={() => handleNavigation('/contact')}
+            >
+              <MessageCircle className="h-5 w-5" />
+              <span>Contact Us</span>
+            </Button>
+          </div>
+
+          {/* Footer */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border">
+            <div className="text-sm text-muted-foreground text-center">
+              Premium Request Store
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Add top padding for mobile to account for fixed header */}
+      <div className="lg:hidden pt-16"></div>
+
       {/* Admin Edit Button */}
       {isCheckingAdmin ? (
         <div className="fixed top-4 right-4 z-50">
