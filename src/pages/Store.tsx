@@ -1529,18 +1529,35 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                       </div>
                     </div>
                     <div className="flex items-center justify-center gap-3 sm:gap-6 pt-2">
-                      <div className="flex items-center gap-1 sm:gap-2 bg-white/70 px-2 sm:px-3 py-1 sm:py-2 rounded-lg">
-                        <CreditCard className="h-3 w-3 sm:h-4 sm:w-4 text-accent" />
-                        <span className="text-xs font-medium text-primary">Visa</span>
-                </div>
-                      <div className="flex items-center gap-1 sm:gap-2 bg-white/70 px-2 sm:px-3 py-1 sm:py-2 rounded-lg">
-                        <CreditCard className="h-3 w-3 sm:h-4 sm:w-4 text-accent" />
-                        <span className="text-xs font-medium text-primary">Mastercard</span>
+                      <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 pt-2">
+                        <div className="flex items-center gap-1 sm:gap-2 bg-white/70 px-2 sm:px-3 py-1 sm:py-2 rounded-lg">
+                          <CreditCard className="h-3 w-3 sm:h-4 sm:w-4 text-accent" />
+                          <span className="text-xs font-medium text-primary">Visa</span>
+                        </div>
+                        <div className="flex items-center gap-1 sm:gap-2 bg-white/70 px-2 sm:px-3 py-1 sm:py-2 rounded-lg">
+                          <CreditCard className="h-3 w-3 sm:h-4 sm:w-4 text-accent" />
+                          <span className="text-xs font-medium text-primary">Mastercard</span>
+                        </div>
+                        <div className="flex items-center gap-1 sm:gap-2 bg-white/70 px-2 sm:px-3 py-1 sm:py-2 rounded-lg">
+                          <CreditCard className="h-3 w-3 sm:h-4 sm:w-4 text-accent" />
+                          <span className="text-xs font-medium text-primary">Amex</span>
+                        </div>
+                        <div className="flex items-center gap-1 sm:gap-2 bg-white/70 px-2 sm:px-3 py-1 sm:py-2 rounded-lg">
+                          <CreditCard className="h-3 w-3 sm:h-4 sm:w-4 text-accent" />
+                          <span className="text-xs font-medium text-primary">Discover</span>
+                        </div>
+                        <div className="flex items-center gap-1 sm:gap-2 bg-white/70 px-2 sm:px-3 py-1 sm:py-2 rounded-lg">
+                          <CreditCard className="h-3 w-3 sm:h-4 sm:w-4 text-accent" />
+                          <span className="text-xs font-medium text-primary">PayPal</span>
+                        </div>
+                        <div className="flex items-center gap-1 sm:gap-2 bg-white/70 px-2 sm:px-3 py-1 sm:py-2 rounded-lg">
+                          <Lock className="h-3 w-3 sm:h-4 sm:w-4 text-accent" />
+                          <span className="text-xs font-medium text-primary">SSL Secure</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1 sm:gap-2 bg-white/70 px-2 sm:px-3 py-1 sm:py-2 rounded-lg">
-                        <Lock className="h-3 w-3 sm:h-4 sm:w-4 text-accent" />
-                        <span className="text-xs font-medium text-primary">SSL Secure</span>
-                      </div>
+                    </div>
+                    <div className="text-center pt-2">
+                      <p className="text-xs text-muted-foreground">Powered by Stripe</p>
                     </div>
                   </div>
                 </div>
@@ -1560,7 +1577,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                 <div>
                   <h2 className="text-3xl sm:text-5xl font-extrabold leading-tight text-primary tracking-tight">
                     30 DAY MONEY BACK GUARANTEE
-                  </h2>
+              </h2>
                   <p className="mt-4 text-muted-foreground text-sm sm:text-base max-w-prose">
                     If you are not completely satisfied, return your product within 30 days for a full refund. We stand behind the quality and results.
                   </p>
@@ -1585,14 +1602,14 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
             {/* Features (no card background, full-width) */}
             <div className="px-0">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                {product.features.map((feature, index) => (
+                                  {product.features.map((feature, index) => (
                   <div key={index} className="flex items-center gap-3 p-3 sm:p-4 rounded-lg bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/20">
                     <div className="w-5 h-5 sm:w-6 sm:h-6 bg-secondary rounded-full flex items-center justify-center flex-shrink-0">
                       <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
-                    </div>
+                      </div>
                     <span className="text-xs sm:text-sm font-medium text-primary">{feature}</span>
-                  </div>
-                ))}
+                    </div>
+                  ))}
               </div>
             </div>
 
@@ -2347,25 +2364,25 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                     className="w-full h-full object-cover"
                   />
                 ) : selectedVideo.videoUrl.startsWith('data:') ? (
-                  // Local video file
-                  <video
-                    src={selectedVideo.videoUrl}
-                    controls
-                    className="w-full h-full"
-                  />
-                ) : (
-                  // YouTube or external video
-                  <iframe
-                    src={`${selectedVideo.videoUrl}?rel=0&modestbranding=1`}
-                    title={`Video testimonial by ${selectedVideo.customerName}`}
-                    className="w-full h-full"
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-                  />
-                )}
-              </div>
+                   // Local video file
+                   <video
+                     src={selectedVideo.videoUrl}
+                     controls
+                     className="w-full h-full"
+                   />
+                 ) : (
+                   // YouTube or external video
+                   <iframe
+                     src={`${selectedVideo.videoUrl}?rel=0&modestbranding=1`}
+                     title={`Video testimonial by ${selectedVideo.customerName}`}
+                     className="w-full h-full"
+                     frameBorder="0"
+                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                     allowFullScreen
+                     sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                   />
+                 )}
+               </div>
               <div className="space-y-2">
                 <p className="text-base sm:text-lg font-medium text-primary">
                   {selectedVideo.customerName}
