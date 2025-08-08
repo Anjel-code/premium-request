@@ -36,7 +36,11 @@ const Navigation = ({
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
       <div className="container mx-auto px-6 py-2">
         <div className="flex items-center justify-between">
-          <Link to="/" className="text-2xl font-bold text-primary">
+          <Link to="/" className="text-2xl font-bold text-primary flex items-center gap-2">
+            {/* Logo - White box with purple borders and purple dot inside */}
+            <div className="relative w-8 h-8 bg-white border-4 border-primary rounded-lg flex items-center justify-center">
+              <div className="w-2 h-2 bg-primary rounded-full"></div>
+            </div>
             Quibble
           </Link>
 

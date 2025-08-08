@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Bot, Send, CheckCircle, Loader2 } from "lucide-react";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase"; // Corrected to "../firebase"
+import { secureFetch } from "@/lib/csrfUtils";
 
 // Define the Message interface for chat messages
 interface Message {
@@ -181,29 +182,15 @@ const Order: React.FC<OrderProps> = ({ user, appId }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Function to call the OpenRouter API (for DeepSeek) with exponential backoff
-  const callOpenRouterApi = async (payload: any, retries = 3, delay = 1000) => {
-    const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY || "";
-    const apiUrl = "https://openrouter.ai/api/v1/chat/completions";
-
-    if (!apiKey) {
-      console.error(
-        "VITE_DEEPSEEK_API_KEY environment variable is not set. Please ensure it's defined in your .env file."
-      );
-      throw new Error("DeepSeek API key is missing.");
-    }
-
-    const httpReferer = window.location.origin;
-    const xTitle = "Quibble Concierge";
+  // Function to call the server-side chat API with exponential backoff
+  const callChatApi = async (payload: any, retries = 3, delay = 1000) => {
+    const apiUrl = "http://localhost:4242/api/chat";
 
     for (let i = 0; i < retries; i++) {
       try {
-        const response = await fetch(apiUrl, {
+        const response = await secureFetch(apiUrl, {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "HTTP-Referer": httpReferer,
-            "X-Title": xTitle,
             "Content-Type": "application/json",
           },
           body: JSON.stringify(payload),
@@ -212,7 +199,7 @@ const Order: React.FC<OrderProps> = ({ user, appId }) => {
         if (!response.ok) {
           const errorBody = await response.text();
           console.error(
-            `OpenRouter API error (status ${response.status}):`,
+            `Chat API error (status ${response.status}):`,
             errorBody
           );
           if (response.status === 429 && i < retries - 1) {
@@ -221,7 +208,7 @@ const Order: React.FC<OrderProps> = ({ user, appId }) => {
             continue;
           }
           throw new Error(
-            `OpenRouter API error: ${response.status} ${response.statusText} - ${errorBody}`
+            `Chat API error: ${response.status} ${response.statusText} - ${errorBody}`
           );
         }
 
@@ -235,17 +222,17 @@ const Order: React.FC<OrderProps> = ({ user, appId }) => {
           return result.choices[0].message.content;
         } else {
           console.error(
-            "Unexpected OpenRouter API response structure or missing content. Result:",
+            "Unexpected chat API response structure or missing content. Result:",
             JSON.stringify(result, null, 2)
           );
           throw new Error(
-            "Unexpected OpenRouter API response structure or missing content."
+            "Unexpected chat API response structure or missing content."
           );
         }
       } catch (error) {
         if (i === retries - 1) {
           console.error(
-            "Failed to call OpenRouter API after multiple retries:",
+            "Failed to call chat API after multiple retries:",
             error
           );
           throw error;
@@ -254,7 +241,7 @@ const Order: React.FC<OrderProps> = ({ user, appId }) => {
         delay *= 2;
       }
     }
-    throw new Error("OpenRouter API call failed after multiple retries.");
+    throw new Error("Chat API call failed after multiple retries.");
   };
 
   // Function to generate the summary for the team using DeepSeek
@@ -293,7 +280,7 @@ const Order: React.FC<OrderProps> = ({ user, appId }) => {
         max_tokens: 400, // Increased from 200 to 400 tokens for complete summary
       };
 
-      const apiResponseText = await callOpenRouterApi(payload);
+      const apiResponseText = await callChatApi(payload);
       console.log("Summary API response:", apiResponseText); // Debug logging
 
       if (apiResponseText && apiResponseText.trim().length > 0) {
@@ -420,7 +407,7 @@ const Order: React.FC<OrderProps> = ({ user, appId }) => {
         max_tokens: 500, // Reduced from 1000 to 500 tokens (50% reduction)
       };
 
-      const aiResponseText = await callOpenRouterApi(payload);
+      const aiResponseText = await callChatApi(payload);
 
       const botResponse: Message = {
         id: messages.length + 2,

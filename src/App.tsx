@@ -65,6 +65,7 @@ import TermsOfService from "./pages/TermsOfService"; // Import TermsOfService
 
 import { CartProvider } from "@/contexts/CartContext";
 import CartPanel from "@/components/CartPanel";
+import LoadingPage from "@/components/LoadingPage";
 
 // --- Tailwind-like styles for basic UI (kept for standalone functionality) ---
 const styles = `
@@ -1005,12 +1006,7 @@ function App() {
   };
 
   if (loading) {
-    return (
-      <div className="loading-screen">
-        <style>{styles}</style>
-        Loading application...
-      </div>
-    );
+    return <LoadingPage />;
   }
 
   return (

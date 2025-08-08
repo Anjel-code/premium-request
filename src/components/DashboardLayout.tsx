@@ -228,7 +228,13 @@ export function DashboardLayout({
             </Button>
           </div>
 
-          <h1 className="text-lg lg:text-xl font-semibold text-primary">Quibble</h1>
+          <h1 className="text-lg lg:text-xl font-semibold text-primary flex items-center gap-2">
+            {/* Logo - White box with purple borders and purple dot inside */}
+            <div className="relative w-6 h-6 bg-white border-4 border-primary rounded-sm flex items-center justify-center">
+              <div className="w-1.5 h-1.5 bg-primary rounded-full"></div>
+            </div>
+            Quibble
+          </h1>
 
           <div className="flex items-center gap-2 lg:gap-4">
             <Button variant="ghost" size="icon" asChild className="relative overflow-visible">
@@ -269,7 +275,13 @@ export function DashboardLayout({
           }`}>
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-border">
-              <h2 className="text-lg font-semibold text-primary">Dashboard Menu</h2>
+              <h2 className="text-lg font-semibold text-primary flex items-center gap-2">
+                {/* Logo - White box with purple borders and purple dot inside */}
+                <div className="relative w-6 h-6 bg-white border-4 border-primary rounded-lg flex items-center justify-center">
+                  <div className="w-1.5 h-1.5 bg-primary rounded-full"></div>
+                </div>
+                Dashboard Menu
+              </h2>
               <Button
                 variant="ghost"
                 size="sm"
