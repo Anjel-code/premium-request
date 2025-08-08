@@ -21,7 +21,6 @@ import { Label } from "@/components/ui/label";
 import {
   Send,
   ArrowLeft,
-  Download,
   Upload,
   FileText,
   User,
@@ -220,40 +219,6 @@ const RefundSupportChat: React.FC<RefundSupportChatProps> = ({ user, appId, isAd
     }
   };
 
-  const generateShippingLabel = () => {
-    if (!orderDetails?.shippingInfo) return;
-    
-    // Create a simple shipping label PDF (in real implementation, this would generate an actual PDF)
-    const shippingLabelContent = `
-      SHIPPING LABEL
-      
-      From:
-      Your Company Name
-      Company Address
-      City, State ZIP
-      
-      To:
-      ${orderDetails.shippingInfo.firstName} ${orderDetails.shippingInfo.lastName}
-      ${orderDetails.shippingInfo.address}
-      ${orderDetails.shippingInfo.city}, ${orderDetails.shippingInfo.state} ${orderDetails.shippingInfo.zipCode}
-      ${orderDetails.shippingInfo.country}
-      
-      Order ID: ${orderDetails.id}
-      Return Reason: ${orderDetails.refundReason || "Customer requested refund"}
-    `;
-    
-    // Create and download the file
-    const blob = new Blob([shippingLabelContent], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `shipping-label-${orderDetails.id}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -299,82 +264,76 @@ const RefundSupportChat: React.FC<RefundSupportChatProps> = ({ user, appId, isAd
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto max-w-6xl p-6">
+      <div className="container mx-auto max-w-6xl p-3 sm:p-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={() => navigate(-1)}>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+            <Button variant="outline" onClick={() => navigate(-1)} className="self-start sm:self-auto">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
             <div>
-              <h1 className="text-2xl font-bold">Refund Support Chat</h1>
-              <p className="text-muted-foreground">Order #{orderDetails.id}</p>
+              <h1 className="text-xl sm:text-2xl font-bold">Refund Support Chat</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">Order #{orderDetails.id}</p>
             </div>
-          </div>
-          <div className="flex gap-2">
-            <Button onClick={generateShippingLabel} variant="outline">
-              <Download className="h-4 w-4 mr-2" />
-              Generate Shipping Label
-            </Button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Order Details Sidebar */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 order-2 lg:order-1">
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                   <Package className="h-4 w-4" />
                   Order Details
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6">
                 <div>
-                  <Label className="text-sm font-medium">Customer</Label>
+                  <Label className="text-xs sm:text-sm font-medium">Customer</Label>
                   <p className="flex items-center gap-2 mt-1">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    {orderDetails.userName}
+                    <User className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+                    <span className="text-sm sm:text-base">{orderDetails.userName}</span>
                   </p>
-                  <p className="text-sm text-muted-foreground">{orderDetails.userEmail}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">{orderDetails.userEmail}</p>
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium">Product</Label>
-                  <p className="mt-1">{orderDetails.productName}</p>
+                  <Label className="text-xs sm:text-sm font-medium">Product</Label>
+                  <p className="mt-1 text-sm sm:text-base">{orderDetails.productName}</p>
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium">Amount</Label>
+                  <Label className="text-xs sm:text-sm font-medium">Amount</Label>
                   <p className="flex items-center gap-2 mt-1">
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                    ${orderDetails.totalAmount.toFixed(2)}
-                  </p>
-                </div>
-
-                <div>
-                  <Label className="text-sm font-medium">Order Date</Label>
-                  <p className="flex items-center gap-2 mt-1">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    {orderDetails.createdAt.toLocaleDateString()}
+                    <DollarSign className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+                    <span className="text-sm sm:text-base">${orderDetails.totalAmount.toFixed(2)}</span>
                   </p>
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium">Status</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Badge variant="outline">{orderDetails.status}</Badge>
-                    <Badge variant="outline">{orderDetails.refundStatus}</Badge>
+                  <Label className="text-xs sm:text-sm font-medium">Order Date</Label>
+                  <p className="flex items-center gap-2 mt-1">
+                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+                    <span className="text-sm sm:text-base">{orderDetails.createdAt.toLocaleDateString()}</span>
+                  </p>
+                </div>
+
+                <div>
+                  <Label className="text-xs sm:text-sm font-medium">Status</Label>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    <Badge variant="outline" className="text-xs">{orderDetails.status}</Badge>
+                    <Badge variant="outline" className="text-xs">{orderDetails.refundStatus}</Badge>
                   </div>
                 </div>
 
                 {orderDetails.shippingInfo && (
                   <div>
-                    <Label className="text-sm font-medium">Shipping Address</Label>
+                    <Label className="text-xs sm:text-sm font-medium">Shipping Address</Label>
                     <div className="flex items-start gap-2 mt-1">
-                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                      <div className="text-sm">
+                      <MapPin className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground mt-0.5" />
+                      <div className="text-xs sm:text-sm">
                         <p>{orderDetails.shippingInfo.firstName} {orderDetails.shippingInfo.lastName}</p>
                         <p>{orderDetails.shippingInfo.address}</p>
                         <p>{orderDetails.shippingInfo.city}, {orderDetails.shippingInfo.state} {orderDetails.shippingInfo.zipCode}</p>
@@ -386,68 +345,68 @@ const RefundSupportChat: React.FC<RefundSupportChatProps> = ({ user, appId, isAd
 
                 {orderDetails.refundReason && (
                   <div>
-                    <Label className="text-sm font-medium">Refund Reason</Label>
-                    <p className="mt-1 text-sm">{orderDetails.refundReason}</p>
+                    <Label className="text-xs sm:text-sm font-medium">Refund Reason</Label>
+                    <p className="mt-1 text-xs sm:text-sm">{orderDetails.refundReason}</p>
                   </div>
                 )}
               </CardContent>
             </Card>
           </div>
 
-                     {/* Chat Area */}
-           <div className="lg:col-span-2">
-             <Card className="h-[600px] flex flex-col overflow-hidden">
-               <CardHeader className="border-b flex-shrink-0">
-                 <CardTitle>Chat with Customer</CardTitle>
-               </CardHeader>
-               
-               <CardContent className="flex-1 flex flex-col p-0 min-h-0">
-                 {/* Messages */}
-                 <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
+          {/* Chat Area */}
+          <div className="lg:col-span-2 order-1 lg:order-2">
+            <Card className="h-[500px] sm:h-[600px] flex flex-col overflow-hidden">
+              <CardHeader className="border-b flex-shrink-0 p-4 sm:p-6">
+                <CardTitle className="text-base sm:text-lg">Chat with Customer</CardTitle>
+              </CardHeader>
+              
+              <CardContent className="flex-1 flex flex-col p-0 min-h-0">
+                {/* Messages */}
+                <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-3 sm:space-y-4 min-h-0">
                   {messages.length === 0 ? (
                     <div className="text-center text-muted-foreground py-8">
-                      <p>No messages yet. Start the conversation!</p>
+                      <p className="text-sm sm:text-base">No messages yet. Start the conversation!</p>
                     </div>
                   ) : (
                     messages.map((message) => (
-                                             <div
-                         key={message.id}
-                         className={`flex ${
-                           message.senderId === user?.uid ? "justify-end" : "justify-start"
-                         }`}
-                       >
-                         <div
-                           className={`max-w-xs lg:max-w-md px-4 py-3 rounded-lg ${
-                             message.senderId === user?.uid
-                               ? "bg-primary text-primary-foreground"
-                               : "bg-muted text-foreground"
-                           }`}
-                         >
-                                                     <p className="text-xs font-semibold opacity-80 mb-1">
-                             {message.senderId === user?.uid ? (isAdmin ? "Refund Support" : (user.displayName || user.email || "Customer")) : message.senderName}
-                           </p>
-                          <p className="text-sm">{message.text}</p>
+                      <div
+                        key={message.id}
+                        className={`flex ${
+                          message.senderId === user?.uid ? "justify-end" : "justify-start"
+                        }`}
+                      >
+                        <div
+                          className={`max-w-[280px] sm:max-w-xs lg:max-w-md px-3 sm:px-4 py-2 sm:py-3 rounded-lg ${
+                            message.senderId === user?.uid
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-foreground"
+                          }`}
+                        >
+                          <p className="text-xs font-semibold opacity-80 mb-1">
+                            {message.senderId === user?.uid ? (isAdmin ? "Refund Support" : (user.displayName || user.email || "Customer")) : message.senderName}
+                          </p>
+                          <p className="text-xs sm:text-sm">{message.text}</p>
                           
-                                                     {/* File Attachments */}
-                           {message.attachments && message.attachments.length > 0 && (
-                             <div className="mt-2 space-y-1">
-                               {message.attachments.map((attachment, index) => (
-                                 <div key={index} className="flex items-center gap-2 p-2 bg-background/50 rounded-md border border-border/50">
-                                   <FileText className="h-3 w-3 text-muted-foreground" />
-                                   <a
-                                     href={attachment.url}
-                                     download={attachment.name}
-                                     className="text-xs font-medium hover:underline"
-                                   >
-                                     {attachment.name}
-                                   </a>
-                                   <span className="text-xs text-muted-foreground">
-                                     ({attachment.type})
-                                   </span>
-                                 </div>
-                               ))}
-                             </div>
-                           )}
+                          {/* File Attachments */}
+                          {message.attachments && message.attachments.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {message.attachments.map((attachment, index) => (
+                                <div key={index} className="flex items-center gap-2 p-2 bg-background/50 rounded-md border border-border/50">
+                                  <FileText className="h-3 w-3 text-muted-foreground" />
+                                  <a
+                                    href={attachment.url}
+                                    download={attachment.name}
+                                    className="text-xs font-medium hover:underline truncate"
+                                  >
+                                    {attachment.name}
+                                  </a>
+                                  <span className="text-xs text-muted-foreground hidden sm:inline">
+                                    ({attachment.type})
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                           
                           <p className="text-xs opacity-70 mt-1">
                             {new Date(message.timestamp).toLocaleTimeString([], {
@@ -462,9 +421,9 @@ const RefundSupportChat: React.FC<RefundSupportChatProps> = ({ user, appId, isAd
                   <div ref={messagesEndRef} />
                 </div>
 
-                                 {/* Message Input */}
-                 <div className="border-t p-4 flex-shrink-0">
-                  <div className="flex gap-2">
+                {/* Message Input */}
+                <div className="border-t p-3 sm:p-4 flex-shrink-0">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <div className="flex-1">
                       <Textarea
                         value={newMessage}
@@ -476,48 +435,48 @@ const RefundSupportChat: React.FC<RefundSupportChatProps> = ({ user, appId, isAd
                           }
                         }}
                         placeholder="Type your message here..."
-                        className="min-h-[60px] resize-none"
+                        className="min-h-[50px] sm:min-h-[60px] resize-none text-sm sm:text-base"
                         rows={2}
                       />
                       
-                                             {/* File Upload */}
-                       <div className="flex items-center gap-2 mt-2">
-                         <Input
-                           type="file"
-                           onChange={handleFileSelect}
-                           className="hidden"
-                           id="file-upload"
-                           accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
-                         />
-                         <Label 
-                           htmlFor="file-upload" 
-                           className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-muted hover:bg-muted/80 rounded-md border border-border transition-colors"
-                         >
-                           <Upload className="h-4 w-4" />
-                           <span>Attach File</span>
-                         </Label>
-                         {selectedFile && (
-                           <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary rounded-md border border-primary/20">
-                             <FileText className="h-4 w-4" />
-                             <span className="text-sm font-medium">{selectedFile.name}</span>
-                             <Button
-                               type="button"
-                               variant="ghost"
-                               size="sm"
-                               className="h-4 w-4 p-0 hover:bg-primary/20"
-                               onClick={() => setSelectedFile(null)}
-                             >
-                               <X className="h-3 w-3" />
-                             </Button>
-                           </div>
-                         )}
-                       </div>
+                      {/* File Upload */}
+                      <div className="flex items-center gap-2 mt-2">
+                        <Input
+                          type="file"
+                          onChange={handleFileSelect}
+                          className="hidden"
+                          id="file-upload"
+                          accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+                        />
+                        <Label 
+                          htmlFor="file-upload" 
+                          className="cursor-pointer inline-flex items-center gap-2 px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm bg-muted hover:bg-muted/80 rounded-md border border-border transition-colors"
+                        >
+                          <Upload className="h-3 w-3 sm:h-4 sm:w-4" />
+                          <span>Attach File</span>
+                        </Label>
+                        {selectedFile && (
+                          <div className="flex items-center gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-primary/10 text-primary rounded-md border border-primary/20">
+                            <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <span className="text-xs sm:text-sm font-medium truncate max-w-[120px] sm:max-w-[200px]">{selectedFile.name}</span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-4 w-4 p-0 hover:bg-primary/20"
+                              onClick={() => setSelectedFile(null)}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                     
                     <Button
                       onClick={handleSendMessage}
                       size="lg"
-                      className="px-4"
+                      className="px-3 sm:px-4 self-end sm:self-auto"
                       disabled={!newMessage.trim()}
                     >
                       <Send className="h-4 w-4" />
