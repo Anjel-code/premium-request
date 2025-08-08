@@ -40,21 +40,21 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
   const defaultAccept = type === 'image' 
     ? 'image/*' 
-    : 'video/*';
+    : 'video/*,.gif';
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
+    // Validate file type - allow GIFs for video uploads
     const isValidType = type === 'image' 
       ? file.type.startsWith('image/')
-      : file.type.startsWith('video/');
+      : file.type.startsWith('video/') || file.type === 'image/gif';
 
     if (!isValidType) {
       toast({
         title: "Invalid File Type",
-        description: `Please select a valid ${type} file.`,
+        description: `Please select a valid ${type} file or GIF.`,
         variant: "destructive",
       });
       return;
@@ -236,15 +236,28 @@ const FileUpload: React.FC<FileUploadProps> = ({
               </div>
             ) : (
               <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
-                <video
-                  src={getPreviewSource()}
-                  controls
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                  }}
-                />
+                {/* Check if it's a GIF for video uploads */}
+                {(getPreviewSource().includes('image/gif') || getPreviewSource().toLowerCase().endsWith('.gif')) ? (
+                  <img
+                    src={getPreviewSource()}
+                    alt="Preview"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                    }}
+                  />
+                ) : (
+                  <video
+                    src={getPreviewSource()}
+                    controls
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                    }}
+                  />
+                )}
                 <div className="hidden absolute inset-0 flex items-center justify-center">
                   <div className="text-center">
                     <FileVideo className="h-8 w-8 text-muted-foreground mx-auto mb-2" />

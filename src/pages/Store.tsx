@@ -963,6 +963,51 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
     closeMobileMenu();
   };
 
+  // Helper function to detect if a URL is a GIF
+  const isGif = (url: string): boolean => {
+    if (url.startsWith('data:')) {
+      // Check if it's a GIF data URL
+      return url.includes('image/gif') || url.includes('data:image/gif');
+    }
+    // Check if it's a GIF file URL
+    return url.toLowerCase().endsWith('.gif') || url.toLowerCase().includes('.gif');
+  };
+
+  // Helper function to render video or GIF content
+  const renderVideoContent = (url: string, className: string = "w-full h-full object-cover", controls: boolean = true) => {
+    if (isGif(url)) {
+      // Render GIF as image
+      return (
+        <img
+          src={url}
+          alt="Product demonstration"
+          className={className}
+        />
+      );
+    } else if (url.startsWith('data:')) {
+      // Local video file
+      return (
+        <video 
+          src={url} 
+          controls={controls} 
+          className={className}
+        />
+      );
+    } else {
+      // External video (YouTube, etc.)
+      return (
+        <iframe
+          src={url}
+          title="Product Video"
+          className={className}
+          frameBorder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+      );
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile Navigation Header */}
@@ -1129,7 +1174,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
         </div>
       )}
       {/* Hero Section */}
-      <section className="pt-16 sm:pt-24 pb-8 sm:pb-16 px-4 sm:px-6 bg-gradient-to-br from-background via-background to-muted/20">
+      <section className="pt-16 sm:pt-24 pb-12 sm:pb-20 px-4 sm:px-6 bg-gradient-to-br from-background via-background to-muted/20">
         <div className="container mx-auto">
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16">
               {/* Left Column - Product Images */}
@@ -1506,9 +1551,9 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
       </section>
 
       {/* Detailed Information */}
-      <section className="py-8 sm:py-16 px-4 sm:px-6 bg-gradient-to-br from-muted/20 via-background to-muted/10">
+      <section className="py-16 sm:py-24 px-4 sm:px-6 bg-gradient-to-br from-muted/20 via-background to-muted/10">
         <div className="max-w-7xl mx-auto">
-          <div className="space-y-8 sm:space-y-12">
+          <div className="space-y-16 sm:space-y-24">
             {/* Before/After Guarantee Section */}
             <div className="bg-white rounded-lg sm:rounded-2xl p-4 sm:p-8 shadow-lg border border-border/50">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-10 items-center">
@@ -1618,18 +1663,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                   {/* Left: video */}
                   <div className="absolute inset-y-0 left-0 w-1/2">
                     <div className="w-full h-full overflow-hidden rounded-none border-0 bg-black">
-                      {product.videos[0].startsWith('data:') ? (
-                        <video src={product.videos[0]} controls className="w-full h-full object-cover" />
-                      ) : (
-                        <iframe
-                          src={product.videos[0]}
-                          title="Product Video"
-                          className="w-full h-full"
-                          frameBorder="0"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                        />
-                      )}
+                      {renderVideoContent(product.videos[0])}
                     </div>
                   </div>
                   {/* Right: promo panel */}
@@ -1660,7 +1694,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
       </section>
 
       {/* Video Reviews Carousel */}
-      <section className="py-8 sm:py-16 px-4 sm:px-6 bg-gradient-to-br from-primary/5 via-secondary/5 to-primary/10">
+      <section className="py-16 sm:py-24 px-4 sm:px-6 bg-gradient-to-br from-primary/5 via-secondary/5 to-primary/10">
         <div className="container mx-auto">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 sm:mb-8">
             <div className="text-center sm:text-left flex-1 mb-4 sm:mb-0">
@@ -1711,7 +1745,14 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                          {/* Video Player - Shows on hover */}
                          {hoveredVideo === video.id && (
                            <div className="absolute inset-0 bg-black animate-in fade-in duration-300">
-                             {video.videoUrl.startsWith('data:') ? (
+                             {isGif(video.videoUrl) ? (
+                               // GIF - display as image (GIFs autoplay by default)
+                               <img
+                                 src={video.videoUrl}
+                                 alt={`Video testimonial by ${video.customerName}`}
+                                 className="w-full h-full object-cover"
+                               />
+                             ) : video.videoUrl.startsWith('data:') ? (
                                // Local video file
                                <video
                                  src={video.videoUrl}
@@ -1785,8 +1826,85 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
         </div>
       </section>
 
+      {/* Bundle Section - Clean & Effective Results */}
+      <section className="py-16 sm:py-24 px-4 sm:px-6 bg-gradient-to-br from-muted/20 via-background to-muted/10">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 items-center">
+            {/* Left: Text Content */}
+            <div className="space-y-6 sm:space-y-8">
+              <div>
+                <p className="text-sm sm:text-base font-semibold text-secondary uppercase tracking-wide mb-2">WITH THE BUNDLE</p>
+                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-primary leading-tight">
+                  Clean & Effective Results Guaranteed
+                </h2>
+              </div>
+              
+              <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
+                Experience the <span className="font-semibold text-primary">Uproot Clean Complete Package</span> - your all-in-one solution for comprehensive cleaning. This premium bundle includes everything you need to transform your space into a pristine, hair-free sanctuary.
+              </p>
+              
+              <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
+                Our complete package features a compact precision tool for hard-to-reach spots, a powerful cleaning weapon for stubborn fur, a double-width cleaner for larger areas, and a professional-grade deshedder. Each component is engineered for maximum effectiveness and durability.
+              </p>
+              
+              <div>
+                <h3 className="text-lg sm:text-xl font-semibold text-primary mb-4">Designed to clean:</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                  {[
+                    { name: 'Carpets', icon: '🟦' },
+                    { name: 'Cars', icon: '🚗' },
+                    { name: 'Dogs', icon: '🐕' },
+                    { name: 'Cats', icon: '🐱' },
+                    { name: 'Wiry Coats', icon: '🌀' },
+                    { name: 'Double Coats', icon: '⚡' },
+                    { name: 'Long Coats', icon: '✨' },
+                    { name: 'Furniture', icon: '🛋️' },
+                    { name: 'Bedding', icon: '🛏️' }
+                  ].map((item) => (
+                    <div key={item.name} className="flex items-center gap-2 p-2 sm:p-3 rounded-lg bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/20">
+                      <span className="text-lg sm:text-xl">{item.icon}</span>
+                      <span className="text-sm sm:text-base font-medium text-primary">{item.name}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 mt-4 text-secondary font-semibold">
+                  <span className="text-lg">✨</span>
+                  <span className="text-sm sm:text-base">And much more!</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Right: Dynamic Visual */}
+            <div className="relative">
+              <div className="aspect-[4/3] sm:aspect-[3/2] rounded-xl overflow-hidden shadow-2xl border border-border/50">
+                <div className="w-full h-full bg-gradient-to-br from-secondary/20 to-primary/20 relative">
+                  {/* Placeholder for dynamic visual - replace with actual video/image */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center space-y-4">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-secondary/20 rounded-full flex items-center justify-center mx-auto">
+                        <Play className="h-8 w-8 sm:h-10 sm:w-10 text-secondary ml-1" />
+                      </div>
+                      <p className="text-sm sm:text-base font-medium text-primary">Product Demonstration</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">Watch how our bundle transforms cleaning</p>
+                    </div>
+                  </div>
+                  
+                  {/* Overlay elements to simulate the cleaning effect */}
+                  <div className="absolute top-4 left-4 w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                    <div className="w-3 h-3 bg-secondary rounded-full"></div>
+                  </div>
+                  
+                  {/* Simulated cleaning path */}
+                  <div className="absolute top-1/2 left-1/4 w-1/2 h-1 bg-secondary/40 rounded-full transform -translate-y-1/2"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Customer Reviews Section - Masonry Layout */}
-      <section className="py-8 sm:py-12 px-4 sm:px-6 bg-muted/20">
+      <section className="py-16 sm:py-24 px-4 sm:px-6 bg-muted/20">
         <div className="container mx-auto max-w-7xl">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 sm:mb-8">
             <h2 className="text-2xl sm:text-3xl font-bold text-primary mb-4 sm:mb-0">
@@ -2120,7 +2238,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
       </section>
 
       {/* FAQ Section */}
-      <section className="py-8 sm:py-12 px-4 sm:px-6">
+      <section className="py-16 sm:py-24 px-4 sm:px-6">
         <div className="container mx-auto max-w-4xl">
           <h2 className="text-xl sm:text-2xl font-bold text-primary text-center mb-6 sm:mb-8">
             Frequently Asked Questions
@@ -2145,7 +2263,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
       </section>
 
             {/* Final CTA Section */}
-      <section className="py-12 sm:py-16 md:py-20 px-4 sm:px-6 bg-gradient-to-br from-primary/5 via-accent/5 to-primary/10">
+      <section className="py-20 sm:py-28 md:py-32 px-4 sm:px-6 bg-gradient-to-br from-primary/5 via-accent/5 to-primary/10">
         <div className="container mx-auto text-center">
           <div className="max-w-4xl mx-auto">
             <div className="bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-12 shadow-2xl border border-primary/10">
@@ -2221,26 +2339,33 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
             </div>
             <div className="p-3 sm:p-4">
               <div className="aspect-video bg-muted rounded-lg overflow-hidden mb-3 sm:mb-4">
-                 {selectedVideo.videoUrl.startsWith('data:') ? (
-                   // Local video file
-                   <video
-                     src={selectedVideo.videoUrl}
-                     controls
-                     className="w-full h-full"
-                   />
-                 ) : (
-                   // YouTube or external video
-                   <iframe
-                     src={`${selectedVideo.videoUrl}?rel=0&modestbranding=1`}
-                     title={`Video testimonial by ${selectedVideo.customerName}`}
-                     className="w-full h-full"
-                     frameBorder="0"
-                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                     allowFullScreen
-                     sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-                   />
-                 )}
-               </div>
+                {isGif(selectedVideo.videoUrl) ? (
+                  // GIF - display as image
+                  <img
+                    src={selectedVideo.videoUrl}
+                    alt={`Video testimonial by ${selectedVideo.customerName}`}
+                    className="w-full h-full object-cover"
+                  />
+                ) : selectedVideo.videoUrl.startsWith('data:') ? (
+                  // Local video file
+                  <video
+                    src={selectedVideo.videoUrl}
+                    controls
+                    className="w-full h-full"
+                  />
+                ) : (
+                  // YouTube or external video
+                  <iframe
+                    src={`${selectedVideo.videoUrl}?rel=0&modestbranding=1`}
+                    title={`Video testimonial by ${selectedVideo.customerName}`}
+                    className="w-full h-full"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                  />
+                )}
+              </div>
               <div className="space-y-2">
                 <p className="text-base sm:text-lg font-medium text-primary">
                   {selectedVideo.customerName}
