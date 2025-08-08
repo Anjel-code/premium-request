@@ -68,7 +68,7 @@ import Footer from "@/components/Footer";
 import { isAdmin } from "@/lib/userUtils";
 import { checkStorageQuota, clearAllStorage } from "@/lib/storageUtils";
 import { trackUserActivity } from "@/lib/liveViewUtils";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot, getDocs, deleteDoc, addDoc, doc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
@@ -296,7 +296,7 @@ interface StoreProps {
 
 const Store: React.FC<StoreProps> = ({ user, appId }) => {
   const navigate = useNavigate();
-  const { addToCart, items } = useCart();
+  const { addToCart, items, addToWishlist, removeFromWishlist, isInWishlist, setIsCartOpen, totalItems } = useCart();
   const { toast } = useToast();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -320,10 +320,11 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   const [storageWarning, setStorageWarning] = useState(false);
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isWishlisted, setIsWishlisted] = useState(false);
+
   const [hoveredVideo, setHoveredVideo] = useState<string | null>(null);
   const [showLoyaltyInfo, setShowLoyaltyInfo] = useState(false);
   const [showLoyaltyFab, setShowLoyaltyFab] = useState(true);
+  const [shareLoading, setShareLoading] = useState(false);
 
   // Before/After slider internal component
   const BeforeAfterSlider: React.FC<{
@@ -1008,6 +1009,76 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
     }
   };
 
+  // Wishlist functionality using CartContext
+  const handleWishlistToggle = () => {
+    if (!user) {
+      toast({
+        title: "Please sign in",
+        description: "You need to be signed in to save items to your wishlist.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isInWishlist("premium-headphones")) {
+      removeFromWishlist("premium-headphones");
+      toast({
+        title: "Removed from wishlist",
+        description: "Product removed from your wishlist.",
+      });
+    } else {
+      addToWishlist({
+        productId: "premium-headphones",
+        name: product.name,
+        price: product.price,
+        image: product.images[0],
+      });
+      toast({
+        title: "Added to wishlist",
+        description: "Product added to your wishlist!",
+      });
+    }
+  };
+
+  // Share functionality
+  const handleShare = async () => {
+    setShareLoading(true);
+    
+    try {
+      await copyToClipboard(window.location.href);
+      toast({
+        title: "Link copied!",
+        description: "Product link copied to clipboard.",
+      });
+    } catch (error) {
+      console.error("Error copying link:", error);
+      toast({
+        title: "Failed to copy",
+        description: "Please copy the link manually.",
+        variant: "destructive",
+      });
+    } finally {
+      setShareLoading(false);
+    }
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: "Copied to clipboard!",
+        description: "Link copied successfully.",
+      });
+    } catch (error) {
+      console.error("Failed to copy:", error);
+      toast({
+        title: "Failed to copy",
+        description: "Please copy the link manually.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile Navigation Header */}
@@ -1023,9 +1094,111 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
             <span className="text-sm font-medium">Menu</span>
             </Button>
           <div className="text-lg font-bold text-primary">Store</div>
-          <div className="w-20"></div> {/* Spacer for centering */}
+          {/* Cart Button for Mobile */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsCartOpen(true)}
+            className="relative"
+          >
+            <ShoppingCart className="h-5 w-5" />
+            {totalItems > 0 && (
+              <Badge 
+                variant="destructive" 
+                className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
+              >
+                {totalItems}
+              </Badge>
+            )}
+          </Button>
           </div>
         </div>
+
+      {/* Desktop Navigation Header */}
+      <div className="hidden lg:block fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
+        <div className="container mx-auto px-6 py-2">
+          <div className="flex items-center justify-between">
+            <Link to="/" className="text-2xl font-bold text-primary">
+              Quibble
+            </Link>
+
+            <div className="flex items-center space-x-8">
+              <Link
+                to="/"
+                className="transition-colors text-foreground hover:text-primary"
+              >
+                Home
+              </Link>
+              <Link
+                to="/store"
+                className="transition-colors text-primary"
+              >
+                Store
+              </Link>
+              <Link
+                to="/about"
+                className="transition-colors text-foreground hover:text-primary"
+              >
+                About
+              </Link>
+              <Link
+                to="/contact"
+                className="transition-colors text-foreground hover:text-primary"
+              >
+                Contact
+              </Link>
+              {user && (
+                <Link
+                  to="/dashboard"
+                  className="transition-colors text-foreground hover:text-primary"
+                >
+                  Dashboard
+                </Link>
+              )}
+            </div>
+
+            <div className="flex items-center space-x-4">
+              {/* Cart Button for Desktop */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsCartOpen(true)}
+                className="relative"
+              >
+                <ShoppingCart className="h-4 w-4" />
+                {totalItems > 0 && (
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
+                  >
+                    {totalItems}
+                  </Badge>
+                )}
+              </Button>
+              
+              {user ? (
+                <Button
+                  onClick={() => navigate('/dashboard')}
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                >
+                  <User className="h-4 w-4" />
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => navigate('/')}
+                  variant="ghost"
+                  size="sm"
+                  className="font-medium"
+                >
+                  Sign In
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Mobile Sidebar Menu */}
       <div className={`lg:hidden fixed inset-0 z-50 transition-opacity duration-300 ${
@@ -1104,6 +1277,9 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
 
       {/* Add top padding for mobile to account for fixed header */}
       <div className="lg:hidden pt-16"></div>
+
+      {/* Add top padding for desktop to account for fixed header */}
+      <div className="hidden lg:block pt-16"></div>
 
       {/* Admin Edit Button - show only for admins, no loading overlay */}
       {isUserAdmin ? (
@@ -1474,22 +1650,28 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                     variant="ghost"
                     size="lg"
                     className="flex-1 bg-white border border-border/50 hover:bg-primary/5 hover:border-primary/30 transition-all duration-300 rounded-lg sm:rounded-xl text-xs sm:text-sm"
-                    onClick={() => setIsWishlisted(!isWishlisted)}
+                    onClick={handleWishlistToggle}
                   >
                     <Heart
                       className={`mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5 transition-all duration-300 ${
-                        isWishlisted ? "fill-primary text-primary scale-110" : "text-muted-foreground"
+                        isInWishlist("premium-headphones") ? "fill-primary text-primary scale-110" : "text-muted-foreground"
                       }`}
                     />
-                    <span className="text-muted-foreground">{isWishlisted ? "Wishlisted" : "Wishlist"}</span>
+                    <span className="text-muted-foreground">{isInWishlist("premium-headphones") ? "Wishlisted" : "Wishlist"}</span>
                   </Button>
                   <Button 
                     variant="ghost" 
                     size="lg"
                     className="flex-1 bg-white border border-border/50 hover:bg-primary/5 hover:border-primary/30 transition-all duration-300 rounded-lg sm:rounded-xl text-xs sm:text-sm"
+                    onClick={handleShare}
+                    disabled={shareLoading}
                   >
-                    <Share2 className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
-                    <span className="text-muted-foreground">Share</span>
+                    {shareLoading ? (
+                      <Loader2 className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5 animate-spin text-muted-foreground" />
+                    ) : (
+                      <Share2 className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+                    )}
+                    <span className="text-muted-foreground">{shareLoading ? "Sharing..." : "Share"}</span>
                   </Button>
                   {loyaltyLevel.level === 'Bronze' && (
                     <Button
@@ -2432,7 +2614,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
 
       {/* Loyalty Floating Action Button (FAB) */}
       {showLoyaltyFab && (
-        <div className="fixed bottom-6 right-6 z-50">
+        <div className="fixed bottom-6 right-6 z-50 hidden md:block">
           <div className="relative">
             {/* Pulse ring */}
             <span className="pointer-events-none absolute inset-0 rounded-full bg-secondary/40 animate-ping" />

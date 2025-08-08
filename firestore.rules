@@ -246,6 +246,21 @@ service cloud.firestore {
         // Allow delete for authenticated users (temporarily more permissive for testing)
         allow delete: if request.auth != null;
       }
+
+      // --- User Wishlists Collection ---
+      match /user-wishlists/{userId}/items/{itemId} {
+        // Allow read if the user is reading their own wishlist
+        allow read: if request.auth != null && request.auth.uid == userId;
+        
+        // Allow create if the user is adding to their own wishlist
+        allow create: if request.auth != null && request.auth.uid == userId;
+        
+        // Allow update if the user is updating their own wishlist item
+        allow update: if request.auth != null && request.auth.uid == userId;
+        
+        // Allow delete if the user is removing from their own wishlist
+        allow delete: if request.auth != null && request.auth.uid == userId;
+      }
     }
   }
 }

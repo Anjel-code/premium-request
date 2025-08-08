@@ -11,12 +11,26 @@ interface CartItem {
   productId: string;
 }
 
+interface WishlistItem {
+  id: string;
+  name: string;
+  price: number;
+  image: string;
+  productId: string;
+  addedAt: Date;
+}
+
 interface CartContextType {
   items: CartItem[];
+  wishlistItems: WishlistItem[];
   addToCart: (item: Omit<CartItem, 'id'>) => void;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
+  addToWishlist: (item: Omit<WishlistItem, 'id' | 'addedAt'>) => void;
+  removeFromWishlist: (productId: string) => void;
+  moveToCart: (productId: string) => void;
+  isInWishlist: (productId: string) => boolean;
   totalItems: number;
   totalPrice: number;
   isCartOpen: boolean;
@@ -39,13 +53,19 @@ interface CartProviderProps {
 
 export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
-  // Load cart from storage on mount
+  // Load cart and wishlist from storage on mount
   useEffect(() => {
     const savedCart = safeGetItem('cart');
     if (savedCart && Array.isArray(savedCart)) {
       setItems(savedCart);
+    }
+    
+    const savedWishlist = safeGetItem('wishlist');
+    if (savedWishlist && Array.isArray(savedWishlist)) {
+      setWishlistItems(savedWishlist);
     }
   }, []);
 
@@ -63,6 +83,21 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       }
     }
   }, [items]);
+
+  // Save wishlist to storage whenever wishlist items change
+  useEffect(() => {
+    if (wishlistItems.length > 0) {
+      safeSetItem('wishlist', wishlistItems);
+    } else {
+      // Clear storage when wishlist is empty
+      try {
+        localStorage.removeItem('wishlist');
+        sessionStorage.removeItem('wishlist');
+      } catch (error) {
+        console.warn('Error clearing wishlist storage:', error);
+      }
+    }
+  }, [wishlistItems]);
 
   const addToCart = (newItem: Omit<CartItem, 'id'>) => {
     setItems(prevItems => {
@@ -146,15 +181,65 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     });
   };
 
+  const addToWishlist = (newItem: Omit<WishlistItem, 'id' | 'addedAt'>) => {
+    setWishlistItems(prevItems => {
+      const existingItem = prevItems.find(item => item.productId === newItem.productId);
+      
+      if (existingItem) {
+        // Item already in wishlist
+        return prevItems;
+      } else {
+        // Add new item
+        return [...prevItems, { 
+          ...newItem, 
+          id: `${newItem.productId}-${Date.now()}`,
+          addedAt: new Date()
+        }];
+      }
+    });
+  };
+
+  const removeFromWishlist = (productId: string) => {
+    setWishlistItems(prevItems => 
+      prevItems.filter(item => item.productId !== productId)
+    );
+  };
+
+  const moveToCart = (productId: string) => {
+    const wishlistItem = wishlistItems.find(item => item.productId === productId);
+    if (wishlistItem) {
+      // Add to cart
+      addToCart({
+        name: wishlistItem.name,
+        price: wishlistItem.price,
+        quantity: 1,
+        image: wishlistItem.image,
+        productId: wishlistItem.productId,
+      });
+      
+      // Remove from wishlist
+      removeFromWishlist(productId);
+    }
+  };
+
+  const isInWishlist = (productId: string) => {
+    return wishlistItems.some(item => item.productId === productId);
+  };
+
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   const value: CartContextType = {
     items,
+    wishlistItems,
     addToCart,
     removeFromCart,
     updateQuantity,
     clearCart,
+    addToWishlist,
+    removeFromWishlist,
+    moveToCart,
+    isInWishlist,
     totalItems,
     totalPrice,
     isCartOpen,

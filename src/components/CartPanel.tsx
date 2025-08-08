@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { X, Trash2, Plus, Minus, ShoppingCart } from 'lucide-react';
+import { X, Trash2, Plus, Minus, ShoppingCart, Heart, ArrowRight } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/hooks/use-toast';
 
@@ -12,15 +12,19 @@ const CartPanel: React.FC = () => {
   const navigate = useNavigate();
   const { 
     items, 
+    wishlistItems,
     removeFromCart, 
     updateQuantity, 
-    clearCart, 
+    clearCart,
+    removeFromWishlist,
+    moveToCart,
     totalItems, 
     totalPrice, 
     isCartOpen, 
     setIsCartOpen 
   } = useCart();
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<'cart' | 'wishlist'>('cart');
 
   const handleCheckout = () => {
     if (items.length === 0) {
@@ -50,6 +54,22 @@ const CartPanel: React.FC = () => {
     toast({
       title: "Cart cleared",
       description: "All items have been removed from your cart.",
+    });
+  };
+
+  const handleMoveToCart = (productId: string) => {
+    moveToCart(productId);
+    toast({
+      title: "Added to cart",
+      description: "Item moved from wishlist to cart.",
+    });
+  };
+
+  const handleRemoveFromWishlist = (productId: string) => {
+    removeFromWishlist(productId);
+    toast({
+      title: "Removed from wishlist",
+      description: "Item has been removed from your wishlist.",
     });
   };
 
@@ -89,85 +109,178 @@ const CartPanel: React.FC = () => {
             </Button>
           </div>
 
-          {/* Cart Items */}
+          {/* Tab Navigation */}
+          <div className="flex border-b">
+            <button
+              onClick={() => setActiveTab('cart')}
+              className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
+                activeTab === 'cart'
+                  ? 'text-primary border-b-2 border-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Cart ({totalItems})
+            </button>
+            <button
+              onClick={() => setActiveTab('wishlist')}
+              className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
+                activeTab === 'wishlist'
+                  ? 'text-primary border-b-2 border-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Wishlist ({wishlistItems.length})
+            </button>
+          </div>
+
+          {/* Content */}
           <div className="flex-1 overflow-y-auto p-6">
-            {items.length === 0 ? (
-              <div className="text-center py-12">
-                <ShoppingCart className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-muted-foreground mb-2">
-                  Your cart is empty
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Add some items to get started
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {items.map((item) => (
-                  <Card key={item.id} className="border-0 shadow-sm">
-                    <CardContent className="p-4">
-                      <div className="flex gap-4">
-                        {/* Item Image */}
-                        <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
-                          <img
-                            src={item.image}
-                            alt={item.name}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        
-                        {/* Item Details */}
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-sm truncate">
-                            {item.name}
-                          </h3>
-                          <p className="text-sm text-muted-foreground">
-                            ${item.price.toFixed(2)}
-                          </p>
+            {activeTab === 'cart' ? (
+              // Cart Tab
+              items.length === 0 ? (
+                <div className="text-center py-12">
+                  <ShoppingCart className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-muted-foreground mb-2">
+                    Your cart is empty
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Add some items to get started
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {items.map((item) => (
+                    <Card key={item.id} className="border-0 shadow-sm">
+                      <CardContent className="p-4">
+                        <div className="flex gap-4">
+                          {/* Item Image */}
+                          <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
                           
-                          {/* Quantity Controls */}
-                          <div className="flex items-center gap-2 mt-2">
+                          {/* Item Details */}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-medium text-sm truncate">
+                              {item.name}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              ${item.price.toFixed(2)}
+                            </p>
+                            
+                            {/* Quantity Controls */}
+                            <div className="flex items-center gap-2 mt-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                className="h-6 w-6 p-0"
+                              >
+                                <Minus className="h-3 w-3" />
+                              </Button>
+                              <span className="text-sm font-medium min-w-[2rem] text-center">
+                                {item.quantity}
+                              </span>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                className="h-6 w-6 p-0"
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                          
+                          {/* Remove Button */}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveItem(item.id)}
+                            className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )
+            ) : (
+              // Wishlist Tab
+              wishlistItems.length === 0 ? (
+                <div className="text-center py-12">
+                  <Heart className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-muted-foreground mb-2">
+                    Your wishlist is empty
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Save items you love for later
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {wishlistItems.map((item) => (
+                    <Card key={item.id} className="border-0 shadow-sm">
+                      <CardContent className="p-4">
+                        <div className="flex gap-4">
+                          {/* Item Image */}
+                          <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          
+                          {/* Item Details */}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-medium text-sm truncate">
+                              {item.name}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              ${item.price.toFixed(2)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Added {new Date(item.addedAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                          
+                          {/* Action Buttons */}
+                          <div className="flex flex-col gap-2">
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                              className="h-6 w-6 p-0"
+                              onClick={() => handleMoveToCart(item.productId)}
+                              className="h-8 px-3 text-xs"
                             >
-                              <Minus className="h-3 w-3" />
+                              <ArrowRight className="h-3 w-3 mr-1" />
+                              Add to Cart
                             </Button>
-                            <span className="text-sm font-medium min-w-[2rem] text-center">
-                              {item.quantity}
-                            </span>
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               size="sm"
-                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                              className="h-6 w-6 p-0"
+                              onClick={() => handleRemoveFromWishlist(item.productId)}
+                              className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
                             >
-                              <Plus className="h-3 w-3" />
+                              <Trash2 className="h-3 w-3" />
                             </Button>
                           </div>
                         </div>
-                        
-                        {/* Remove Button */}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveItem(item.id)}
-                          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )
             )}
           </div>
 
           {/* Footer */}
-          {items.length > 0 && (
+          {activeTab === 'cart' && items.length > 0 && (
             <div className="border-t p-6 space-y-4">
               {/* Summary */}
               <div className="flex justify-between items-center">

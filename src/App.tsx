@@ -176,6 +176,7 @@ const AppContent: React.FC<AppContentProps> = ({
     "/payment-portal", // Hide navbar on payment portal page
     "/success", // HIDE NAVBAR FOR THE SUCCESS PAGE
     "/refunds", // Hide navbar for refund page
+    "/store", // Hide navbar for store page (has its own mobile navigation)
   ];
   const shouldHideNavbar = hideNavbarPaths.some((path) =>
     location.pathname.startsWith(path)

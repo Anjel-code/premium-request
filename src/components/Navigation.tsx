@@ -103,7 +103,7 @@ const Navigation = ({
               variant="ghost"
               size="sm"
               onClick={() => setIsCartOpen(true)}
-              className="relative"
+              className={`relative ${location.pathname === '/' ? 'hidden md:flex' : 'flex'}`}
             >
               <ShoppingCart className="h-4 w-4" />
               {totalItems > 0 && (
