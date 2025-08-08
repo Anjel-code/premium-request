@@ -58,6 +58,10 @@ import DatabaseManagement from "./pages/DatabaseManagement"; // Import DatabaseM
 import RefundPage from "./pages/RefundPage"; // Import RefundPage
 import AdminRefundManagement from "./pages/AdminRefundManagement"; // Import AdminRefundManagement
 import RefundSupportChat from "./pages/RefundSupportChat"; // Import RefundSupportChat
+import PrivacyPolicy from "./pages/PrivacyPolicy"; // Import PrivacyPolicy
+import ReturnRefundPolicy from "./pages/ReturnRefundPolicy"; // Import ReturnRefundPolicy
+import ShippingPolicy from "./pages/ShippingPolicy"; // Import ShippingPolicy
+import TermsOfService from "./pages/TermsOfService"; // Import TermsOfService
 
 import { CartProvider } from "@/contexts/CartContext";
 import CartPanel from "@/components/CartPanel";
@@ -371,6 +375,10 @@ const AppContent: React.FC<AppContentProps> = ({
         />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/return-refund-policy" element={<ReturnRefundPolicy />} />
+        <Route path="/shipping-policy" element={<ShippingPolicy />} />
+        <Route path="/terms-of-service" element={<TermsOfService />} />
         <Route
           path="/store"
           element={

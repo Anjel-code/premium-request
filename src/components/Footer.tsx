@@ -67,8 +67,36 @@ const Footer = () => {
             </ul>
           </div>
         </div>
-        <div className="border-t border-primary-foreground/20 pt-8 mt-8 text-center text-primary-foreground/80">
-          <p>&copy; 2025 Quibble. All rights reserved.</p>
+        <div className="border-t border-primary-foreground/20 pt-8 mt-8">
+          <div className="flex flex-col md:flex-row justify-between items-center text-primary-foreground/80">
+            <p>&copy; 2025 Quibble. All rights reserved.</p>
+            <div className="flex flex-wrap gap-4 mt-4 md:mt-0">
+              <Link
+                to="/privacy-policy"
+                className="hover:text-white transition-colors text-sm"
+              >
+                Privacy Policy
+              </Link>
+              <Link
+                to="/return-refund-policy"
+                className="hover:text-white transition-colors text-sm"
+              >
+                Return & Refund Policy
+              </Link>
+              <Link
+                to="/shipping-policy"
+                className="hover:text-white transition-colors text-sm"
+              >
+                Shipping Policy
+              </Link>
+              <Link
+                to="/terms-of-service"
+                className="hover:text-white transition-colors text-sm"
+              >
+                Terms of Service
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </footer>

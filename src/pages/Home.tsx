@@ -178,80 +178,80 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
 
              {/* Hero Section */}
        <section 
-         className="relative overflow-hidden px-6 bg-no-repeat bg-cover"
+         className="relative overflow-hidden px-4 sm:px-6 bg-no-repeat bg-cover"
          style={{ 
            backgroundImage: `url(${backgroundImage})`,
            backgroundPosition: savedBackgroundPosition
          }}
        >
         <div className="absolute inset-0 z-0 bg-black/35"></div>
-        <div className="relative container mx-auto text-center pt-36 pb-36 z-10">
-          <h1 className="text-5xl md:text-7xl font-bold text-stone-100 mb-6 animate-fade-in">
+        <div className="relative container mx-auto text-center pt-24 sm:pt-32 md:pt-36 pb-24 sm:pb-32 md:pb-36 z-10">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold text-stone-100 mb-4 sm:mb-6 animate-fade-in leading-tight">
             Premium Wireless
             <span className="block text-primary">Headphones</span>
           </h1>
-          <p className="text-xl md:text-2xl text-stone-300 mb-8 max-w-3xl mx-auto animate-slide-up">
+          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-stone-300 mb-6 sm:mb-8 max-w-3xl mx-auto animate-slide-up px-2">
             Experience crystal-clear sound with our premium wireless headphones
             featuring active noise cancellation, 30-hour battery life, and
             premium comfort for all-day wear.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-scale-in">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center animate-scale-in px-2">
             <Button
               variant="premium"
               size="lg"
-              className="text-lg px-8 py-6"
+              className="text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 w-full sm:w-auto"
               onClick={handleShopNowClick}
             >
               <span className="relative z-10">Shop Now</span>{" "}
-              <ArrowRight className="ml-2 h-5 w-5 z-10" />
+              <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5 z-10" />
             </Button>
                          <Button
                asChild
                variant="outline"
                size="lg"
-               className="text-lg px-8 py-6 border-2 border-white/30 text-white bg-white/10 backdrop-blur-sm hover:bg-white/20 hover:border-white/50 transition-all duration-300"
+               className="text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 border-2 border-white/30 text-white bg-white/10 backdrop-blur-sm hover:bg-white/20 hover:border-white/50 transition-all duration-300 w-full sm:w-auto"
              >
                <Link to="/about">Learn More</Link>
              </Button>
           </div>
 
           {/* Statistics */}
-          <div className="grid md:grid-cols-3 gap-8 mt-14 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-8 mt-8 sm:mt-14 max-w-4xl mx-auto px-2">
             <div className="text-center">
               <div className="flex items-center justify-center mb-2">
-                <Users className="h-8 w-8 text-primary mr-2" />
+                <Users className="h-6 w-6 sm:h-8 sm:w-8 text-primary mr-2" />
                 <AnimatedCounter
                   end={2370}
                   suffix="+"
-                  className="text-4xl font-bold text-primary"
+                  className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary"
                   duration={2500}
                 />
               </div>
-              <p className="text-stone-300">Satisfied Clients</p>
+              <p className="text-stone-300 text-sm sm:text-base">Satisfied Clients</p>
             </div>
             <div className="text-center">
               <div className="flex items-center justify-center mb-2">
-                <Trophy className="h-8 w-8 text-primary mr-2" />
+                <Trophy className="h-6 w-6 sm:h-8 sm:w-8 text-primary mr-2" />
                 <AnimatedCounter
                   end={100}
                   suffix="%"
-                  className="text-4xl font-bold text-primary"
+                  className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary"
                   duration={2500}
                 />
               </div>
-              <p className="text-stone-300">Success Rate</p>
+              <p className="text-stone-300 text-sm sm:text-base">Success Rate</p>
             </div>
             <div className="text-center">
               <div className="flex items-center justify-center mb-2">
-                <Zap className="h-8 w-8 text-primary mr-2" />
+                <Zap className="h-6 w-6 sm:h-8 sm:w-8 text-primary mr-2" />
                 <AnimatedCounter
                   end={30}
                   suffix=" min"
-                  className="text-4xl font-bold text-primary"
+                  className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary"
                   duration={2500}
                 />
               </div>
-              <p className="text-stone-300">Avg Response Time</p>
+              <p className="text-stone-300 text-sm sm:text-base">Avg Response Time</p>
             </div>
           </div>
         </div>
@@ -309,45 +309,45 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
        </section>
 
       {/* Product Features */}
-      <section className="py-20 px-6">
-        <div className="container mx-auto">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <h2 className="text-4xl font-bold text-primary mb-8">
+      <section className="py-20 px-4 sm:px-6">
+        <div className="container mx-auto max-w-7xl">
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+            <div className="w-full">
+              <h2 className="text-3xl sm:text-4xl font-bold text-primary mb-6 sm:mb-8">
                 Premium Features
               </h2>
-              <div className="space-y-6">
-                <div className="flex items-start gap-4">
-                  <CheckCircle className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
-                  <div>
-                    <h3 className="font-semibold text-lg mb-2">
+              <div className="space-y-4 sm:space-y-6">
+                <div className="flex items-start gap-3 sm:gap-4">
+                  <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-accent mt-1 flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold text-base sm:text-lg mb-1 sm:mb-2">
                       Active Noise Cancellation
                     </h3>
-                    <p className="text-muted-foreground">
+                    <p className="text-muted-foreground text-sm sm:text-base">
                       Advanced technology that blocks out ambient noise for an
                       immersive listening experience.
                     </p>
                   </div>
                 </div>
-                <div className="flex items-start gap-4">
-                  <Clock className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
-                  <div>
-                    <h3 className="font-semibold text-lg mb-2">
+                <div className="flex items-start gap-3 sm:gap-4">
+                  <Clock className="h-5 w-5 sm:h-6 sm:w-6 text-accent mt-1 flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold text-base sm:text-lg mb-1 sm:mb-2">
                       30-Hour Battery Life
                     </h3>
-                    <p className="text-muted-foreground">
+                    <p className="text-muted-foreground text-sm sm:text-base">
                       Extended playback time with quick charge capability for
                       uninterrupted listening sessions.
                     </p>
                   </div>
                 </div>
-                <div className="flex items-start gap-4">
-                  <Shield className="h-6 w-6 text-accent mt-1 flex-shrink-0" />
-                  <div>
-                    <h3 className="font-semibold text-lg mb-2">
+                <div className="flex items-start gap-3 sm:gap-4">
+                  <Shield className="h-5 w-5 sm:h-6 sm:w-6 text-accent mt-1 flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold text-base sm:text-lg mb-1 sm:mb-2">
                       Premium Comfort
                     </h3>
-                    <p className="text-muted-foreground">
+                    <p className="text-muted-foreground text-sm sm:text-base">
                       Memory foam ear cushions and adjustable headband for
                       all-day comfort without fatigue.
                     </p>
@@ -355,42 +355,42 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
                 </div>
               </div>
             </div>
-                         <div className="relative">
-               <Card className="p-8 border-0 shadow-premium bg-white/90 backdrop-blur-sm border border-white/50">
-                 <CardContent className="p-0">
-                   <h3 className="text-2xl text-center font-bold text-primary mb-6">
-                     <span className="text-muted-foreground mr-1">Regular</span> vs.{" "}
-                     <span className="text-secondary ml-1">Premium</span>
-                   </h3>
-                   <div className="space-y-6">
-                     <div className="flex items-center justify-between p-4 bg-white/50 backdrop-blur-sm rounded-lg border border-primary/20">
-                       <span className="text-muted-foreground">
-                         Basic sound quality
-                       </span>
-                       <span className="text-primary font-semibold">
-                         → Crystal clear audio
-                       </span>
-                     </div>
-                     <div className="flex items-center justify-between p-4 bg-white/50 backdrop-blur-sm rounded-lg border border-primary/20">
-                       <span className="text-muted-foreground">
-                         Background noise
-                       </span>
-                       <span className="text-primary font-semibold">
-                         → Active cancellation
-                       </span>
-                     </div>
-                     <div className="flex items-center justify-between p-4 bg-white/50 backdrop-blur-sm rounded-lg border border-primary/20">
-                       <span className="text-muted-foreground">
-                         Short battery life
-                       </span>
-                       <span className="text-primary font-semibold">
-                         → 30-hour playback
-                       </span>
-                     </div>
-                   </div>
-                 </CardContent>
-               </Card>
-             </div>
+            <div className="relative w-full">
+              <Card className="p-4 sm:p-6 lg:p-8 border-0 shadow-premium bg-white/90 backdrop-blur-sm border border-white/50 overflow-hidden">
+                <CardContent className="p-0">
+                  <h3 className="text-xl sm:text-2xl text-center font-bold text-primary mb-4 sm:mb-6">
+                    <span className="text-muted-foreground mr-1">Regular</span> vs.{" "}
+                    <span className="text-secondary ml-1">Premium</span>
+                  </h3>
+                  <div className="space-y-3 sm:space-y-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-white/50 backdrop-blur-sm rounded-lg border border-primary/20 gap-2 sm:gap-0">
+                      <span className="text-muted-foreground text-sm sm:text-base">
+                        Basic sound quality
+                      </span>
+                      <span className="text-primary font-semibold text-sm sm:text-base">
+                        → Crystal clear audio
+                      </span>
+                    </div>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-white/50 backdrop-blur-sm rounded-lg border border-primary/20 gap-2 sm:gap-0">
+                      <span className="text-muted-foreground text-sm sm:text-base">
+                        Background noise
+                      </span>
+                      <span className="text-primary font-semibold text-sm sm:text-base">
+                        → Active cancellation
+                      </span>
+                    </div>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-white/50 backdrop-blur-sm rounded-lg border border-primary/20 gap-2 sm:gap-0">
+                      <span className="text-muted-foreground text-sm sm:text-base">
+                        Short battery life
+                      </span>
+                      <span className="text-primary font-semibold text-sm sm:text-base">
+                        → 30-hour playback
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </section>

@@ -282,6 +282,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
   const updateSatisfactionScore = async (score: number) => {
     if (!user || !appId) return;
 
+    // Update local state immediately for better UX
+    setSatisfactionScore(score);
+
     try {
       const userSatisfactionRef = doc(db, `artifacts/${appId}/public/data/user-satisfaction`, user.uid);
       await setDoc(userSatisfactionRef, {
@@ -291,10 +294,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
         score: score,
         updatedAt: new Date(),
       }, { merge: true });
-      
-      setSatisfactionScore(score);
     } catch (err) {
       console.error("Error updating satisfaction score:", err);
+      // Revert local state if Firebase update fails
+      setSatisfactionScore(0);
     }
   };
 
@@ -558,22 +561,31 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
                   <Loader2 className="h-4 w-4 sm:h-6 sm:w-6 animate-spin text-accent" />
                 </div>
               ) : (
-                <div className="flex justify-center mb-2">
-                  {[...Array(5)].map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => updateSatisfactionScore(i + 1)}
-                      className="focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 rounded-sm transition-all duration-200 hover:scale-110"
-                    >
-                      <Star 
-                        className={`h-4 w-4 sm:h-6 sm:w-6 ${
-                          i < satisfactionScore 
-                            ? "fill-accent text-accent" 
-                            : "text-muted-foreground hover:text-accent/50"
-                        }`} 
-                      />
-                    </button>
-                  ))}
+                <div className="flex justify-center mb-2 gap-1">
+                  {[...Array(5)].map((_, i) => {
+                    const isFilled = i < satisfactionScore;
+                    
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => updateSatisfactionScore(i + 1)}
+                        className="focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 rounded-sm transition-all duration-200 hover:scale-110 p-1"
+                        aria-label={`Rate ${i + 1} out of 5 stars`}
+                      >
+                        <Star 
+                          className={`h-4 w-4 sm:h-6 sm:w-6 transition-colors duration-200 ${
+                            isFilled
+                              ? "text-primary fill-current" 
+                              : "text-muted-foreground hover:text-primary/50"
+                          }`}
+                          style={{
+                            color: isFilled ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
+                            fill: isFilled ? 'hsl(var(--primary))' : 'none'
+                          }}
+                        />
+                      </button>
+                    );
+                  })}
                 </div>
               )}
               <p className="text-xs sm:text-sm text-muted-foreground">
@@ -587,6 +599,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
                         ? "Good feedback!" 
                         : "Thanks for your feedback!"}
               </p>
+              {satisfactionScore > 0 && (
+                <p className="text-xs text-primary font-medium mt-1">
+                  Rating: {satisfactionScore}/5
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>
