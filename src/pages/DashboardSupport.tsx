@@ -492,29 +492,38 @@ const DashboardSupport: React.FC<DashboardSupportProps> = ({ user, appId }) => {
     );
   }
 
-  // Customer view - single chat interface
-  if (isCustomer) {
+  // Customer view - simple chat interface
+  if (!isAdminOrTeam) {
     return (
       <DashboardLayout user={user} appId={appId}>
-        <div className="container mx-auto max-w-4xl p-6">
-          <Card className="shadow-premium rounded-xl flex flex-col h-[calc(100vh - 200px)]">
-            <CardHeader className="border-b border-border p-4">
-              <CardTitle className="text-xl font-bold flex items-center">
-                <MessageSquare className="mr-2 h-5 w-5 text-primary" />
+        <div className="space-y-6 lg:space-y-8">
+          <div className="mb-6 lg:mb-8">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary mb-2">
+              Support Chat
+            </h1>
+            <p className="text-sm sm:text-base lg:text-lg text-muted-foreground">
+              Get help with your orders and account. Our support team is here to assist you.
+            </p>
+          </div>
+
+          <Card className="shadow-premium rounded-xl flex flex-col h-[calc(100vh-300px)] sm:h-[calc(100vh-200px)]">
+            <CardHeader className="border-b border-border p-3 lg:p-4">
+              <CardTitle className="text-lg sm:text-xl font-bold flex items-center">
+                <MessageSquare className="mr-2 h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                 Support Chat
               </CardTitle>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 We're here to help! Send us a message and we'll get back to you
                 soon.
               </p>
             </CardHeader>
 
-            <CardContent className="flex-1 overflow-y-auto p-4">
-              <div className="space-y-4">
+            <CardContent className="flex-1 overflow-y-auto p-3 lg:p-4">
+              <div className="space-y-3 lg:space-y-4">
                 {messages.length === 0 ? (
                   <div className="text-center py-8">
-                    <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">
+                    <MessageSquare className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-sm sm:text-base text-muted-foreground">
                       No messages yet. Start the conversation!
                     </p>
                   </div>
@@ -529,13 +538,13 @@ const DashboardSupport: React.FC<DashboardSupportProps> = ({ user, appId }) => {
                       }`}
                     >
                       <div
-                        className={`max-w-xs lg:max-w-md px-4 py-3 rounded-lg ${
+                        className={`max-w-[280px] sm:max-w-xs lg:max-w-md px-3 py-2 sm:px-4 sm:py-3 rounded-lg ${
                           message.senderId === user?.uid
                             ? "bg-accent text-accent-foreground"
                             : "bg-muted text-foreground"
                         }`}
                       >
-                        <p className="text-sm">{message.text}</p>
+                        <p className="text-xs sm:text-sm">{message.text}</p>
                         <p className="text-xs opacity-70 mt-1">
                           {new Date(
                             message.timestamp || Date.now()
@@ -549,13 +558,13 @@ const DashboardSupport: React.FC<DashboardSupportProps> = ({ user, appId }) => {
               </div>
             </CardContent>
 
-            <div className="p-4 border-t border-border">
+            <div className="p-3 lg:p-4 border-t border-border">
               <div className="flex gap-2">
                 <Textarea
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Type your message here..."
-                  className="flex-1 min-h-[60px] resize-none rounded-md"
+                  className="flex-1 min-h-[50px] sm:min-h-[60px] resize-none rounded-md text-sm"
                   rows={2}
                   onKeyPress={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
@@ -568,6 +577,7 @@ const DashboardSupport: React.FC<DashboardSupportProps> = ({ user, appId }) => {
                   onClick={handleSendMessage}
                   className="rounded-md"
                   disabled={!newMessage.trim()}
+                  size="sm"
                 >
                   <Send className="h-4 w-4" />
                 </Button>
@@ -582,13 +592,22 @@ const DashboardSupport: React.FC<DashboardSupportProps> = ({ user, appId }) => {
   // Admin/Team view - chat list and selected chat
   return (
     <DashboardLayout user={user} appId={appId}>
-      <div className="container mx-auto p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
+      <div className="space-y-6 lg:space-y-8">
+        <div className="mb-6 lg:mb-8">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary mb-2">
+            Support Management
+          </h1>
+          <p className="text-sm sm:text-base lg:text-lg text-muted-foreground">
+            Manage customer support chats and provide assistance.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 h-[calc(100vh-300px)] sm:h-[calc(100vh-200px)]">
           {/* Chat List */}
           <Card className="shadow-premium rounded-xl flex flex-col">
-            <CardHeader className="border-b border-border p-4">
-              <CardTitle className="text-lg font-bold flex items-center">
-                <MessageSquare className="mr-2 h-5 w-5 text-primary" />
+            <CardHeader className="border-b border-border p-3 lg:p-4">
+              <CardTitle className="text-base sm:text-lg font-bold flex items-center">
+                <MessageSquare className="mr-2 h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                 Support Chats
               </CardTitle>
               <div className="relative">
@@ -597,168 +616,149 @@ const DashboardSupport: React.FC<DashboardSupportProps> = ({ user, appId }) => {
                   placeholder="Search chats..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 text-sm"
                 />
               </div>
             </CardHeader>
 
-            <CardContent className="flex-1 overflow-y-auto p-0">
-              <div className="space-y-1">
-                {filteredChats.length === 0 ? (
-                  <div className="text-center py-8">
-                    <MessageSquare className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">
-                      No support chats found
-                    </p>
-                  </div>
-                ) : (
-                  filteredChats.map((chat) => (
+            <CardContent className="flex-1 overflow-y-auto p-3 lg:p-4">
+              <div className="space-y-2">
+                {supportChats
+                  .filter((chat) =>
+                    chat.customerName
+                      .toLowerCase()
+                      .includes(searchTerm.toLowerCase()) ||
+                    chat.customerEmail
+                      .toLowerCase()
+                      .includes(searchTerm.toLowerCase())
+                  )
+                  .map((chat) => (
                     <div
                       key={chat.id}
                       onClick={() => handleChatSelect(chat)}
-                      className={`p-4 cursor-pointer transition-colors hover:bg-muted/50 ${
+                      className={`p-3 rounded-lg cursor-pointer transition-colors ${
                         selectedChat?.id === chat.id
-                          ? "bg-accent/20 border-r-2 border-accent"
-                          : ""
+                          ? "bg-accent text-accent-foreground"
+                          : "hover:bg-muted/50"
                       }`}
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium text-sm truncate">
-                              {chat.customerName}
-                            </p>
-                            {chat.unreadCount > 0 && (
-                              <Badge variant="destructive" className="text-xs">
-                                {chat.unreadCount}
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {chat.customerEmail}
-                          </p>
-                          <p className="text-xs text-muted-foreground truncate mt-1">
-                            {chat.lastMessageText}
-                          </p>
-                        </div>
-                        <div className="flex flex-col items-end gap-1">
-                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(
-                              chat.lastMessageTime
-                            ).toLocaleDateString()}
-                          </p>
-                        </div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-semibold text-sm sm:text-base truncate">
+                          {chat.customerName}
+                        </h3>
+                        {chat.unreadCount > 0 && (
+                          <Badge variant="destructive" className="text-xs">
+                            {chat.unreadCount}
+                          </Badge>
+                        )}
                       </div>
+                      <p className="text-xs sm:text-sm text-muted-foreground truncate mb-1">
+                        {chat.lastMessageText}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(chat.lastMessageTime).toLocaleDateString()}
+                      </p>
                     </div>
-                  ))
-                )}
+                  ))}
               </div>
             </CardContent>
           </Card>
 
-          {/* Chat Interface */}
+          {/* Chat Messages */}
           <div className="lg:col-span-2">
-            <Card className="shadow-premium rounded-xl flex flex-col h-full">
-              {selectedChat ? (
-                <>
-                  <CardHeader className="border-b border-border p-4">
-                    <CardTitle className="text-lg font-bold flex items-center justify-between">
-                      <div className="flex items-center">
-                        <User className="mr-2 h-5 w-5 text-primary" />
+            {selectedChat ? (
+              <Card className="shadow-premium rounded-xl flex flex-col h-full">
+                <CardHeader className="border-b border-border p-3 lg:p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-base sm:text-lg font-bold">
                         {selectedChat.customerName}
-                      </div>
-                      <Badge
-                        variant={
-                          selectedChat.status === "open"
-                            ? "default"
-                            : "secondary"
-                        }
-                      >
-                        {selectedChat.status}
-                      </Badge>
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedChat.customerEmail}
-                    </p>
-                  </CardHeader>
+                      </CardTitle>
+                      <p className="text-xs sm:text-sm text-muted-foreground">
+                        {selectedChat.customerEmail}
+                      </p>
+                    </div>
+                    <Badge
+                      variant={selectedChat.status === "open" ? "default" : "secondary"}
+                      className="text-xs"
+                    >
+                      {selectedChat.status}
+                    </Badge>
+                  </div>
+                </CardHeader>
 
-                  <CardContent className="flex-1 overflow-y-auto p-4">
-                    <div className="space-y-4">
-                      {messages.length === 0 ? (
-                        <div className="text-center py-8">
-                          <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                          <p className="text-muted-foreground">
-                            No messages in this chat yet.
+                <CardContent className="flex-1 overflow-y-auto p-3 lg:p-4">
+                  <div className="space-y-3 lg:space-y-4">
+                    {messages.map((message) => (
+                      <div
+                        key={message.id}
+                        className={`flex ${
+                          message.senderId === user?.uid
+                            ? "justify-end"
+                            : "justify-start"
+                        }`}
+                      >
+                        <div
+                          className={`max-w-[280px] sm:max-w-xs lg:max-w-md px-3 py-2 sm:px-4 sm:py-3 rounded-lg ${
+                            message.senderId === user?.uid
+                              ? "bg-accent text-accent-foreground"
+                              : "bg-muted text-foreground"
+                          }`}
+                        >
+                          <p className="text-xs sm:text-sm">{message.text}</p>
+                          <p className="text-xs opacity-70 mt-1">
+                            {new Date(
+                              message.timestamp || Date.now()
+                            ).toLocaleTimeString()}
                           </p>
                         </div>
-                      ) : (
-                        messages.map((message) => (
-                          <div
-                            key={message.id}
-                            className={`flex ${
-                              message.senderId === user?.uid
-                                ? "justify-end"
-                                : "justify-start"
-                            }`}
-                          >
-                            <div
-                              className={`max-w-xs lg:max-w-md px-4 py-3 rounded-lg ${
-                                message.senderId === user?.uid
-                                  ? "bg-accent text-accent-foreground"
-                                  : "bg-muted text-foreground"
-                              }`}
-                            >
-                              <p className="text-sm">{message.text}</p>
-                              <p className="text-xs opacity-70 mt-1">
-                                {new Date(
-                                  message.timestamp || Date.now()
-                                ).toLocaleTimeString()}
-                              </p>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                      <div ref={messagesEndRef} />
-                    </div>
-                  </CardContent>
-
-                  <div className="p-4 border-t border-border">
-                    <div className="flex gap-2">
-                      <Textarea
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        placeholder="Type your message here..."
-                        className="flex-1 min-h-[60px] resize-none rounded-md"
-                        rows={2}
-                        onKeyPress={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            handleSendMessage();
-                          }
-                        }}
-                      />
-                      <Button
-                        onClick={handleSendMessage}
-                        className="rounded-md"
-                        disabled={!newMessage.trim()}
-                      >
-                        <Send className="h-4 w-4" />
-                      </Button>
-                    </div>
+                      </div>
+                    ))}
+                    <div ref={messagesEndRef} />
                   </div>
-                </>
-              ) : (
-                <div className="flex-1 flex items-center justify-center">
-                  <div className="text-center">
-                    <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">
-                      Select a chat to start messaging
-                    </p>
+                </CardContent>
+
+                <div className="p-3 lg:p-4 border-t border-border">
+                  <div className="flex gap-2">
+                    <Textarea
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      placeholder="Type your message here..."
+                      className="flex-1 min-h-[50px] sm:min-h-[60px] resize-none rounded-md text-sm"
+                      rows={2}
+                      onKeyPress={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendMessage();
+                        }
+                      }}
+                    />
+                    <Button
+                      onClick={handleSendMessage}
+                      className="rounded-md"
+                      disabled={!newMessage.trim()}
+                      size="sm"
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-              )}
-            </Card>
+              </Card>
+            ) : (
+              <Card className="shadow-premium rounded-xl flex flex-col h-full">
+                <CardContent className="flex-1 flex items-center justify-center p-6">
+                  <div className="text-center">
+                    <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-muted-foreground mb-2">
+                      Select a Chat
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Choose a chat from the list to start responding to customer inquiries.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>

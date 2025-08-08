@@ -100,7 +100,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
   const [error, setError] = useState<string | null>(null);
 
   // Delete order state
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [deletePassword, setDeletePassword] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
@@ -243,7 +243,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
     setOrderToDelete(order);
     setDeletePassword("");
     setDeleteError(null);
-    setIsDeleteDialogOpen(true);
+    setShowDeleteDialog(true);
   };
 
   const handleDeleteOrder = async () => {
@@ -263,7 +263,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
       );
       await deleteDoc(orderRef);
 
-      setIsDeleteDialogOpen(false);
+      setShowDeleteDialog(false);
       setOrderToDelete(null);
       setDeletePassword("");
     } catch (error) {
@@ -275,7 +275,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
   };
 
   const handleCancelDelete = () => {
-    setIsDeleteDialogOpen(false);
+    setShowDeleteDialog(false);
     setOrderToDelete(null);
     setDeletePassword("");
     setDeleteError(null);
@@ -317,31 +317,31 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
 
   return (
     <DashboardLayout user={user} appId={appId}>
-      <div className="space-y-8">
-        <div className="mb-8 flex justify-between items-center">
+      <div className="space-y-6 lg:space-y-8">
+        <div className="mb-6 lg:mb-8 flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
           <div>
-            <Button asChild variant="outline" className="mb-4">
+            <Button asChild variant="outline" size="sm" className="mb-3 lg:mb-4">
               <Link to="/dashboard">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Dashboard
               </Link>
             </Button>
-            <h1 className="text-4xl font-bold text-primary mb-2">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary mb-2">
               Orders & Tickets
             </h1>
-            <p className="text-lg text-muted-foreground">
+            <p className="text-sm sm:text-base lg:text-lg text-muted-foreground">
               View and manage your store orders and support tickets.
             </p>
           </div>
         </div>
 
         <Card className="border-0 shadow-premium rounded-xl">
-          <CardHeader className="border-b border-border p-6">
-            <CardTitle className="text-2xl font-semibold text-primary">
+          <CardHeader className="border-b border-border p-4 lg:p-6">
+            <CardTitle className="text-lg sm:text-xl lg:text-2xl font-semibold text-primary">
               Orders & Tickets
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent className="p-4 lg:p-6">
             {combinedOrders.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
                 No orders or tickets found.
@@ -353,7 +353,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
                 </Link>
               </p>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3 lg:space-y-4">
                 {combinedOrders.map((combinedOrder) => {
                   if (combinedOrder.type === "ticket") {
                     const order = combinedOrder.order as Order;
@@ -362,23 +362,23 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
                         key={order.id}
                         className="border shadow-sm rounded-lg hover:shadow-md transition-shadow"
                       >
-                        <CardContent className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <CardContent className="p-3 lg:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                           <div className="flex-grow">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
                                 Ticket Request
                               </Badge>
-                              <h3 className="font-semibold text-lg text-primary">
+                              <h3 className="font-semibold text-base sm:text-lg text-primary">
                                 {order.title || `Order ${order.ticketNumber}`}
                               </h3>
                             </div>
-                            <p className="text-sm text-muted-foreground flex items-center gap-1">
+                            <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
                               <Clock className="h-3 w-3 inline-block" /> Created:{" "}
                               {order.createdAt
                                 ? new Date(order.createdAt).toLocaleDateString()
                                 : "N/A"}
                             </p>
-                            <div className="text-sm text-muted-foreground flex items-center gap-1">
+                            <div className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1 mt-1">
                               <AlertCircle className="h-3 w-3 inline-block" />{" "}
                               Status:{" "}
                               <Badge className={getStatusColor(order.status)}>
@@ -388,34 +388,34 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
                                 </div>
                               </Badge>
                             </div>
-                            <div className="text-sm text-muted-foreground flex items-center gap-1">
+                            <div className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1 mt-1">
                               <Progress
                                 value={order.progress}
-                                className="h-2 w-24 inline-block mr-2"
+                                className="h-2 w-20 sm:w-24 inline-block mr-2"
                               />{" "}
                               Progress: {order.progress}%
                             </div>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                             <Button
                               asChild
                               variant="outline"
                               size="sm"
                               className="border-primary text-primary hover:bg-primary/10 rounded-md"
                             >
-                              <Link to={`/order/${order.id}`}>
-                                <Eye className="h-4 w-4 mr-2" />
-                                View Details
+                              <Link to={`/dashboard/orders/${order.id}`}>
+                                <Eye className="h-4 w-4 mr-1 sm:mr-2" />
+                                <span className="hidden sm:inline">View</span>
                               </Link>
                             </Button>
                             <Button
                               variant="outline"
                               size="sm"
-                              className="border-red-600 text-red-600 hover:bg-red-50 rounded-md"
                               onClick={() => handleDeleteClick(order)}
+                              className="border-red-500 text-red-500 hover:bg-red-50 rounded-md"
                             >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
+                              <Trash2 className="h-4 w-4 mr-1 sm:mr-2" />
+                              <span className="hidden sm:inline">Delete</span>
                             </Button>
                           </div>
                         </CardContent>
@@ -428,55 +428,64 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
                         key={storeOrder.id}
                         className="border shadow-sm rounded-lg hover:shadow-md transition-shadow"
                       >
-                        <CardContent className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <CardContent className="p-3 lg:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                           <div className="flex-grow">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                                <ShoppingCart className="h-3 w-3 mr-1" />
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
                                 Store Order
                               </Badge>
-                              <h3 className="font-semibold text-lg text-primary">
-                                {storeOrder.productName}
+                              <h3 className="font-semibold text-base sm:text-lg text-primary">
+                                {storeOrder.productName || `Order ${storeOrder.id.slice(-8).toUpperCase()}`}
                               </h3>
                             </div>
-                            <p className="text-sm text-muted-foreground flex items-center gap-1">
+                            <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
+                              <ShoppingCart className="h-3 w-3 inline-block" /> Quantity: {storeOrder.quantity}
+                            </p>
+                            <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1 mt-1">
                               <Clock className="h-3 w-3 inline-block" /> Created:{" "}
                               {storeOrder.createdAt
                                 ? new Date(storeOrder.createdAt).toLocaleDateString()
                                 : "N/A"}
                             </p>
-                            <div className="text-sm text-muted-foreground flex items-center gap-1">
-                              <Package className="h-3 w-3 inline-block" />{" "}
+                            <div className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                              <Truck className="h-3 w-3 inline-block" />{" "}
                               Status:{" "}
-                              <Badge className={getStatusColor(storeOrder.status as any)}>
+                              <Badge className={getStatusColor(storeOrder.status as Order["status"])}>
                                 <div className="flex items-center gap-1">
-                                  {getStatusIcon(storeOrder.status as any)}
-                                  {storeOrder.status.charAt(0).toUpperCase() + storeOrder.status.slice(1)}
+                                  {getStatusIcon(storeOrder.status as Order["status"])}
+                                  {formatStatus(storeOrder.status as Order["status"])}
                                 </div>
                               </Badge>
                             </div>
-                            <div className="text-sm text-muted-foreground flex items-center gap-1">
-                              <span>Quantity: {storeOrder.quantity}</span>
-                              <span>•</span>
-                              <span>Total: ${(storeOrder.totalAmount || storeOrder.totalPrice || 0).toFixed(2)}</span>
+                            <div className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                              <Progress
+                                value={
+                                  storeOrder.status === "pending"
+                                    ? 25
+                                    : storeOrder.status === "paid"
+                                    ? 50
+                                    : storeOrder.status === "shipped"
+                                    ? 75
+                                    : storeOrder.status === "delivered"
+                                    ? 100
+                                    : 0
+                                }
+                                className="h-2 w-20 sm:w-24 inline-block mr-2"
+                              />{" "}
+                              Progress: {
+                                storeOrder.status === "pending"
+                                  ? 25
+                                  : storeOrder.status === "paid"
+                                  ? 50
+                                  : storeOrder.status === "shipped"
+                                  ? 75
+                                  : storeOrder.status === "delivered"
+                                  ? 100
+                                  : 0
+                              }%
                             </div>
-                            
-                            {/* Refund Status */}
-                            {storeOrder.refundStatus && storeOrder.refundStatus !== "none" && (
-                              <div className="text-sm flex items-center gap-1 mt-2">
-                                <RefreshCw className="h-3 w-3 text-orange-600" />
-                                <span className="text-orange-600 font-medium">
-                                  Refund {storeOrder.refundStatus.charAt(0).toUpperCase() + storeOrder.refundStatus.slice(1)}
-                                </span>
-                                {storeOrder.refundReason && (
-                                  <span className="text-muted-foreground ml-2">
-                                    - {storeOrder.refundReason}
-                                  </span>
-                                )}
-                              </div>
-                            )}
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                             <Button
                               asChild
                               variant="outline"
@@ -484,41 +493,10 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
                               className="border-primary text-primary hover:bg-primary/10 rounded-md"
                             >
                               <Link to={`/dashboard/store-orders/${storeOrder.id}`}>
-                                <Eye className="h-4 w-4 mr-2" />
-                                View Details
+                                <Eye className="h-4 w-4 mr-1 sm:mr-2" />
+                                <span className="hidden sm:inline">View</span>
                               </Link>
                             </Button>
-                            
-                            {/* Request Refund Button - Only show for shipped/delivered orders that haven't been refunded */}
-                            {storeOrder.paymentStatus === "completed" && 
-                             (storeOrder.status === "shipped" || storeOrder.status === "delivered") &&
-                             (!storeOrder.refundStatus || storeOrder.refundStatus === "none") && (
-                              <Button
-                                asChild
-                                variant="outline"
-                                size="sm"
-                                className="border-orange-600 text-orange-600 hover:bg-orange-50"
-                              >
-                                <Link to="/refunds">
-                                  <RefreshCw className="h-4 w-4 mr-2" />
-                                  Request Refund
-                                </Link>
-                              </Button>
-                            )}
-                            
-                            {storeOrder.trackingInfo && (
-                              <Button
-                                asChild
-                                variant="outline"
-                                size="sm"
-                                className="border-purple-600 text-purple-600 hover:bg-purple-50"
-                              >
-                                <Link to={`/dashboard/store-orders/${storeOrder.id}?expand=tracking`}>
-                                  <Truck className="h-4 w-4 mr-2" />
-                                  Track Package
-                                </Link>
-                              </Button>
-                            )}
                           </div>
                         </CardContent>
                       </Card>
@@ -529,67 +507,47 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ user, appId, userRoles }) => {
             )}
           </CardContent>
         </Card>
-      </div>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-red-600">Delete Order</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this order? This action cannot be
-              undone.
-              <br />
-              <br />
-              <strong>Order:</strong>{" "}
-              {orderToDelete?.title || `Order ${orderToDelete?.ticketNumber}`}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="deletePassword">
-                Enter password to confirm deletion:
-              </Label>
-              <Input
-                id="deletePassword"
-                type="password"
-                value={deletePassword}
-                onChange={(e) => setDeletePassword(e.target.value)}
-                placeholder="Enter password"
-                className="mt-2"
-              />
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Delete Order</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete this order? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="delete-password">Enter your password to confirm:</Label>
+                <Input
+                  id="delete-password"
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="Enter your password"
+                  className="mt-2"
+                />
+              </div>
               {deleteError && (
-                <p className="text-sm text-red-600 mt-2">{deleteError}</p>
+                <p className="text-sm text-red-500">{deleteError}</p>
               )}
             </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={handleCancelDelete}
-              disabled={isDeleting}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteOrder}
-              disabled={isDeleting || !deletePassword}
-            >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                "Delete Order"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button variant="outline" onClick={handleCancelDelete}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteOrder}
+                disabled={!deletePassword.trim()}
+              >
+                Delete Order
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </DashboardLayout>
   );
 };

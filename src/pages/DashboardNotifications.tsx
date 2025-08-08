@@ -228,11 +228,11 @@ const DashboardNotifications: React.FC<DashboardNotificationsProps> = ({
   if (loading) {
     return (
       <DashboardLayout user={user} appId={appId} userRole={userRole}>
-        <div className="space-y-6 animate-in fade-in duration-500">
-          <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold text-primary">Notifications</h1>
+        <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <h1 className="text-2xl sm:text-3xl font-bold text-primary">Notifications</h1>
             <div className="flex items-center space-x-2">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin text-primary" />
               <span className="text-sm text-muted-foreground">Loading...</span>
             </div>
           </div>
@@ -252,13 +252,13 @@ const DashboardNotifications: React.FC<DashboardNotificationsProps> = ({
   if (!hasValidRoles) {
     return (
       <DashboardLayout user={user} appId={appId} userRole={userRole}>
-        <div className="space-y-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
-          <h1 className="text-3xl font-bold text-primary">Notifications</h1>
+        <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
+          <h1 className="text-2xl sm:text-3xl font-bold text-primary">Notifications</h1>
           <Card className="border-primary/20 bg-primary/5 animate-in fade-in duration-300">
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center space-x-2">
-                <AlertCircle className="h-5 w-5 text-primary animate-pulse" />
-                <span className="text-primary">
+                <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-primary animate-pulse flex-shrink-0" />
+                <span className="text-sm sm:text-base text-primary">
                   Your account doesn't have the necessary permissions to view notifications. 
                   Please contact support to update your account permissions.
                 </span>
@@ -273,13 +273,13 @@ const DashboardNotifications: React.FC<DashboardNotificationsProps> = ({
   if (error) {
     return (
       <DashboardLayout user={user} appId={appId} userRole={userRole}>
-        <div className="space-y-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
-          <h1 className="text-3xl font-bold text-primary">Notifications</h1>
+        <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
+          <h1 className="text-2xl sm:text-3xl font-bold text-primary">Notifications</h1>
           <Card className="border-secondary/20 bg-secondary/5 animate-in fade-in duration-300">
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center space-x-2">
-                <AlertCircle className="h-5 w-5 text-secondary animate-pulse" />
-                <span className="text-secondary">{error}</span>
+                <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-secondary animate-pulse flex-shrink-0" />
+                <span className="text-sm sm:text-base text-secondary">{error}</span>
               </div>
             </CardContent>
           </Card>
@@ -290,27 +290,27 @@ const DashboardNotifications: React.FC<DashboardNotificationsProps> = ({
 
   return (
     <DashboardLayout user={user} appId={appId} userRole={userRole}>
-      <div className="space-y-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
-        <div className="flex items-center justify-between">
+      <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-primary">Notifications</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold text-primary">Notifications</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
               {notifications.length} total, {unreadCount} unread
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {notifications.length > 0 && (
               <Button
                 onClick={handleClearAllNotifications}
                 variant="outline"
                 size="sm"
                 disabled={performingAction === "clear-all"}
-                className="text-secondary border-secondary/20 hover:bg-secondary/10 transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-xs sm:text-sm text-secondary border-secondary/20 hover:bg-secondary/10 transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {performingAction === "clear-all" ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin" />
                 ) : (
-                  <Trash2 className="h-4 w-4 mr-2" />
+                  <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                 )}
                 {performingAction === "clear-all" ? "Clearing..." : "Clear All"}
               </Button>
@@ -321,12 +321,12 @@ const DashboardNotifications: React.FC<DashboardNotificationsProps> = ({
                 variant="outline"
                 size="sm"
                 disabled={performingAction === "mark-all-read"}
-                className="text-accent border-accent hover:bg-accent/10 transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-xs sm:text-sm text-accent border-accent hover:bg-accent/10 transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {performingAction === "mark-all-read" ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin" />
                 ) : (
-                  <CheckCircle className="h-4 w-4 mr-2" />
+                  <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                 )}
                 {performingAction === "mark-all-read" ? "Marking..." : "Mark All Read"}
               </Button>
@@ -336,19 +336,19 @@ const DashboardNotifications: React.FC<DashboardNotificationsProps> = ({
 
         {notifications.length === 0 ? (
           <Card className="border-0 shadow-elegant animate-in fade-in duration-500 slide-in-from-bottom-4">
-            <CardContent className="p-12 text-center">
-              <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4 animate-pulse" />
-              <h3 className="text-lg font-semibold text-muted-foreground mb-2">
+            <CardContent className="p-6 sm:p-12 text-center">
+              <Bell className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-3 sm:mb-4 animate-pulse" />
+              <h3 className="text-base sm:text-lg font-semibold text-muted-foreground mb-2">
                 No notifications yet
               </h3>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 You'll see notifications here when there are updates to your
                 orders or account.
               </p>
             </CardContent>
           </Card>
         ) : (
-                    <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {notifications.map((notification, index) => (
               <NotificationCard
                 key={notification.id}
@@ -360,31 +360,32 @@ const DashboardNotifications: React.FC<DashboardNotificationsProps> = ({
               />
             ))}
           </div>
-         )}
+        )}
 
-         {/* Load More Button */}
-         {hasMore && (
-           <div className="flex justify-center mt-6">
-             <Button
-               onClick={loadMoreNotifications}
-               variant="outline"
-               disabled={loadingMore}
-               className="transition-all duration-200 hover:scale-105"
-             >
-               {loadingMore ? (
-                 <>
-                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                   Loading...
-                 </>
-               ) : (
-                 "Load More"
-               )}
-             </Button>
-           </div>
-         )}
-       </div>
-     </DashboardLayout>
-   );
- };
+        {/* Load More Button */}
+        {hasMore && (
+          <div className="flex justify-center mt-4 sm:mt-6">
+            <Button
+              onClick={loadMoreNotifications}
+              variant="outline"
+              size="sm"
+              disabled={loadingMore}
+              className="text-xs sm:text-sm transition-all duration-200 hover:scale-105"
+            >
+              {loadingMore ? (
+                <>
+                  <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                "Load More"
+              )}
+            </Button>
+          </div>
+        )}
+      </div>
+    </DashboardLayout>
+  );
+};
 
 export default DashboardNotifications;

@@ -318,19 +318,19 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
 
   return (
     <DashboardLayout user={user} appId={appId}>
-      <div className="space-y-8">
-        <div className="mb-8 flex justify-between items-center">
+      <div className="space-y-6 lg:space-y-8">
+        <div className="mb-6 lg:mb-8 flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
           <div>
-            <h1 className="text-4xl font-bold text-primary mb-2">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary mb-2">
               Dashboard Overview
             </h1>
-            <p className="text-lg text-muted-foreground">
+            <p className="text-sm sm:text-base lg:text-lg text-muted-foreground">
               Track your product orders, manage settings, and stay updated on
               your purchases
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" size="sm">
               <Link to="/dashboard/settings">
                 <User className="mr-2 h-4 w-4" />
                 Settings
@@ -340,6 +340,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
               <>
                 <Button
                   asChild
+                  size="sm"
                   className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-md shadow-sm"
                 >
                   <Link to="/dashboard/admin/store-orders">
@@ -352,115 +353,115 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
         </div>
 
         {/* Enhanced Statistics Cards */}
-        <div className="grid md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
           <Card className="border-0 shadow-elegant hover:shadow-premium transition-shadow">
-            <CardContent className="p-6">
+            <CardContent className="p-4 lg:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Orders</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Total Orders</p>
                   <AnimatedCounter
                     end={totalOrders}
-                    className="text-2xl font-bold text-primary"
+                    className="text-xl sm:text-2xl font-bold text-primary"
                     duration={1500}
                   />
                 </div>
-                <Package className="h-8 w-8 text-accent animate-bounce-subtle" />
+                <Package className="h-6 w-6 sm:h-8 sm:w-8 text-accent animate-bounce-subtle" />
               </div>
             </CardContent>
           </Card>
 
           <Card className="border-0 shadow-elegant hover:shadow-premium transition-shadow">
-            <CardContent className="p-6">
+            <CardContent className="p-4 lg:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Active Orders</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Active Orders</p>
                   <AnimatedCounter
                     end={activeOrders}
-                    className="text-2xl font-bold text-primary"
+                    className="text-xl sm:text-2xl font-bold text-primary"
                     duration={1500}
                   />
                 </div>
-                <Clock className="h-8 w-8 text-accent animate-pulse-glow" />
+                <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-accent animate-pulse-glow" />
               </div>
             </CardContent>
           </Card>
 
           <Card className="border-0 shadow-elegant hover:shadow-premium transition-shadow">
-            <CardContent className="p-6">
+            <CardContent className="p-4 lg:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs sm:text-sm text-muted-foreground">
                     Payment Completed
                   </p>
                   <AnimatedCounter
                     end={completedOrders}
-                    className="text-2xl font-bold text-primary"
+                    className="text-xl sm:text-2xl font-bold text-primary"
                     duration={1500}
                   />
                 </div>
-                <CheckCircle className="h-8 w-8 text-accent" />
+                <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 text-accent" />
               </div>
             </CardContent>
           </Card>
 
           <Card className="border-0 shadow-elegant hover:shadow-premium transition-shadow">
-            <CardContent className="p-6">
+            <CardContent className="p-4 lg:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Avg Progress</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Avg Progress</p>
                   <AnimatedCounter
                     end={avgProgress}
                     suffix="%"
-                    className="text-2xl font-bold text-primary"
+                    className="text-xl sm:text-2xl font-bold text-primary"
                     duration={1500}
                   />
                 </div>
-                <TrendingUp className="h-8 w-8 text-accent" />
+                <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-accent" />
               </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Gamification Elements */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 mb-6 lg:mb-8">
           <Card className="border-0 shadow-elegant bg-gradient-gold/10">
-            <CardContent className="p-6 text-center">
-              <Target className="h-12 w-12 text-accent mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Completion Rate</h3>
+            <CardContent className="p-4 lg:p-6 text-center">
+              <Target className="h-8 w-8 sm:h-12 sm:w-12 text-accent mx-auto mb-3 lg:mb-4" />
+              <h3 className="text-sm sm:text-lg font-semibold mb-2">Completion Rate</h3>
               <AnimatedCounter
                 end={92}
                 suffix="%"
-                className="text-3xl font-bold text-accent"
+                className="text-2xl sm:text-3xl font-bold text-accent"
                 duration={2000}
               />
-              <p className="text-sm text-muted-foreground mt-2">
+              <p className="text-xs sm:text-sm text-muted-foreground mt-2">
                 Keep up the great work!
               </p>
             </CardContent>
           </Card>
 
           <Card className="border-0 shadow-elegant bg-gradient-gold/10">
-            <CardContent className="p-6 text-center">
-              <Award className="h-12 w-12 text-accent mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Loyalty Level</h3>
-              <div className="text-3xl font-bold text-accent mb-2">Gold</div>
+            <CardContent className="p-4 lg:p-6 text-center">
+              <Award className="h-8 w-8 sm:h-12 sm:w-12 text-accent mx-auto mb-3 lg:mb-4" />
+              <h3 className="text-sm sm:text-lg font-semibold mb-2">Loyalty Level</h3>
+              <div className="text-2xl sm:text-3xl font-bold text-accent mb-2">Gold</div>
               <Progress value={75} className="h-2" />
-              <p className="text-sm text-muted-foreground mt-2">
+              <p className="text-xs sm:text-sm text-muted-foreground mt-2">
                 25% to Platinum
               </p>
             </CardContent>
           </Card>
 
           <Card className="border-0 shadow-elegant bg-gradient-gold/10">
-            <CardContent className="p-6 text-center">
-              <Star className="h-12 w-12 text-accent mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Satisfaction Score</h3>
+            <CardContent className="p-4 lg:p-6 text-center">
+              <Star className="h-8 w-8 sm:h-12 sm:w-12 text-accent mx-auto mb-3 lg:mb-4" />
+              <h3 className="text-sm sm:text-lg font-semibold mb-2">Satisfaction Score</h3>
               <div className="flex justify-center mb-2">
                 {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="h-6 w-6 fill-accent text-accent" />
+                  <Star key={i} className="h-4 w-4 sm:h-6 sm:w-6 fill-accent text-accent" />
                 ))}
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 Excellent feedback!
               </p>
             </CardContent>
@@ -478,20 +479,20 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
            }`}>
             <TabsTrigger
               value="orders"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-md transition-all duration-200"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-md transition-all duration-200 text-xs sm:text-sm"
             >
-              <ShoppingCart className="mr-2 h-4 w-4" /> Orders
+              <ShoppingCart className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Orders
             </TabsTrigger>
 
             <TabsTrigger
               value="notifications"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-md transition-all duration-200"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-md transition-all duration-200 text-xs sm:text-sm"
             >
-              <Bell className="mr-2 h-4 w-4" /> Notifications
+              <Bell className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Notifications
               {unreadNotifications > 0 && (
                 <Badge
                   variant="destructive"
-                  className="ml-2 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
+                  className="ml-1 sm:ml-2 h-4 w-4 sm:h-5 sm:w-5 rounded-full p-0 text-xs flex items-center justify-center"
                 >
                   {unreadNotifications}
                 </Badge>
@@ -500,21 +501,21 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
             {hasAdminOrTeamRole && (
               <TabsTrigger
                 value="team-chat"
-                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-md transition-all duration-200"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-md transition-all duration-200 text-xs sm:text-sm"
               >
-                <Users className="mr-2 h-4 w-4" /> Team Chat
+                <Users className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Team Chat
               </TabsTrigger>
             )}
           </TabsList>
 
-          <TabsContent value="orders" className="mt-6">
+          <TabsContent value="orders" className="mt-4 lg:mt-6">
             <Card className="border-0 shadow-premium rounded-xl">
-              <CardHeader className="border-b border-border p-6">
-                <CardTitle className="text-2xl font-semibold text-primary">
+              <CardHeader className="border-b border-border p-4 lg:p-6">
+                <CardTitle className="text-lg sm:text-xl lg:text-2xl font-semibold text-primary">
                   Your Recent Orders & Tickets
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-6">
+              <CardContent className="p-4 lg:p-6">
                 {loadingOrders ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="mr-2 h-6 w-6 animate-spin text-primary" />
@@ -531,7 +532,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
                     </Link>
                   </p>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-3 lg:space-y-4">
                     {orders.slice(0, 3).map(
                       (
                         order // Display only top 3 recent orders
@@ -540,12 +541,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
                           key={order.id}
                           className="border shadow-sm rounded-lg"
                         >
-                          <CardContent className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                            <div>
-                              <h3 className="font-semibold text-lg text-primary">
+                          <CardContent className="p-3 lg:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-base sm:text-lg text-primary">
                                 {order.title || `Order ${order.ticketNumber}`}
                               </h3>
-                              <p className="text-sm text-muted-foreground">
+                              <p className="text-xs sm:text-sm text-muted-foreground">
                                 Status:{" "}
                                 <span
                                   className={`font-medium ${getStatusColor(
@@ -579,8 +580,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
                       )
                     )}
                     {orders.length > 3 && (
-                      <div className="text-center mt-6">
-                        <Button asChild variant="outline">
+                      <div className="text-center mt-4 lg:mt-6">
+                        <Button asChild variant="outline" size="sm">
                                                 <Link to="/dashboard/orders">
                         View All Orders
                       </Link>
@@ -595,23 +596,23 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
 
 
 
-          <TabsContent value="notifications" className="mt-6">
+          <TabsContent value="notifications" className="mt-4 lg:mt-6">
             <Card className="border-0 shadow-premium rounded-xl">
-              <CardHeader className="border-b border-border p-6">
-                <CardTitle className="text-2xl font-semibold text-primary">
+              <CardHeader className="border-b border-border p-4 lg:p-6">
+                <CardTitle className="text-lg sm:text-xl lg:text-2xl font-semibold text-primary">
                   Recent Notifications
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-6">
+              <CardContent className="p-4 lg:p-6">
                 <div className="text-center py-8">
-                  <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-muted-foreground mb-2">
+                  <Bell className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-base sm:text-lg font-semibold text-muted-foreground mb-2">
                     Notifications
                   </h3>
-                  <p className="text-sm text-muted-foreground mb-4">
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-4">
                     View all your notifications and updates here.
                   </p>
-                  <Button asChild variant="outline">
+                  <Button asChild variant="outline" size="sm">
                     <Link to="/dashboard/notifications">
                       View All Notifications
                     </Link>
@@ -622,14 +623,14 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
           </TabsContent>
 
           {hasAdminOrTeamRole && (
-            <TabsContent value="team-chat" className="mt-6">
+            <TabsContent value="team-chat" className="mt-4 lg:mt-6">
               <Card className="border-0 shadow-premium rounded-xl">
-                <CardHeader className="border-b border-border p-6">
-                  <CardTitle className="text-2xl font-semibold text-primary">
+                <CardHeader className="border-b border-border p-4 lg:p-6">
+                  <CardTitle className="text-lg sm:text-xl lg:text-2xl font-semibold text-primary">
                     Team Communication
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-6">
+                <CardContent className="p-4 lg:p-6">
                   <p className="text-center text-muted-foreground py-8">
                     Team chat functionality will be available here.
                     <Link
