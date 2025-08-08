@@ -1259,7 +1259,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
               <div className="space-y-6 sm:space-y-8 order-2 lg:order-2">
               <div>
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-4">
-                  <Badge variant="secondary" className="bg-secondary/10 text-secondary border-secondary/20 flex items-center gap-1 text-xs sm:text-sm">
+                  <Badge variant="secondary" className="bg-secondary/10 text-secondary border-secondary/20 flex items-center gap-1 text-xs sm:text-sm hover:text-white cursor-pointer">
                     <Crown className="h-3 w-3 text-secondary" />
                     Premium Quality
                   </Badge>
@@ -1602,14 +1602,18 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
             {/* Features (no card background, full-width) */}
             <div className="px-0">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                  {product.features.map((feature, index) => (
-                  <div key={index} className="flex items-center gap-3 p-3 sm:p-4 rounded-lg bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/20">
-                    <div className="w-5 h-5 sm:w-6 sm:h-6 bg-secondary rounded-full flex items-center justify-center flex-shrink-0">
+                {product.features.map((feature, index) => (
+                  <div 
+                    key={index} 
+                    className="flex items-center gap-3 p-3 sm:p-4 rounded-lg bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/20 hover:from-primary/10 hover:to-secondary/10 hover:border-primary/40 hover:shadow-lg transition-all duration-300 transform hover:scale-105 animate-in slide-in-from-bottom-4 fade-in-0 feature-glow"
+                    style={{ animationDelay: `${index * 100}ms` }}
+                  >
+                    <div className="w-5 h-5 sm:w-6 sm:h-6 bg-secondary rounded-full flex items-center justify-center flex-shrink-0 animate-pulse hover:icon-rotate">
                       <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
-                      </div>
-                    <span className="text-xs sm:text-sm font-medium text-primary">{feature}</span>
                     </div>
-                  ))}
+                    <span className="text-xs sm:text-sm font-medium text-primary">{feature}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -1620,14 +1624,15 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                   ([key, value], index) => (
                     <div
                       key={key}
-                      className={`flex flex-col sm:flex-row sm:justify-between py-3 sm:py-4 px-4 sm:px-6 ${
+                      className={`flex flex-col sm:flex-row sm:justify-between py-3 sm:py-4 px-4 sm:px-6 hover:bg-muted/30 transition-all duration-300 animate-in slide-in-from-right-4 fade-in-0 spec-bounce ${
                          index !== Object.entries(product.specifications).length - 1
                            ? "border-b border-border"
                            : ""
                        }`}
+                      style={{ animationDelay: `${index * 150}ms` }}
                     >
-                      <span className="font-semibold text-primary text-sm sm:text-base mb-1 sm:mb-0">{key}</span>
-                      <span className="text-xs sm:text-sm font-medium text-muted-foreground bg-white/70 px-2 sm:px-3 py-1 rounded-full self-start sm:self-auto">
+                      <span className="font-semibold text-primary text-sm sm:text-base mb-1 sm:mb-0 hover:text-primary/80 transition-colors duration-200">{key}</span>
+                      <span className="text-xs sm:text-sm font-medium text-muted-foreground bg-white/70 px-2 sm:px-3 py-1 rounded-full self-start sm:self-auto hover:bg-white hover:shadow-sm transition-all duration-200 transform hover:scale-105 hover:spec-bounce">
                         {value}
                       </span>
                     </div>
@@ -2398,7 +2403,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
 
       {/* Loyalty Floating Action Button (FAB) */}
       {showLoyaltyFab && (
-        <div className="fixed bottom-4 right-4 z-50">
+        <div className="fixed bottom-6 right-6 z-50">
           <div className="relative">
             {/* Pulse ring */}
             <span className="pointer-events-none absolute inset-0 rounded-full bg-secondary/40 animate-ping" />
@@ -2406,16 +2411,16 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
             <Button
               aria-label="Explore ranked discounts"
               onClick={() => setShowLoyaltyInfo(true)}
-              className="relative h-12 w-12 rounded-full bg-secondary text-secondary-foreground shadow-lg hover:shadow-xl hover:bg-secondary/90"
+              className="relative h-16 w-16 rounded-full bg-secondary text-secondary-foreground shadow-lg hover:shadow-xl hover:bg-secondary/90"
             >
-              <DollarSign className="h-6 w-6" />
+              <DollarSign className="h-8 w-8" />
             </Button>
             {/* Close dot touching the FAB */}
             <button
               type="button"
               onClick={() => setShowLoyaltyFab(false)}
               aria-label="Hide discount helper"
-              className="absolute -top-1 -right-1 h-4 w-4 p-0 rounded-full bg-background border border-border text-muted-foreground hover:bg-muted flex items-center justify-center shadow"
+              className="absolute -top-1 -right-1 h-5 w-5 p-0 rounded-full bg-background border border-border text-muted-foreground hover:bg-muted flex items-center justify-center shadow"
             >
               <X className="h-3 w-3" />
             </button>
