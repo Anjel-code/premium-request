@@ -96,15 +96,17 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
 
   // Calculate loyalty level based on purchase count
   const calculateLoyaltyLevel = (purchaseCount: number) => {
+    // Updated mapping so that first purchase awards Silver (5%),
+    // then progress through Gold (10%), Platinum (15%), Diamond (20%).
     if (purchaseCount >= 7) return { level: "Diamond", progress: 100, nextLevel: null, discount: 20 };
     if (purchaseCount === 6) return { level: "75% Platinum", progress: 75, nextLevel: "Diamond", discount: 15 };
     if (purchaseCount === 5) return { level: "50% Platinum", progress: 50, nextLevel: "75% Platinum", discount: 15 };
     if (purchaseCount === 4) return { level: "Platinum", progress: 100, nextLevel: "50% Platinum", discount: 15 };
     if (purchaseCount === 3) return { level: "75% Gold", progress: 75, nextLevel: "Platinum", discount: 10 };
     if (purchaseCount === 2) return { level: "50% Gold", progress: 50, nextLevel: "75% Gold", discount: 10 };
-    if (purchaseCount === 1) return { level: "Gold", progress: 100, nextLevel: "50% Gold", discount: 10 };
-    if (purchaseCount === 0) return { level: "Bronze", progress: 0, nextLevel: "Silver", discount: 0 };
-    return { level: "Silver", progress: 0, nextLevel: "Gold", discount: 5 };
+    if (purchaseCount === 1) return { level: "Silver", progress: 50, nextLevel: "50% Gold", discount: 5 };
+    // 0 purchases
+    return { level: "Bronze", progress: 0, nextLevel: "Silver", discount: 0 };
   };
 
   // Calculate completion rate from actual orders
@@ -520,18 +522,24 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
           <Card className="border-0 shadow-elegant bg-gradient-gold/10">
             <CardContent className="p-4 lg:p-6 text-center">
               <Award className="h-8 w-8 sm:h-12 sm:w-12 text-accent mx-auto mb-3 lg:mb-4" />
-              <h3 className="text-sm sm:text-lg font-semibold mb-2">Loyalty Level</h3>
-              <div className="text-2xl sm:text-3xl font-bold text-accent mb-2">
-                {loyaltyData.level}
-              </div>
-              {loyaltyData.discount > 0 && (
-                <div className="text-lg sm:text-xl font-bold text-green-600 mb-2">
-                  {loyaltyData.discount}% Discount
+              <h3 className="text-sm sm:text-lg font-semibold mb-3">Loyalty Level</h3>
+              <div className="flex flex-col items-center gap-2">
+                <div className="inline-flex items-center gap-2 rounded-full bg-secondary/10 text-secondary px-3 py-1 border border-secondary/30">
+                  <Award className="h-4 w-4" />
+                  <span className="text-sm sm:text-base font-semibold">{loyaltyData.level}</span>
                 </div>
-              )}
-              <Progress value={loyaltyData.progress} className="h-2 mb-2" />
+                {loyaltyData.discount > 0 && (
+                  <div className="inline-flex items-center gap-2 rounded-full bg-secondary text-secondary-foreground px-3 py-1 border border-secondary/30">
+                    <span className="text-xs sm:text-sm font-semibold">{loyaltyData.discount}% Discount</span>
+                  </div>
+                )}
+              </div>
+              {/* Animate fill from 0 to current value */}
+              <Progress key={orders.length + '-' + loyaltyData.level + '-' + loyaltyData.progress} value={loyaltyData.progress} className="h-2 mt-3 mb-2" />
               <p className="text-xs sm:text-sm text-muted-foreground">
-                {loyaltyData.nextLevel ? `Next: ${loyaltyData.nextLevel}` : "You've reached the highest level!"}
+                {loyaltyData.nextLevel
+                  ? `Next: ${loyaltyData.nextLevel}`
+                  : "You've reached the highest level!"}
               </p>
               <p className="text-xs text-muted-foreground mt-2">
                 {loyaltyData.discount > 0 

@@ -47,6 +47,7 @@ import {
   User,
   Info,
   MessageCircle,
+  DollarSign,
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -69,6 +70,7 @@ import { checkStorageQuota, clearAllStorage } from "@/lib/storageUtils";
 import { trackUserActivity } from "@/lib/liveViewUtils";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
 // Product data interface - this will be easily configurable
 interface VideoReview {
@@ -320,12 +322,15 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [hoveredVideo, setHoveredVideo] = useState<string | null>(null);
+  const [showLoyaltyInfo, setShowLoyaltyInfo] = useState(false);
+  const [showLoyaltyFab, setShowLoyaltyFab] = useState(true);
 
   // Check if user is admin by querying the database
   useEffect(() => {
     const checkAdminStatus = async () => {
       if (!user?.uid) {
         setIsUserAdmin(false);
+        setIsCheckingAdmin(false);
         return;
       }
 
@@ -336,9 +341,11 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
         if (adminStatus) {
           console.log('🔧 Admin role confirmed - Edit Store button should be visible');
         }
+        setIsCheckingAdmin(false);
       } catch (error) {
         console.error('Error checking admin status:', error);
         setIsUserAdmin(false);
+        setIsCheckingAdmin(false);
       }
     };
 
@@ -387,25 +394,35 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
           const orders = snapshot.docs.map(doc => doc.data());
           setUserOrders(orders);
           
-          // Calculate loyalty level based on purchase count
+          // Calculate loyalty level based on purchase count (aligned with Dashboard)
           const purchaseCount = orders.length;
           let level = "Bronze";
           let discount = 0;
-          
           if (purchaseCount >= 7) {
             level = "Diamond";
             discount = 20;
-          } else if (purchaseCount >= 4) {
+          } else if (purchaseCount === 6) {
+            level = "75% Platinum";
+            discount = 15;
+          } else if (purchaseCount === 5) {
+            level = "50% Platinum";
+            discount = 15;
+          } else if (purchaseCount === 4) {
             level = "Platinum";
             discount = 15;
-          } else if (purchaseCount >= 1) {
-            level = "Gold";
+          } else if (purchaseCount === 3) {
+            level = "75% Gold";
             discount = 10;
-          } else if (purchaseCount >= 0) {
+          } else if (purchaseCount === 2) {
+            level = "50% Gold";
+            discount = 10;
+          } else if (purchaseCount === 1) {
             level = "Silver";
             discount = 5;
+          } else {
+            level = "Bronze";
+            discount = 0;
           }
-          
           setLoyaltyLevel({ level, discount });
         });
 
@@ -880,7 +897,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
             variant="ghost"
             size="sm"
             onClick={toggleMobileMenu}
-            className="flex items-center gap-2 text-primary hover:text-primary/80"
+            className="flex items-center gap-2 text-primary hover:bg-primary hover:text-primary-foreground"
           >
             <Menu className="h-5 w-5" />
             <span className="text-sm font-medium">Menu</span>
@@ -968,23 +985,8 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
       {/* Add top padding for mobile to account for fixed header */}
       <div className="lg:hidden pt-16"></div>
 
-      {/* Admin Edit Button */}
-      {isCheckingAdmin ? (
-        <div className="fixed top-4 right-4 z-50">
-          <div className="flex flex-col items-end gap-2">
-            <Badge variant="secondary" className="text-xs">
-              Checking...
-            </Badge>
-            <Button
-              disabled
-              className="flex items-center gap-2 bg-muted text-muted-foreground"
-            >
-                                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
-              Loading
-            </Button>
-          </div>
-        </div>
-      ) : isUserAdmin ? (
+      {/* Admin Edit Button - show only for admins, no loading overlay */}
+      {isUserAdmin ? (
         <div className="fixed top-4 right-4 z-50">
           <div className="flex flex-col items-end gap-2">
             <Badge variant="secondary" className="text-xs">
@@ -1201,7 +1203,10 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                       </Badge>
                     )}
                     {loyaltyLevel.discount > 0 && (
-                      <Badge variant="secondary" className="text-xs sm:text-sm px-2 sm:px-3 py-1 bg-green-500 text-white">
+                      <Badge
+                        variant="secondary"
+                        className="text-xs sm:text-sm px-2 sm:px-3 py-1 bg-secondary text-secondary-foreground border border-secondary/30"
+                      >
                         <Award className="h-3 w-3 mr-1" />
                         {loyaltyLevel.level} Rank - {loyaltyLevel.discount}% Off
                       </Badge>
@@ -1366,6 +1371,16 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                     <Share2 className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                     <span className="text-muted-foreground">Share</span>
                   </Button>
+                  {loyaltyLevel.level === 'Bronze' && (
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={() => setShowLoyaltyInfo(true)}
+                      className="flex-1 border-secondary/40 text-secondary hover:bg-secondary/10 hover:text-secondary rounded-lg sm:rounded-xl text-xs sm:text-sm"
+                    >
+                      <Award className="mr-2 h-4 w-4" /> Explore Ranked Discounts
+                    </Button>
+                  )}
                 </div>
 
                 {/* Trust Indicators */}
@@ -2103,6 +2118,93 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
           </div>
         </div>
       )}
+
+      {/* Loyalty Floating Action Button (FAB) */}
+      {showLoyaltyFab && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <div className="relative">
+            {/* Pulse ring */}
+            <span className="pointer-events-none absolute inset-0 rounded-full bg-secondary/40 animate-ping" />
+            {/* Main FAB */}
+            <Button
+              aria-label="Explore ranked discounts"
+              onClick={() => setShowLoyaltyInfo(true)}
+              className="relative h-12 w-12 rounded-full bg-secondary text-secondary-foreground shadow-lg hover:shadow-xl hover:bg-secondary/90"
+            >
+              <DollarSign className="h-6 w-6" />
+            </Button>
+            {/* Close dot touching the FAB */}
+            <button
+              type="button"
+              onClick={() => setShowLoyaltyFab(false)}
+              aria-label="Hide discount helper"
+              className="absolute -top-1 -right-1 h-4 w-4 p-0 rounded-full bg-background border border-border text-muted-foreground hover:bg-muted flex items-center justify-center shadow"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        </div>
+      )}
+      {/* Loyalty Info Dialog */}
+      <Dialog open={showLoyaltyInfo} onOpenChange={setShowLoyaltyInfo}>
+        <DialogContent className="max-w-md sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-primary">
+              <Award className="h-5 w-5" /> Unlock Ranked Discounts
+            </DialogTitle>
+            <DialogDescription>
+              The more you purchase, the higher your rank and the bigger your permanent savings on every future order.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 text-sm">
+            <div className="grid grid-cols-1 gap-3">
+              <div className="flex items-center justify-between rounded-lg border border-border p-3 bg-muted/20">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-muted-foreground" />
+                  <Badge className="bg-secondary text-secondary-foreground">Bronze</Badge>
+                  <span className="text-muted-foreground">0 purchases</span>
+                </div>
+                <span className="text-xs text-muted-foreground">0% off</span>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-border p-3 bg-muted/20">
+                <div className="flex items-center gap-2">
+                  <Award className="h-4 w-4 text-accent" />
+                  <Badge className="bg-secondary text-secondary-foreground">Gold</Badge>
+                  <span className="text-muted-foreground">1+ purchases</span>
+                </div>
+                <span className="text-xs font-medium text-secondary">10% off</span>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-border p-3 bg-muted/20">
+                <div className="flex items-center gap-2">
+                  <Star className="h-4 w-4 text-primary" />
+                  <Badge className="bg-secondary text-secondary-foreground">Platinum</Badge>
+                  <span className="text-muted-foreground">4+ purchases</span>
+                </div>
+                <span className="text-xs font-medium text-secondary">15% off</span>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-border p-3 bg-muted/20">
+                <div className="flex items-center gap-2">
+                  <Crown className="h-4 w-4 text-secondary" />
+                  <Badge className="bg-secondary text-secondary-foreground">Diamond</Badge>
+                  <span className="text-muted-foreground">7+ purchases</span>
+                </div>
+                <span className="text-xs font-medium text-secondary">20% off</span>
+              </div>
+            </div>
+            <div className="rounded-lg border border-secondary/30 bg-secondary/10 p-3 text-xs text-muted-foreground">
+              Tip: Your discount stacks after any wellness intro offer. Discounts apply automatically at checkout.
+            </div>
+          </div>
+          <DialogFooter className="flex items-center justify-between">
+            <Button variant="outline" onClick={() => setShowLoyaltyInfo(false)}>
+              Close
+            </Button>
+            <Button onClick={() => { setShowLoyaltyInfo(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+              Start Shopping
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

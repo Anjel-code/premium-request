@@ -18,6 +18,14 @@ service cloud.firestore {
 
     // --- Public Data for Applications ---
     match /artifacts/{appId}/public/data {
+      // --- User Satisfaction Ratings ---
+      match /user-satisfaction/{userId} {
+        // Users can read their own satisfaction score
+        allow read: if request.auth != null && request.auth.uid == userId;
+        // Users can create or update their own satisfaction score
+        allow create, update: if request.auth != null && request.auth.uid == userId;
+      }
+
 
       // --- Orders Collection ---
       match /orders/{orderId} {
