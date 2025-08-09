@@ -21,4 +21,7 @@
   node_bundler = "esbuild"
 
 [functions.environment]
-  NODE_ENV = "production" 
+  NODE_ENV = "production"
+
+[[plugins]]
+  package = "@netlify/plugin-functions-install-core" 
