@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Trash2, Plus, Save, X } from "lucide-react";
-import FileUpload from "./FileUpload";
+
 
 interface VideoReview {
   id: string;
@@ -82,26 +82,7 @@ const VideoEditor: React.FC<VideoEditorProps> = ({ videos, onSave, onCancel }) =
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <FileUpload
-                      label="Thumbnail"
-                      value={video.thumbnail}
-                      onChange={(value) => updateVideo(video.id, 'thumbnail', value)}
-                      type="image"
-                      placeholder="Enter thumbnail URL or upload image"
-                    />
-                  </div>
-                  <div>
-                    <FileUpload
-                      label="Video"
-                      value={video.videoUrl}
-                      onChange={(value) => updateVideo(video.id, 'videoUrl', value)}
-                      type="video"
-                      placeholder="Enter video URL or upload video file"
-                    />
-                  </div>
-                </div>
+
                 <div>
                   <Label htmlFor={`customerName-${video.id}`}>Customer Name</Label>
                   <Input

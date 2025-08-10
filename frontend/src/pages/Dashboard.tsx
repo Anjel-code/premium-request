@@ -96,17 +96,14 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
 
   // Calculate loyalty level based on purchase count
   const calculateLoyaltyLevel = (purchaseCount: number) => {
-    // Updated mapping so that first purchase awards Silver (5%),
-    // then progress through Gold (10%), Platinum (15%), Diamond (20%).
-    if (purchaseCount >= 7) return { level: "Diamond", progress: 100, nextLevel: null, discount: 20 };
-    if (purchaseCount === 6) return { level: "75% Platinum", progress: 75, nextLevel: "Diamond", discount: 15 };
-    if (purchaseCount === 5) return { level: "50% Platinum", progress: 50, nextLevel: "75% Platinum", discount: 15 };
-    if (purchaseCount === 4) return { level: "Platinum", progress: 100, nextLevel: "50% Platinum", discount: 15 };
-    if (purchaseCount === 3) return { level: "75% Gold", progress: 75, nextLevel: "Platinum", discount: 10 };
-    if (purchaseCount === 2) return { level: "50% Gold", progress: 50, nextLevel: "75% Gold", discount: 10 };
-    if (purchaseCount === 1) return { level: "Silver", progress: 50, nextLevel: "50% Gold", discount: 5 };
+    // Updated mapping: Silver (0 purchases, 0%), Gold (1+ purchases, 5%), Platinum (3+ purchases, 10%), Diamond (5+ purchases, 15%)
+    if (purchaseCount >= 5) return { level: "Diamond", progress: 100, nextLevel: null, discount: 15 };
+    if (purchaseCount === 4) return { level: "80% Diamond", progress: 80, nextLevel: "Diamond", discount: 15 };
+    if (purchaseCount === 3) return { level: "Platinum", progress: 100, nextLevel: "80% Diamond", discount: 10 };
+    if (purchaseCount === 2) return { level: "50% Platinum", progress: 50, nextLevel: "Platinum", discount: 10 };
+    if (purchaseCount === 1) return { level: "Gold", progress: 100, nextLevel: "50% Platinum", discount: 5 };
     // 0 purchases
-    return { level: "Bronze", progress: 0, nextLevel: "Silver", discount: 0 };
+    return { level: "Silver", progress: 0, nextLevel: "Gold", discount: 0 };
   };
 
   // Calculate completion rate from actual orders
@@ -547,7 +544,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, appId }) => {
               <p className="text-xs text-muted-foreground mt-2">
                 {loyaltyData.discount > 0 
                   ? `Your ${loyaltyData.level} rank gives you ${loyaltyData.discount}% off all purchases!`
-                  : "Make your first purchase to unlock Silver rank and 5% discount!"}
+                  : "Make your first purchase to unlock Gold rank and 5% discount!"}
               </p>
             </CardContent>
           </Card>

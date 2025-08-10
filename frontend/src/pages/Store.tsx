@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import * as React from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +49,7 @@ import {
   Info,
   MessageCircle,
   DollarSign,
+  ArrowRight,
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -71,6 +73,8 @@ import { trackUserActivity } from "@/lib/liveViewUtils";
 import { collection, query, where, onSnapshot, getDocs, deleteDoc, addDoc, doc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { MediaBackground, MediaImage } from "@/components/ui/MediaImage";
+import { getMediaAsset } from "@/lib/mediaAssets";
 
 // Product data interface - this will be easily configurable
 interface VideoReview {
@@ -129,45 +133,45 @@ const mockProductData: ProductData = {
   price: 199.99,
   originalPrice: 299.99,
   images: [
-    "/placeholder.svg",
-    "/placeholder.svg",
-    "/placeholder.svg",
-    "/placeholder.svg",
+    "product-main-image",
+    "product-gallery-1",
+    "product-gallery-2",
+    "product-gallery-3",
   ],
-  videos: ["https://www.youtube.com/embed/dQw4w9WgXcQ"],
+  videos: ["product-video"],
   videoReviews: [
     {
       id: "1",
-      thumbnail: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=300&h=400&fit=crop&crop=face",
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      thumbnail: "video-review-thumb-1",
+      videoUrl: "video-review-1",
       testimonial: "These headphones are incredible! The noise cancellation is amazing.",
       customerName: "Sarah M.",
     },
     {
       id: "2",
-      thumbnail: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=400&fit=crop&crop=face",
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      thumbnail: "video-review-thumb-2",
+      videoUrl: "video-review-2",
       testimonial: "Best headphones I've ever owned. So comfortable!",
       customerName: "Mike R.",
     },
     {
       id: "3",
-      thumbnail: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=300&h=400&fit=crop&crop=face",
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      thumbnail: "video-review-thumb-3",
+      videoUrl: "video-review-3",
       testimonial: "Perfect for work calls and music. Highly recommend!",
       customerName: "Jennifer L.",
     },
     {
       id: "4",
-      thumbnail: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&h=400&fit=crop&crop=face",
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      thumbnail: "video-review-thumb-4",
+      videoUrl: "video-review-4",
       testimonial: "Absolutely love these headphones! Crystal clear sound.",
       customerName: "David K.",
     },
     {
       id: "5",
-      thumbnail: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=300&h=400&fit=crop&crop=face",
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      thumbnail: "video-review-thumb-5",
+      videoUrl: "video-review-5",
       testimonial: "The battery life is incredible. Lasts all day!",
       customerName: "Emma T.",
     },
@@ -209,8 +213,8 @@ const mockProductData: ProductData = {
               "These headphones are incredible! The noise cancellation is amazing and the battery life is exactly as advertised. Worth every penny!",
             date: "2024-01-15",
             verified: true,
-            productImage: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=300&fit=crop",
-            profileImage: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face",
+            productImage: "review-product-image",
+            profileImage: "review-profile-1",
           },
           {
             id: "2",
@@ -220,8 +224,8 @@ const mockProductData: ProductData = {
               "Best headphones I've ever owned. The sound quality is outstanding and they're so comfortable I forget I'm wearing them.",
             date: "2024-01-10",
             verified: true,
-            productImage: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=300&fit=crop",
-            profileImage: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
+            productImage: "review-product-image",
+            profileImage: "review-profile-2",
           },
           {
             id: "3",
@@ -231,8 +235,8 @@ const mockProductData: ProductData = {
               "Great sound quality and very comfortable. The only minor issue is the touch controls can be a bit sensitive sometimes.",
             date: "2024-01-08",
             verified: true,
-            productImage: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=300&fit=crop",
-            profileImage: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
+            productImage: "review-product-image",
+            profileImage: "review-profile-3",
           },
           {
             id: "4",
@@ -242,8 +246,8 @@ const mockProductData: ProductData = {
               "Absolutely love these headphones! The sound quality is crystal clear and the noise cancellation works perfectly for my daily commute.",
             date: "2024-01-05",
             verified: true,
-            productImage: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=300&fit=crop",
-            profileImage: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
+            productImage: "review-product-image",
+            profileImage: "review-profile-4",
           },
           {
             id: "5",
@@ -253,8 +257,8 @@ const mockProductData: ProductData = {
               "Perfect for work calls and music. The microphone quality is excellent and the battery lasts all day. Highly recommend!",
             date: "2024-01-03",
             verified: true,
-            productImage: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=300&fit=crop",
-            profileImage: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face",
+            productImage: "review-product-image",
+            profileImage: "review-profile-5",
           },
         ],
   faqs: [
@@ -295,6 +299,9 @@ interface StoreProps {
 }
 
 const Store: React.FC<StoreProps> = ({ user, appId }) => {
+  console.log('🚀 [Store] Component is rendering!');
+  console.log('🚀 [Store] User:', user);
+  console.log('🚀 [Store] AppId:', appId);
   const navigate = useNavigate();
   const { addToCart, items, addToWishlist, removeFromWishlist, isInWishlist, setIsCartOpen, totalItems } = useCart();
   const { toast } = useToast();
@@ -325,8 +332,23 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   const [showLoyaltyInfo, setShowLoyaltyInfo] = useState(false);
   const [showLoyaltyFab, setShowLoyaltyFab] = useState(true);
   const [shareLoading, setShareLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Before/After slider internal component
+                  /**
+                 * BeforeAfterSlider Component
+                 *
+                 * This component creates a draggable slider that shows two images side-by-side
+                 * for the 30-day money-back guarantee section. It demonstrates the "before"
+                 * and "after" states of using the product.
+                 *
+                 * IMAGE SOURCES:
+                 * - leftImage: Uses "guarantee-before-image" asset for "Before" state
+                 * - rightImage: Uses "guarantee-after-image" asset for "After" state
+                 *
+                 * These are dedicated assets specifically for the guarantee section,
+                 * separate from the product gallery images. To update these images,
+                 * modify the UploadThing links in mediaAssets.ts for these specific assets.
+                 */
   const BeforeAfterSlider: React.FC<{
     leftImage: string;
     rightImage: string;
@@ -371,14 +393,22 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
         aria-valuenow={position}
       >
         {/* Right image as the base */}
-        <img src={rightImage} alt={rightLabel} className="absolute inset-0 w-full h-full object-cover object-center" />
-        {/* Left image clipped to the same scale as the right using clip-path */}
-        <img
-          src={leftImage}
-          alt={leftLabel}
-          className="absolute inset-0 w-full h-full object-cover object-center will-change-transform"
-          style={{ clipPath: `polygon(0% 0%, ${position}% 0%, ${position}% 100%, 0% 100%)` }}
+        <MediaImage
+          assetId={rightImage}
+          alt={rightLabel}
+          className="absolute inset-0 w-full h-full object-cover object-center"
         />
+        {/* Left image clipped to the same scale as the right using clip-path */}
+        <div
+          className="absolute inset-0 w-full h-full will-change-transform"
+          style={{ clipPath: `polygon(0% 0%, ${position}% 0%, ${position}% 100%, 0% 100%)` }}
+        >
+          <MediaImage
+            assetId={leftImage}
+            alt={leftLabel}
+            className="absolute inset-0 w-full h-full object-cover object-center"
+          />
+        </div>
 
         {/* Divider handle */}
         <div
@@ -458,7 +488,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   useEffect(() => {
     const fetchUserOrders = async () => {
       if (!user?.uid || !appId) {
-        setLoyaltyLevel({ level: "Bronze", discount: 0 });
+        setLoyaltyLevel({ level: "Silver", discount: 0 });
         return;
       }
 
@@ -472,31 +502,25 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
           
           // Calculate loyalty level based on purchase count (aligned with Dashboard)
           const purchaseCount = orders.length;
-          let level = "Bronze";
+          let level = "Silver";
           let discount = 0;
-          if (purchaseCount >= 7) {
+          if (purchaseCount >= 5) {
             level = "Diamond";
-            discount = 20;
-          } else if (purchaseCount === 6) {
-            level = "75% Platinum";
-            discount = 15;
-          } else if (purchaseCount === 5) {
-            level = "50% Platinum";
             discount = 15;
           } else if (purchaseCount === 4) {
-            level = "Platinum";
+            level = "80% Diamond";
             discount = 15;
           } else if (purchaseCount === 3) {
-            level = "75% Gold";
+            level = "Platinum";
             discount = 10;
           } else if (purchaseCount === 2) {
-            level = "50% Gold";
+            level = "50% Platinum";
             discount = 10;
           } else if (purchaseCount === 1) {
-            level = "Silver";
+            level = "Gold";
             discount = 5;
           } else {
-            level = "Bronze";
+            level = "Silver";
             discount = 0;
           }
           setLoyaltyLevel({ level, discount });
@@ -505,7 +529,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
         return () => unsubscribe();
       } catch (error) {
         console.error("Error fetching user orders:", error);
-        setLoyaltyLevel({ level: "Bronze", discount: 0 });
+        setLoyaltyLevel({ level: "Silver", discount: 0 });
       }
     };
 
@@ -515,9 +539,14 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   // Load product data - check for admin-saved data first, then fall back to mock data
   const loadProductData = (): ProductData => {
     const adminProduct = localStorage.getItem('adminStoreProduct');
+    console.log('[Store] Admin product from localStorage:', adminProduct);
+    
     if (adminProduct) {
       try {
         const parsedProduct = JSON.parse(adminProduct);
+        console.log('[Store] Parsed admin product:', parsedProduct);
+        console.log('[Store] Admin product images:', parsedProduct.images);
+        
         // Ensure videoReviews property exists
         if (!parsedProduct.videoReviews) {
           parsedProduct.videoReviews = mockProductData.videoReviews;
@@ -527,10 +556,17 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
         console.error('Error parsing admin product data:', error);
       }
     }
+    
+    console.log('[Store] Using mock product data:', mockProductData);
+    console.log('[Store] Mock product images:', mockProductData.images);
     return mockProductData;
   };
 
   const product = loadProductData();
+  console.log('[Store] Final product data:', product);
+  console.log('[Store] Product images array:', product.images);
+  console.log('[Store] Current image index:', currentImageIndex);
+  console.log('[Store] Current image asset ID:', product.images[currentImageIndex]);
   
   // Load real-time stock from database
   const loadRealTimeStock = async () => {
@@ -803,6 +839,100 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
     alert(`Storage Usage:\nlocalStorage: ${localStorageMB}MB\nsessionStorage: ${sessionStorageMB}MB`);
   };
 
+  /**
+   * Fixes corrupted product images by updating the media asset IDs in localStorage
+   *
+   * This function addresses the issue where product data contains invalid or missing
+   * media asset IDs, causing images and videos to fail to load. It replaces these
+   * with the correct asset IDs that match the available media assets in the system.
+   *
+   * What it fixes:
+   * - Product main images and gallery images
+   * - Product videos
+   * - Video review thumbnails and video URLs
+   * - Review product images and profile images
+   *
+   * IMPORTANT: The first two images (product-main-image, product-gallery-1) are also
+   * used in the 30-day guarantee section's BeforeAfterSlider component:
+   * - product.images[0] → "Before" image (left side of guarantee slider)
+   * - product.images[1] → "After" image (right side of guarantee slider)
+   *
+   * After fixing, it shows a success message and reloads the page to apply changes.
+   *
+   * Usage: Click the "Fix Images" button in the admin controls panel when
+   * product images are not displaying correctly due to corrupted asset IDs.
+   */
+  const fixProductImages = () => {
+    console.log('🔧 [Store] Fixing product images...');
+    const adminProduct = localStorage.getItem('adminStoreProduct');
+    if (adminProduct) {
+      try {
+        const parsedProduct = JSON.parse(adminProduct);
+        console.log('🔧 [Store] Current product data:', parsedProduct);
+        
+        // Update the images array to use correct media asset IDs
+        parsedProduct.images = [
+          "product-main-image",      // Main product image + Guarantee "Before" image
+          "product-gallery-1",       // Gallery image 1 + Guarantee "After" image  
+          "product-gallery-2",       // Gallery image 2
+          "product-gallery-3"        // Gallery image 3
+        ];
+        
+        // Update the videos array to use correct media asset IDs
+        parsedProduct.videos = ["product-video"];
+        
+        // Update video review thumbnails
+        if (parsedProduct.videoReviews && Array.isArray(parsedProduct.videoReviews)) {
+          parsedProduct.videoReviews.forEach((review: any, index: number) => {
+            review.thumbnail = `video-review-thumb-${index + 1}`;
+            review.videoUrl = `video-review-${index + 1}`;
+          });
+          console.log('🔧 [Store] Fixed video reviews:', parsedProduct.videoReviews);
+        }
+        
+        // Update review images
+        if (parsedProduct.reviews && Array.isArray(parsedProduct.reviews)) {
+          parsedProduct.reviews.forEach((review: any, index: number) => {
+            review.productImage = "review-product-image";
+            review.profileImage = `review-profile-${index + 1}`;
+          });
+          console.log('🔧 [Store] Fixed reviews:', parsedProduct.reviews);
+        }
+        
+        localStorage.setItem('adminStoreProduct', JSON.stringify(parsedProduct));
+        console.log('🔧 [Store] Product images fixed! Updated localStorage.');
+        
+        // Show success message
+        toast({
+          title: "Images Fixed!",
+          description: "Product images have been updated with correct media asset IDs.",
+          duration: 3000,
+        });
+        
+        // Reload after a short delay to ensure everything is updated
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } catch (error) {
+        console.error('Error fixing product images:', error);
+        toast({
+          title: "Error",
+          description: "Failed to fix product images. Check console for details.",
+          variant: "destructive",
+          duration: 3000,
+        });
+      }
+    } else {
+      console.log('🔧 [Store] No adminStoreProduct found in localStorage');
+      toast({
+        title: "No Data Found",
+        description: "No product data found to fix. Please edit the store first.",
+        variant: "destructive",
+        duration: 3000,
+      });
+    }
+  };
+
   const handleVideoClick = (video: VideoReview) => {
     setSelectedVideo(video);
     setShowVideoModal(true);
@@ -970,26 +1100,42 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
       // Check if it's a GIF data URL
       return url.includes('image/gif') || url.includes('data:image/gif');
     }
+    
     // Check if it's a GIF file URL
-    return url.toLowerCase().endsWith('.gif') || url.toLowerCase().includes('.gif');
+    if (url.toLowerCase().endsWith('.gif') || url.toLowerCase().includes('.gif')) {
+      return true;
+    }
+    
+    // Check if it's a known GIF asset from our media library
+    // The product-video is actually a GIF despite being called "video"
+    if (url.includes('bwRfX2qUMqkgpPfWw6SyR3TUAuSe5zs8BOwjo27Ld4ZNnKMH')) {
+      return true;
+    }
+    
+    return false;
   };
 
   // Helper function to render video or GIF content
   const renderVideoContent = (url: string, className: string = "w-full h-full object-cover", controls: boolean = true) => {
-    if (isGif(url)) {
-      // Render GIF as image
+    // Check if this is a media asset ID (not a full URL)
+    const isMediaAssetId = !url.startsWith('http') && !url.startsWith('data:') && !url.startsWith('/');
+    const mediaAsset = isMediaAssetId ? getMediaAsset(url) : undefined;
+    const videoUrl = mediaAsset ? mediaAsset.uploadLink : url;
+    
+    if (isGif(videoUrl)) {
+      // Render GIF as image with proper TikTok-like resolution handling
       return (
         <img
-          src={url}
+          src={videoUrl}
           alt="Product demonstration"
           className={className}
         />
       );
-    } else if (url.startsWith('data:')) {
+    } else if (videoUrl.startsWith('data:')) {
       // Local video file
       return (
         <video 
-          src={url} 
+          src={videoUrl} 
           controls={controls} 
           className={className}
         />
@@ -998,7 +1144,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
       // External video (YouTube, etc.)
       return (
         <iframe
-          src={url}
+          src={videoUrl}
           title="Product Video"
           className={className}
           frameBorder="0"
@@ -1281,13 +1427,32 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
       {/* Add top padding for desktop to account for fixed header */}
       <div className="hidden lg:block pt-16"></div>
 
-      {/* Admin Edit Button - show only for admins, no loading overlay */}
+      {/* 
+        Admin Controls Section
+        Provides admin-only tools for managing the store:
+        - Edit Store: Modify product details, pricing, descriptions
+        - Check Storage: Monitor browser storage usage and quotas
+        - Clear Storage: Remove all stored data (useful for troubleshooting)
+        - Fix Images: Update corrupted media asset IDs with correct ones
+        
+        These controls are positioned in the top-right corner for easy access
+        and are only visible to authenticated admin users.
+      */}
       {isUserAdmin ? (
         <div className="fixed top-4 right-4 z-50">
           <div className="flex flex-col items-end gap-2">
             <Badge variant="secondary" className="text-xs">
               Admin
             </Badge>
+            {/* Admin Controls Help - Quick reference for admin users */}
+            <div className="text-xs text-muted-foreground bg-background/80 backdrop-blur-sm px-2 py-1 rounded text-center max-w-48">
+              <p className="font-medium mb-1">Admin Controls:</p>
+              <p className="text-xs">• Edit Store: Modify product details</p>
+              <p className="text-xs">• Check Storage: Monitor browser storage</p>
+              <p className="text-xs">• Clear Storage: Remove all stored data</p>
+              <p className="text-xs">• Fix Images: Update media asset IDs</p>
+            </div>
+            {/* Primary action: Edit store content and settings */}
             <Button
               onClick={handleEditStore}
               className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
@@ -1295,7 +1460,9 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
               <Edit className="h-4 w-4" />
               Edit Store
             </Button>
+            {/* Utility buttons for admin maintenance tasks */}
             <div className="flex gap-2">
+              {/* Monitor browser storage usage and quotas */}
               <Button
                 onClick={handleCheckStorage}
                 variant="outline"
@@ -1304,6 +1471,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
               >
                 Check Storage
               </Button>
+              {/* Remove all stored data (useful for troubleshooting) */}
               <Button
                 onClick={handleClearStorage}
                 variant="outline"
@@ -1311,6 +1479,16 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                 className="text-xs text-red-600 hover:text-red-700"
               >
                 Clear Storage
+              </Button>
+              {/* Fix corrupted media asset IDs */}
+              <Button
+                onClick={fixProductImages}
+                variant="outline"
+                size="sm"
+                className="text-xs text-blue-600 hover:text-blue-700"
+              >
+                <Wrench className="h-3 w-3 mr-1" />
+                Fix Images
               </Button>
             </div>
           </div>
@@ -1349,36 +1527,31 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
           </p>
         </div>
       )}
-      {/* Hero Section */}
-      <section className="pt-16 sm:pt-24 pb-12 sm:pb-20 px-4 sm:px-6 bg-gradient-to-br from-background via-background to-muted/20">
+
+
+
+      {/* Product Section */}
+      <section id="product-section" className="pt-16 sm:pt-24 pb-12 sm:pb-20 px-4 sm:px-6 bg-gradient-to-br from-background via-background to-muted/20">
         <div className="container mx-auto">
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16">
               {/* Left Column - Product Images */}
               <div className="lg:sticky lg:top-24 lg:self-start order-1 lg:order-1">
               {/* Product Images */}
               <div className="space-y-4 sm:space-y-6">
+                {(() => {
+                  console.log('🎯 [Store] About to render main product image with assetId:', product.images[currentImageIndex]);
+                  return null;
+                })()}
                 <div className="relative aspect-square bg-gradient-to-br from-muted/50 to-muted rounded-xl sm:rounded-2xl overflow-hidden shadow-lg sm:shadow-2xl shadow-black/10 border border-border/50">
-                  <img
-                    src={product.images[currentImageIndex]}
+                  <MediaImage
+                    assetId={product.images[currentImageIndex]}
                     alt={product.name}
                     className={`w-full h-full object-cover cursor-zoom-in transition-all duration-500 ease-out ${
                       isTransitioning ? 'opacity-50 scale-95' : 'opacity-100 scale-100'
                     }`}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 hover:opacity-100 transition-all duration-300 flex items-center justify-center">
-                    <div className="bg-white/90 backdrop-blur-sm rounded-full p-2 sm:p-3 shadow-lg cursor-pointer" onClick={() => {
-                      const modal = document.createElement('div');
-                      modal.className = 'fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4';
-                      modal.onclick = () => modal.remove();
-                      
-                      const img = document.createElement('img');
-                      img.src = product.images[currentImageIndex];
-                      img.alt = product.name;
-                      img.className = 'max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl';
-                      
-                      modal.appendChild(img);
-                      document.body.appendChild(modal);
-                    }}>
+                    <div className="bg-white/90 backdrop-blur-sm rounded-full p-2 sm:p-3 shadow-lg cursor-pointer" onClick={() => setIsModalOpen(true)}>
                       <ZoomIn className="h-4 w-4 sm:h-6 sm:w-6 text-primary" />
                     </div>
                   </div>
@@ -1420,8 +1593,8 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                       }`}
                       disabled={isTransitioning}
                     >
-                      <img
-                        src={image}
+                      <MediaImage
+                        assetId={image}
                         alt={`${product.name} ${index + 1}`}
                         className="w-full h-full object-cover"
                       />
@@ -1764,10 +1937,21 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                     If you are not completely satisfied, return your product within 30 days for a full refund. We stand behind the quality and results.
                   </p>
                 </div>
+                                {/*
+                  30-DAY GUARANTEE SLIDER
+                  This slider shows the "Before" and "After" states of using the product.
+
+                  IMAGE SOURCES (dedicated guarantee assets):
+                  - leftImage: "guarantee-before-image" (Before state)
+                  - rightImage: "guarantee-after-image" (After state)
+
+                  These are dedicated assets specifically for the guarantee section,
+                  separate from the product gallery images.
+                */}
                 <div>
                   <BeforeAfterSlider
-                    leftImage={product.images?.[0] || "/placeholder.svg"}
-                    rightImage={product.images?.[1] || "/placeholder.svg"}
+                    leftImage="guarantee-before-image"
+                    rightImage="guarantee-after-image"
                     leftLabel="Before"
                     rightLabel="After"
                   />
@@ -1847,8 +2031,12 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                     <span className="marquee__item">Empower Your Life</span>
                     <span className="marquee__item">Revitalize Your Body</span>
                     <span className="marquee__item">Recover Smarter</span>
-                  </div>
-                  <div className="marquee__track--alt">
+                    <span className="marquee__item">Empower Your Life</span>
+                    <span className="marquee__item">Revitalize Your Body</span>
+                    <span className="marquee__item">Recover Smarter</span>
+                    <span className="marquee__item">Empower Your Life</span>
+                    <span className="marquee__item">Revitalize Your Body</span>
+                    <span className="marquee__item">Recover Smarter</span>
                     <span className="marquee__item">Empower Your Life</span>
                     <span className="marquee__item">Revitalize Your Body</span>
                     <span className="marquee__item">Recover Smarter</span>
@@ -1865,51 +2053,55 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
               <div className="max-w-7xl mx-auto px-0">
                 {/* Mobile: Stacked layout (video on top, panel below) */}
                 <div className="block lg:hidden">
-                  {/* Video on top */}
-                  <div className="w-full aspect-video mb-4">
-                    <div className="w-full h-full overflow-hidden rounded-lg bg-black">
-                      {renderVideoContent(product.videos[0])}
+                  {/* Video on top - Mobile optimized for TikTok-like resolution */}
+                  <div className="w-full px-4">
+                    <div className="w-full overflow-hidden rounded-t-lg bg-black shadow-lg" style={{ aspectRatio: '9/16', minHeight: '400px' }}>
+                      {renderVideoContent(product.videos[0], "w-full h-full object-cover")}
                     </div>
                   </div>
-                  {/* Purple panel below */}
-                  <div className="w-full bg-secondary text-secondary-foreground p-6 sm:p-8 rounded-lg">
-                    <h3 className="text-2xl sm:text-3xl font-extrabold leading-tight">Feel The Difference</h3>
-                    <p className="mt-3 sm:mt-4 text-sm sm:text-base opacity-90">
-                      Discover how consistent, targeted recovery elevates your daily routine. Our device combines engineered pressure, heat management, and ergonomic design to help loosen tight muscles and restore natural mobility in minutes.
-                    </p>
-                    <p className="mt-3 text-sm sm:text-base opacity-90">
-                      Whether you are preparing for a workout, resetting after sitting all day, or winding down before bed, a few focused minutes can change the way your body feels. Most people notice improved range of motion, less stiffness, and a calmer, more relaxed state right away.
-                    </p>
-                    <p className="mt-3 text-sm sm:text-base opacity-90">
-                      Built with premium materials and tuned for everyday use, it is designed to be quiet, powerful, and reliable. And if you do not love it, our 30‑day money‑back guarantee makes it completely risk‑free to try.
-                    </p>
-                    <div className="mt-5 sm:mt-6 flex flex-wrap gap-2">
-                      <span className="px-3 py-1 rounded-full bg-secondary-foreground/10 text-secondary-foreground text-xs sm:text-sm font-semibold">Premium Build</span>
-                      <span className="px-3 py-1 rounded-full bg-secondary-foreground/10 text-secondary-foreground text-xs sm:text-sm font-semibold">Fast Relief</span>
-                      <span className="px-3 py-1 rounded-full bg-secondary-foreground/10 text-secondary-foreground text-xs sm:text-sm font-semibold">Trusted by Pros</span>
+                  {/* Purple panel below - no gap, constrained width */}
+                  <div className="w-full px-4">
+                    <div className="w-full bg-secondary text-secondary-foreground py-8 sm:py-12 rounded-b-lg">
+                      <div className="max-w-2xl mx-auto px-4">
+                        <h3 className="text-2xl sm:text-3xl font-extrabold leading-tight">Feel The Difference</h3>
+                        <p className="mt-3 sm:mt-4 text-sm sm:text-base opacity-90">
+                          Discover how consistent, targeted recovery elevates your daily routine. Our device combines engineered pressure, heat management, and ergonomic design to help loosen tight muscles and restore natural mobility in minutes.
+                        </p>
+                        <p className="mt-3 text-sm sm:text-base opacity-90">
+                          Whether you are preparing for a workout, resetting after sitting all day, or winding down before bed, a few focused minutes can change the way your body feels. Most people notice improved range of motion, less stiffness, and a calmer, more relaxed state right away.
+                        </p>
+                        <p className="mt-3 text-sm sm:text-base opacity-90">
+                          Built with premium materials and tuned for everyday use, it is designed to be quiet, powerful, and reliable. And if you do not love it, our 30‑day money‑back guarantee makes it completely risk‑free to try.
+                        </p>
+                        <div className="mt-5 sm:mt-6 flex flex-wrap gap-2">
+                          <span className="px-3 py-1 rounded-full bg-secondary-foreground/10 text-secondary-foreground text-xs sm:text-sm font-semibold">Premium Build</span>
+                          <span className="px-3 py-1 rounded-full bg-secondary-foreground/10 text-secondary-foreground text-xs sm:text-sm font-semibold">Fast Relief</span>
+                          <span className="px-3 py-1 rounded-full bg-secondary-foreground/10 text-secondary-foreground text-xs sm:text-sm font-semibold">Trusted by Pros</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
                 
                 {/* Desktop: Side-by-side layout */}
-                <div className="hidden lg:block relative aspect-square">
-                  {/* Left: video */}
+                <div className="hidden lg:block relative" style={{ minHeight: '800px' }}>
+                  {/* Left: video - Height reduced by 1/4 for PC */}
                   <div className="absolute inset-y-0 left-0 w-1/2">
                     <div className="w-full h-full overflow-hidden rounded-none border-0 bg-black">
-                      {renderVideoContent(product.videos[0])}
+                      {renderVideoContent(product.videos[0], "w-full h-full object-cover")}
                     </div>
                   </div>
                   {/* Right: promo panel */}
                   <div className="absolute inset-y-0 right-0 w-1/2">
-                    <div className="w-full h-full rounded-none bg-secondary text-secondary-foreground p-6 sm:p-10 flex flex-col justify-center border-0">
+                    <div className="w-full h-full rounded-none bg-secondary text-secondary-foreground p-6 sm:p-10 flex flex-col justify-center border-0 overflow-y-auto">
                       <h3 className="text-2xl sm:text-4xl font-extrabold leading-tight">Feel The Difference</h3>
-                      <p className="mt-3 sm:mt-4 text-sm sm:text-base opacity-90 max-w-2xl">
+                      <p className="mt-3 sm:mt-4 text-sm sm:text-base opacity-90">
                         Discover how consistent, targeted recovery elevates your daily routine. Our device combines engineered pressure, heat management, and ergonomic design to help loosen tight muscles and restore natural mobility in minutes.
                       </p>
-                      <p className="mt-3 text-sm sm:text-base opacity-90 max-w-2xl">
+                      <p className="mt-3 text-sm sm:text-base opacity-90">
                         Whether you are preparing for a workout, resetting after sitting all day, or winding down before bed, a few focused minutes can change the way your body feels. Most people notice improved range of motion, less stiffness, and a calmer, more relaxed state right away.
                       </p>
-                      <p className="mt-3 text-sm sm:text-base opacity-90 max-w-2xl">
+                      <p className="mt-3 text-sm sm:text-base opacity-90">
                         Built with premium materials and tuned for everyday use, it is designed to be quiet, powerful, and reliable. And if you do not love it, our 30‑day money‑back guarantee makes it completely risk‑free to try.
                       </p>
                       <div className="mt-5 sm:mt-6 flex flex-wrap gap-2">
@@ -1978,34 +2170,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                          {/* Video Player - Shows on hover */}
                          {hoveredVideo === video.id && (
                            <div className="absolute inset-0 bg-black animate-in fade-in duration-300">
-                             {isGif(video.videoUrl) ? (
-                               // GIF - display as image (GIFs autoplay by default)
-                               <img
-                                 src={video.videoUrl}
-                                 alt={`Video testimonial by ${video.customerName}`}
-                                 className="w-full h-full object-cover"
-                               />
-                             ) : video.videoUrl.startsWith('data:') ? (
-                               // Local video file
-                               <video
-                                 src={video.videoUrl}
-                                 autoPlay
-                                 muted
-                                 loop
-                                 className="w-full h-full object-cover"
-                               />
-                             ) : (
-                               // YouTube or external video
-                               <iframe
-                                 src={`${video.videoUrl}?autoplay=1&mute=1&controls=0&loop=1&playlist=${video.videoUrl.split('/').pop()}`}
-                                 title={`Video testimonial by ${video.customerName}`}
-                                 className="w-full h-full"
-                                 frameBorder="0"
-                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                 allowFullScreen
-                                 sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-                               />
-                             )}
+                             {renderVideoContent(video.videoUrl, "w-full h-full object-cover", false)}
                            </div>
                          )}
                          
@@ -2034,8 +2199,8 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                                  </div>
                                </div>
                              </div>
-                             <img
-                               src={video.thumbnail}
+                             <MediaImage
+                               assetId={video.thumbnail}
                                alt={`Video testimonial by ${video.customerName}`}
                                className="w-full h-full object-cover"
                              />
@@ -2162,8 +2327,8 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
               <div key={review.id} className="transform transition-all duration-300 hover:scale-105">
                 <Card className="border shadow-sm bg-white overflow-hidden">
                   <div className="w-full">
-                    <img
-                      src={review.productImage || review.image || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=300&fit=crop"}
+                    <MediaImage
+                      assetId={review.productImage || review.image || "review-product-image"}
                       alt="Product"
                       className="w-full object-cover h-48"
                     />
@@ -2174,8 +2339,8 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                     </p>
                     <div className="flex items-center gap-3">
                       <div className="flex-shrink-0">
-                        <img
-                          src={review.profileImage || review.image || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&crop=face"}
+                        <MediaImage
+                          assetId={review.profileImage || review.image || "review-profile-fallback"}
                           alt={review.name}
                           className="w-8 h-8 rounded-full object-cover"
                         />
@@ -2215,15 +2380,15 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
           {/* Desktop Masonry Layout */}
           <div className="hidden sm:flex gap-4 lg:gap-6">
              {/* Column 1 - Tall cards */}
-            <div className="flex-1 space-y-4 lg:space-y-6">
+                         <div className="flex-1 space-y-4 lg:space-y-6">
               {product.reviews.slice(0, displayedReviews).map((review, index) => {
                  if (index % 4 !== 0) return null; // Only show cards for column 1
                  return (
                    <div key={review.id} className="transform transition-all duration-300 hover:scale-105">
                      <Card className="border shadow-sm bg-white overflow-hidden h-[500px]">
                        <div className="w-full">
-                         <img
-                           src={review.productImage || review.image || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=300&fit=crop"}
+                         <MediaImage
+                           assetId={review.productImage || review.image || "review-product-image"}
                            alt="Product"
                            className="w-full object-cover h-80"
                          />
@@ -2234,8 +2399,8 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                          </p>
                          <div className="flex items-center gap-3">
                            <div className="flex-shrink-0">
-                             <img
-                               src={review.profileImage || review.image || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&crop=face"}
+                             <MediaImage
+                               assetId={review.profileImage || review.image || "review-profile-fallback"}
                                alt={review.name}
                                className="w-8 h-8 rounded-full object-cover"
                              />
@@ -2281,8 +2446,8 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                    <div key={review.id} className="transform transition-all duration-300 hover:scale-105">
                      <Card className="border shadow-sm bg-white overflow-hidden h-[450px]">
                        <div className="w-full">
-                         <img
-                           src={review.productImage || review.image || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=300&fit=crop"}
+                         <MediaImage
+                           assetId={review.productImage || review.image || "review-product-image"}
                            alt="Product"
                            className="w-full object-cover h-72"
                          />
@@ -2293,8 +2458,8 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                          </p>
                          <div className="flex items-center gap-3">
                            <div className="flex-shrink-0">
-                             <img
-                               src={review.profileImage || review.image || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&crop=face"}
+                             <MediaImage
+                               assetId={review.profileImage || review.image || "review-profile-fallback"}
                                alt={review.name}
                                className="w-8 h-8 rounded-full object-cover"
                              />
@@ -2340,8 +2505,8 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                    <div key={review.id} className="transform transition-all duration-300 hover:scale-105">
                      <Card className="border shadow-sm bg-white overflow-hidden h-[500px]">
                        <div className="w-full">
-                         <img
-                           src={review.productImage || review.image || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=300&fit=crop"}
+                         <MediaImage
+                           assetId={review.productImage || review.image || "review-product-image"}
                            alt="Product"
                            className="w-full object-cover h-80"
                          />
@@ -2352,8 +2517,8 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                          </p>
                          <div className="flex items-center gap-3">
                            <div className="flex-shrink-0">
-                             <img
-                               src={review.profileImage || review.image || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&crop=face"}
+                             <MediaImage
+                               assetId={review.profileImage || review.image || "review-profile-fallback"}
                                alt={review.name}
                                className="w-8 h-8 rounded-full object-cover"
                              />
@@ -2399,8 +2564,8 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                    <div key={review.id} className="transform transition-all duration-300 hover:scale-105">
                      <Card className="border shadow-sm bg-white overflow-hidden h-[450px]">
                        <div className="w-full">
-                         <img
-                           src={review.productImage || review.image || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=300&fit=crop"}
+                         <MediaImage
+                           assetId={review.productImage || review.image || "review-product-image"}
                            alt="Product"
                            className="w-full object-cover h-72"
                          />
@@ -2411,8 +2576,8 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                          </p>
                          <div className="flex items-center gap-3">
                            <div className="flex-shrink-0">
-                             <img
-                               src={review.profileImage || review.image || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&crop=face"}
+                             <MediaImage
+                               assetId={review.profileImage || review.image || "review-profile-fallback"}
                                alt={review.name}
                                className="w-8 h-8 rounded-full object-cover"
                              />
@@ -2652,36 +2817,36 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
           <div className="space-y-4 text-sm">
             <div className="grid grid-cols-1 gap-3">
               <div className="flex items-center justify-between rounded-lg border border-border p-3 bg-muted/20">
-                <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-muted-foreground" />
-                  <Badge className="bg-secondary text-secondary-foreground">Bronze</Badge>
+                <div className="flex items-center gap-2 flex-1">
+                  <Shield className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <Badge className="bg-secondary text-secondary-foreground w-20 text-center flex items-center justify-center">Silver</Badge>
                   <span className="text-muted-foreground">0 purchases</span>
                 </div>
-                <span className="text-xs text-muted-foreground">0% off</span>
+                <span className="text-xs text-muted-foreground ml-4">0% off</span>
               </div>
               <div className="flex items-center justify-between rounded-lg border border-border p-3 bg-muted/20">
-                <div className="flex items-center gap-2">
-                  <Award className="h-4 w-4 text-accent" />
-                  <Badge className="bg-secondary text-secondary-foreground">Gold</Badge>
+                <div className="flex items-center gap-2 flex-1">
+                  <Award className="h-4 w-4 text-accent flex-shrink-0" />
+                  <Badge className="bg-secondary text-secondary-foreground w-20 text-center flex items-center justify-center">Gold</Badge>
                   <span className="text-muted-foreground">1+ purchases</span>
                 </div>
-                <span className="text-xs font-medium text-secondary">10% off</span>
+                <span className="text-xs font-medium text-secondary ml-4">5% off</span>
               </div>
               <div className="flex items-center justify-between rounded-lg border border-border p-3 bg-muted/20">
-                <div className="flex items-center gap-2">
-                  <Star className="h-4 w-4 text-primary" />
-                  <Badge className="bg-secondary text-secondary-foreground">Platinum</Badge>
-                  <span className="text-muted-foreground">4+ purchases</span>
+                <div className="flex items-center gap-2 flex-1">
+                  <Star className="h-4 w-4 text-primary flex-shrink-0" />
+                  <Badge className="bg-secondary text-secondary-foreground w-20 text-center flex items-center justify-center">Platinum</Badge>
+                  <span className="text-muted-foreground">3+ purchases</span>
                 </div>
-                <span className="text-xs font-medium text-secondary">15% off</span>
+                <span className="text-xs font-medium text-secondary ml-4">10% off</span>
               </div>
               <div className="flex items-center justify-between rounded-lg border border-border p-3 bg-muted/20">
-                <div className="flex items-center gap-2">
-                  <Crown className="h-4 w-4 text-secondary" />
-                  <Badge className="bg-secondary text-secondary-foreground">Diamond</Badge>
-                  <span className="text-muted-foreground">7+ purchases</span>
+                <div className="flex items-center gap-2 flex-1">
+                  <Crown className="h-4 w-4 text-secondary flex-shrink-0" />
+                  <Badge className="bg-secondary text-secondary-foreground w-20 text-center flex items-center justify-center">Diamond</Badge>
+                  <span className="text-muted-foreground">5+ purchases</span>
                 </div>
-                <span className="text-xs font-medium text-secondary">20% off</span>
+                <span className="text-xs font-medium text-secondary ml-4">15% off</span>
               </div>
             </div>
             <div className="rounded-lg border border-secondary/30 bg-secondary/10 p-3 text-xs text-muted-foreground">
@@ -2696,6 +2861,27 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
               Start Shopping
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Image Modal */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 border-0 bg-transparent">
+          <div className="relative w-full h-full flex items-center justify-center">
+            <MediaImage
+              assetId={product.images[currentImageIndex]}
+              alt={product.name}
+              className="max-w-full max-h-full object-contain rounded-lg"
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white border-0"
+              onClick={() => setIsModalOpen(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

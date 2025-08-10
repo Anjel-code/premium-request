@@ -11,8 +11,6 @@ import {
   Users,
   Trophy,
   Zap,
-  Edit,
-  Loader2,
 } from "lucide-react";
 // Removed: import Navigation from "@/components/Navigation"; // Navigation is now handled in App.jsx
 import TestimonialCarousel from "@/components/TestimonialCarousel";
@@ -20,16 +18,18 @@ import AnimatedCounter from "@/components/AnimatedCounter";
 import Footer from "@/components/Footer";
 import { isAdmin } from "@/lib/userUtils";
 import { useState, useEffect } from "react";
+import { MediaBackground } from "@/components/ui/MediaImage";
+import { useMediaAsset } from "@/hooks/useMediaAssets";
 
 // Home component now accepts props for authentication state and modal control
 const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
   const navigate = useNavigate(); // Initialize useNavigate hook
   const [isAdminUser, setIsAdminUser] = useState(false);
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
-  const [showBackgroundEditor, setShowBackgroundEditor] = useState(false);
-  const [backgroundPosition, setBackgroundPosition] = useState(() => {
-    return localStorage.getItem('homeBackgroundPosition') || 'center';
-  });
+
+  // Debug logging for MediaBackground
+  console.log('[Home] Component rendering');
+  console.log('[Home] About to render MediaBackground with assetId: home-hero-background');
 
   // Check if user is admin
   useEffect(() => {
@@ -59,138 +59,24 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
     navigate("/store");
   };
 
-  // Function to handle background image change
-  const handleBackgroundImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const imageData = e.target?.result as string;
-        localStorage.setItem('homeBackgroundImage', imageData);
-        localStorage.setItem('homeBackgroundPosition', backgroundPosition);
-        // Reload the page to apply the new background
-        window.location.reload();
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Function to handle background position change
-  const handleBackgroundPositionChange = (position: string) => {
-    setBackgroundPosition(position);
-    localStorage.setItem('homeBackgroundPosition', position);
-  };
-
-  // Load background image and position from localStorage
-  const backgroundImage = localStorage.getItem('homeBackgroundImage') || '/public/hero-background.jpg';
-  const savedBackgroundPosition = localStorage.getItem('homeBackgroundPosition') || 'center';
-
   return (
     <div className="min-h-screen bg-background overflow-hidden">
       {/* Navigation component is now rendered at the App.jsx level, not here. */}
 
-      {/* Admin Edit Button */}
-      {isCheckingAdmin ? (
-        <div className="fixed top-4 right-4 z-50">
-          <div className="flex flex-col items-end gap-2">
-            <Badge variant="secondary" className="text-xs">
-              Checking...
-            </Badge>
-            <Button
-              disabled
-              className="flex items-center gap-2 bg-muted text-muted-foreground"
-            >
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading
-            </Button>
-          </div>
-        </div>
-      ) : isAdminUser ? (
-        <div className="fixed top-4 right-4 z-50">
-          <div className="flex flex-col items-end gap-2">
-            <Badge variant="secondary" className="text-xs">
-              Admin
-            </Badge>
-            <div className="flex gap-2">
-              <Button
-                onClick={() => setShowBackgroundEditor(!showBackgroundEditor)}
-                className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
-              >
-                <Edit className="h-4 w-4" />
-                Edit Background
-              </Button>
-            </div>
-                         {showBackgroundEditor && (
-               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 shadow-lg border border-white/20 mt-2 min-w-[300px]">
-                 <h4 className="font-semibold text-white mb-4">Background Settings</h4>
-                 
-                 <div className="space-y-4">
-                   <div>
-                     <p className="text-sm text-white/80 mb-2">Upload new background image:</p>
-                     <input
-                       type="file"
-                       accept="image/*"
-                       onChange={handleBackgroundImageChange}
-                       className="text-sm w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-md px-3 py-2 text-white placeholder-white/50"
-                     />
-                   </div>
-                   
-                   <div>
-                     <p className="text-sm text-white/80 mb-2">Background position:</p>
-                     <div className="grid grid-cols-3 gap-2">
-                       {[
-                         { value: 'top', label: 'Top' },
-                         { value: 'center', label: 'Center' },
-                         { value: 'bottom', label: 'Bottom' },
-                         { value: 'left', label: 'Left' },
-                         { value: 'right', label: 'Right' },
-                         { value: 'top left', label: 'Top Left' },
-                         { value: 'top right', label: 'Top Right' },
-                         { value: 'bottom left', label: 'Bottom Left' },
-                         { value: 'bottom right', label: 'Bottom Right' }
-                       ].map((position) => (
-                         <button
-                           key={position.value}
-                           onClick={() => handleBackgroundPositionChange(position.value)}
-                           className={`px-3 py-2 text-xs rounded-md border transition-all duration-200 ${
-                             backgroundPosition === position.value
-                               ? 'bg-white/30 text-white border-white/50'
-                               : 'bg-white/10 text-white/80 border-white/20 hover:bg-white/20'
-                           }`}
-                         >
-                           {position.label}
-                         </button>
-                       ))}
-                     </div>
-                   </div>
-                   
-                   <div className="pt-2 border-t border-white/20">
-                     <p className="text-xs text-white/60">
-                       Current: {backgroundPosition}
-                     </p>
-                   </div>
-                 </div>
-               </div>
-             )}
-          </div>
-        </div>
-      ) : null}
-
-             {/* Hero Section */}
-       <section 
-         className="relative overflow-hidden px-4 sm:px-6 bg-no-repeat bg-cover"
-         style={{ 
-           backgroundImage: `url(${backgroundImage})`,
-           backgroundPosition: savedBackgroundPosition
-         }}
-       >
-        <div className="absolute inset-0 z-0 bg-black/35"></div>
+      {/* Hero Section */}
+      <section className="relative overflow-hidden px-4 sm:px-6">
+        <MediaBackground
+          assetId="home-hero-background"
+          className="absolute inset-0 w-full h-full object-cover"
+          overlay={true}
+          overlayOpacity={0.6}
+        />
         <div className="relative container mx-auto text-center pt-24 sm:pt-32 md:pt-36 pb-24 sm:pb-32 md:pb-36 z-10">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold text-stone-100 mb-4 sm:mb-6 animate-fade-in leading-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold text-white mb-4 sm:mb-6 animate-fade-in leading-tight drop-shadow-2xl">
             Premium Wireless
-            <span className="block text-primary">Headphones</span>
+            <span className="block text-primary drop-shadow-2xl">Headphones</span>
           </h1>
-          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-stone-300 mb-6 sm:mb-8 max-w-3xl mx-auto animate-slide-up px-2">
+          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-white mb-6 sm:mb-8 max-w-3xl mx-auto animate-slide-up px-2 drop-shadow-lg">
             Experience crystal-clear sound with our premium wireless headphones
             featuring active noise cancellation, 30-hour battery life, and
             premium comfort for all-day wear.
@@ -205,14 +91,14 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
               <span className="relative z-10">Shop Now</span>{" "}
               <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5 z-10" />
             </Button>
-                         <Button
-               asChild
-               variant="outline"
-               size="lg"
-               className="text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 border-2 border-white/30 text-white bg-white/10 backdrop-blur-sm hover:bg-white/20 hover:border-white/50 transition-all duration-300 w-full sm:w-auto"
-             >
-               <Link to="/about">Learn More</Link>
-             </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 border-2 border-white/30 text-white bg-white/10 backdrop-blur-sm hover:bg-white/20 hover:border-white/50 transition-all duration-300 w-full sm:w-auto"
+            >
+              <Link to="/about">Learn More</Link>
+            </Button>
           </div>
 
           {/* Statistics */}
@@ -227,7 +113,7 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
                   duration={2500}
                 />
               </div>
-              <p className="text-stone-300 text-sm sm:text-base">Satisfied Clients</p>
+              <p className="text-white text-sm sm:text-base drop-shadow-md">Satisfied Clients</p>
             </div>
             <div className="text-center">
               <div className="flex items-center justify-center mb-2">
@@ -239,19 +125,19 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
                   duration={2500}
                 />
               </div>
-              <p className="text-stone-300 text-sm sm:text-base">Success Rate</p>
+              <p className="text-white text-sm sm:text-base drop-shadow-md">Quality Guarantee</p>
             </div>
             <div className="text-center">
               <div className="flex items-center justify-center mb-2">
                 <Zap className="h-6 w-6 sm:h-8 sm:w-8 text-primary mr-2" />
                 <AnimatedCounter
                   end={30}
-                  suffix=" min"
+                  suffix="h"
                   className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary"
                   duration={2500}
                 />
               </div>
-              <p className="text-stone-300 text-sm sm:text-base">Avg Response Time</p>
+              <p className="text-white text-sm sm:text-base drop-shadow-md">Battery Life</p>
             </div>
           </div>
         </div>

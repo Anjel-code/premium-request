@@ -6,8 +6,8 @@
 
 @layer base {
   :root {
-    /* Core Colors - Modern 3-Color System */
-    --background: 0 0% 98%; /* Light gray background */
+    /* Core Colors - Luxury Watch Theme */
+    --background: 0 0% 96%; /* #F5F5F5 - Off-white background */
     --foreground: 215 25% 27%; /* Slate gray text */
 
     --card: 0 0% 100%; /* Pure white for cards */
@@ -16,52 +16,52 @@
     --popover: 0 0% 100%;
     --popover-foreground: 215 25% 27%;
 
-    /* Primary - Deep Purple (Accent) */
-    --primary: 262 83% 58%; /* #7C3AED - Deep purple */
+    /* Primary - Muted Gold (Accent) */
+    --primary: 38 33% 58%; /* #C6A678 - Muted gold */
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Purple */
-    --secondary: 280 85% 58%; /* #a33bed - Purple */
+    /* Secondary - Refined Cool Grey */
+    --secondary: 215 15% 41%; /* #5B6C7B - Refined cool grey */
     --secondary-foreground: 0 0% 100%;
 
     /* Muted tones */
     --muted: 215 16% 95%; /* Light slate */
     --muted-foreground: 215 25% 45%;
 
-    /* Accent - Deep Purple (same as primary for consistency) */
-    --accent: 262 83% 58%; /* #7C3AED - Deep purple */
+    /* Accent - Muted Gold (same as primary for consistency) */
+    --accent: 38 33% 58%; /* #C6A678 - Muted gold */
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
 
     /* Borders and inputs */
-    --border: 215 16% 90%;
+    --border: 215 15% 41%; /* Using secondary color */
     --input: 215 16% 95%;
-    --ring: 262 83% 58%; /* Purple ring focus */
+    --ring: 38 33% 58%; /* Gold ring focus */
 
     /* Modern gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(262 83% 58%), hsl(262 83% 68%));
-    --gradient-secondary: linear-gradient(135deg, hsl(280 85% 58%), hsl(280 85% 68%));
+    --gradient-primary: linear-gradient(135deg, hsl(38 33% 58%), hsl(38 33% 68%));
+    --gradient-secondary: linear-gradient(135deg, hsl(215 15% 41%), hsl(215 15% 51%));
     --gradient-subtle: linear-gradient(
       180deg,
-      hsl(0 0% 98%),
+      hsl(0 0% 96%),
       hsl(215 16% 95%)
     );
     --gradient-button: linear-gradient(
       135deg,
-      hsl(262 83% 58%),
-      hsl(262 83% 68%)
+      hsl(38 33% 58%),
+      hsl(38 33% 68%)
     );
     --gradient-hover: linear-gradient(
       135deg,
-      hsl(262 83% 68%),
-      hsl(262 83% 78%)
+      hsl(38 33% 68%),
+      hsl(38 33% 78%)
     );
 
     /* Shadows */
-    --shadow-elegant: 0 10px 30px -10px hsl(262 83% 58% / 0.15);
-    --shadow-premium: 0 25px 50px -12px hsl(262 83% 58% / 0.25);
+    --shadow-elegant: 0 10px 30px -10px hsl(38 33% 58% / 0.15);
+    --shadow-premium: 0 25px 50px -12px hsl(38 33% 58% / 0.25);
 
     /* Typography hierarchy */
     --font-display: "Montserrat", system-ui, sans-serif;
@@ -188,19 +188,15 @@
   }
 }
 
-/* Utility: seamless infinite marquee ticker (two synchronized tracks) */
-@keyframes marquee-a {
+/* Utility: seamless infinite marquee ticker */
+@keyframes marquee {
   0% { transform: translateX(0); }
-  100% { transform: translateX(-100%); }
-}
-@keyframes marquee-b {
-  0% { transform: translateX(100%); }
-  100% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 
 @keyframes feature-glow {
-  0%, 100% { box-shadow: 0 0 5px rgba(124, 58, 237, 0.3); }
-  50% { box-shadow: 0 0 20px rgba(124, 58, 237, 0.6); }
+  0%, 100% { box-shadow: 0 0 5px rgba(198, 166, 120, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(198, 166, 120, 0.6); }
 }
 
 @keyframes spec-bounce {
@@ -214,11 +210,10 @@
 }
 
 .marquee { position: relative; overflow: hidden; width: 100%; }
-.marquee__track, .marquee__track--alt {
+.marquee__track {
   display: flex; white-space: nowrap; will-change: transform;
+  animation: marquee 30s linear infinite;
 }
-.marquee__track { animation: marquee-a 20s linear infinite; }
-.marquee__track--alt { animation: marquee-b 20s linear infinite; }
 .marquee__item { margin-right: 2rem; }
 
 .feature-glow {

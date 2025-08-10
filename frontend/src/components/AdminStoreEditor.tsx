@@ -29,15 +29,12 @@ import {
   Save,
   Edit,
   Eye,
-  Image as ImageIcon,
-  Video,
   DollarSign,
   Percent,
   Gift,
   Settings,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import FileUpload from "./FileUpload";
 import { updateProductStock } from "@/lib/storeUtils";
 
 interface ProductData {
@@ -302,10 +299,9 @@ const AdminStoreEditor: React.FC<AdminStoreEditorProps> = ({
           </div>
 
           <Tabs defaultValue="basic" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-6">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="basic">Basic Info</TabsTrigger>
               <TabsTrigger value="pricing">Pricing</TabsTrigger>
-              <TabsTrigger value="media">Media</TabsTrigger>
               <TabsTrigger value="content">Content</TabsTrigger>
               <TabsTrigger value="discount">Discount Offer</TabsTrigger>
               <TabsTrigger value="advanced">Advanced</TabsTrigger>
@@ -501,84 +497,7 @@ const AdminStoreEditor: React.FC<AdminStoreEditorProps> = ({
               </Card>
             </TabsContent>
 
-            {/* Media */}
-            <TabsContent value="media" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Product Images</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {editedProduct.images.map((image, index) => (
-                    <div key={index} className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Image #{index + 1}</span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeArrayItem('images', index)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <FileUpload
-                        label=""
-                        value={image}
-                        onChange={(value) => handleArrayInputChange('images', index, value)}
-                        type="image"
-                        placeholder="Enter image URL or upload file"
-                      />
-                    </div>
-                  ))}
-                  <Button
-                    variant="outline"
-                    onClick={() => addArrayItem('images')}
-                    className="flex items-center gap-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add Image
-                  </Button>
-                </CardContent>
-              </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Product Videos</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {editedProduct.videos.map((video, index) => (
-                    <div key={index} className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Video #{index + 1}</span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeArrayItem('videos', index)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <FileUpload
-                        label=""
-                        value={video}
-                        onChange={(value) => handleArrayInputChange('videos', index, value)}
-                        type="video"
-                        placeholder="Enter video URL or upload file"
-                      />
-                    </div>
-                  ))}
-                  <Button
-                    variant="outline"
-                    onClick={() => addArrayItem('videos')}
-                    className="flex items-center gap-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add Video
-                  </Button>
-                </CardContent>
-              </Card>
-            </TabsContent>
 
             {/* Content */}
             <TabsContent value="content" className="space-y-6">
