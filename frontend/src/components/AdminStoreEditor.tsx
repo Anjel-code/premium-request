@@ -56,6 +56,17 @@ interface ProductData {
   shippingInfo: string;
   guarantee: string;
   returnPolicy: string;
+  variants: ProductVariant[];
+}
+
+interface ProductVariant {
+  id: string;
+  name: string;
+  price: number;
+  originalPrice: number;
+  image: string;
+  stockCount: number;
+  isActive: boolean;
 }
 
 interface Review {
@@ -168,6 +179,33 @@ const AdminStoreEditor: React.FC<AdminStoreEditorProps> = ({
     const specs = { ...editedProduct.specifications };
     delete specs[key];
     handleInputChange('specifications', specs);
+  };
+
+  const handleVariantChange = (index: number, field: keyof ProductVariant, value: any) => {
+    const newVariants = [...editedProduct.variants];
+    newVariants[index] = { ...newVariants[index], [field]: value };
+    setEditedProduct({ ...editedProduct, variants: newVariants });
+  };
+
+  const addVariant = () => {
+    const newVariant: ProductVariant = {
+      id: `variant${Date.now()}`,
+      name: "New Model",
+      price: 199.99,
+      originalPrice: 299.99,
+      image: "product-gallery-1",
+      stockCount: 5,
+      isActive: true,
+    };
+    setEditedProduct({
+      ...editedProduct,
+      variants: [...editedProduct.variants, newVariant],
+    });
+  };
+
+  const removeVariant = (index: number) => {
+    const newVariants = editedProduct.variants.filter((_, i) => i !== index);
+    setEditedProduct({ ...editedProduct, variants: newVariants });
   };
 
   const handleDiscountChange = (field: keyof DiscountOffer, value: any) => {
@@ -299,8 +337,9 @@ const AdminStoreEditor: React.FC<AdminStoreEditorProps> = ({
           </div>
 
           <Tabs defaultValue="basic" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="basic">Basic Info</TabsTrigger>
+              <TabsTrigger value="variants">Variants</TabsTrigger>
               <TabsTrigger value="pricing">Pricing</TabsTrigger>
               <TabsTrigger value="content">Content</TabsTrigger>
               <TabsTrigger value="discount">Discount Offer</TabsTrigger>
@@ -378,6 +417,98 @@ const AdminStoreEditor: React.FC<AdminStoreEditorProps> = ({
                       />
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Variants */}
+            <TabsContent value="variants" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    Product Variants
+                    <Button onClick={addVariant} size="sm" className="flex items-center gap-2">
+                      <Plus className="h-4 w-4" />
+                      Add Variant
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {editedProduct.variants.map((variant, index) => (
+                    <Card key={variant.id} className="p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="font-semibold">Variant {index + 1}</h4>
+                        <Button
+                          onClick={() => removeVariant(index)}
+                          variant="destructive"
+                          size="sm"
+                          className="flex items-center gap-2"
+                        >
+                          <X className="h-4 w-4" />
+                          Remove
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label>Name</Label>
+                          <Input
+                            value={variant.name}
+                            onChange={(e) => handleVariantChange(index, 'name', e.target.value)}
+                            placeholder="Variant name"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Price ($)</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={variant.price}
+                            onChange={(e) => handleVariantChange(index, 'price', parseFloat(e.target.value) || 0)}
+                            placeholder="0.00"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Original Price ($)</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={variant.originalPrice}
+                            onChange={(e) => handleVariantChange(index, 'originalPrice', parseFloat(e.target.value) || 0)}
+                            placeholder="0.00"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Image Asset ID</Label>
+                          <Input
+                            value={variant.image}
+                            onChange={(e) => handleVariantChange(index, 'image', e.target.value)}
+                            placeholder="e.g., product-gallery-1"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Stock Count</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={variant.stockCount}
+                            onChange={(e) => handleVariantChange(index, 'stockCount', parseInt(e.target.value) || 0)}
+                            placeholder="0"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="flex items-center gap-2">
+                            <Switch
+                              checked={variant.isActive}
+                              onCheckedChange={(checked) => handleVariantChange(index, 'isActive', checked)}
+                            />
+                            Active
+                          </Label>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
                 </CardContent>
               </Card>
             </TabsContent>

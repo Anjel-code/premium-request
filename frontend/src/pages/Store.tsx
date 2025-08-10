@@ -105,6 +105,17 @@ interface ProductData {
   shippingInfo: string;
   guarantee: string;
   returnPolicy: string;
+  variants: ProductVariant[];
+}
+
+interface ProductVariant {
+  id: string;
+  name: string;
+  price: number;
+  originalPrice: number;
+  image: string;
+  stockCount: number;
+  isActive: boolean;
 }
 
 interface Review {
@@ -287,6 +298,44 @@ const mockProductData: ProductData = {
   shippingInfo: "Free 3-day shipping",
   guarantee: "30-day money-back guarantee",
   returnPolicy: "Easy returns within 30 days",
+  variants: [
+    {
+      id: "variant1",
+      name: "Classic Black",
+      price: 199.99,
+      originalPrice: 299.99,
+      image: "product-gallery-1",
+      stockCount: 8,
+      isActive: true,
+    },
+    {
+      id: "variant2",
+      name: "Silver Premium",
+      price: 249.99,
+      originalPrice: 349.99,
+      image: "product-gallery-2",
+      stockCount: 5,
+      isActive: true,
+    },
+    {
+      id: "variant3",
+      name: "Rose Gold",
+      price: 279.99,
+      originalPrice: 379.99,
+      image: "product-gallery-3",
+      stockCount: 3,
+      isActive: true,
+    },
+    {
+      id: "variant4",
+      name: "Limited Edition",
+      price: 329.99,
+      originalPrice: 429.99,
+      image: "product-main-image",
+      stockCount: 2,
+      isActive: true,
+    },
+  ],
 };
 
 interface StoreProps {
@@ -327,6 +376,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   const [storageWarning, setStorageWarning] = useState(false);
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedVariant, setSelectedVariant] = useState<string>("variant1");
 
   const [hoveredVideo, setHoveredVideo] = useState<string | null>(null);
   const [showLoyaltyInfo, setShowLoyaltyInfo] = useState(false);
@@ -593,6 +643,20 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   };
   
   const availableStock = getAvailableStock();
+
+  const getCurrentVariant = () => {
+    return product.variants.find(v => v.id === selectedVariant) || product.variants[0];
+  };
+
+  const getCurrentPrice = () => {
+    const variant = getCurrentVariant();
+    return variant ? variant.price : product.price;
+  };
+
+  const getCurrentOriginalPrice = () => {
+    const variant = getCurrentVariant();
+    return variant ? variant.originalPrice : product.originalPrice;
+  };
   
   // Load real-time stock on component mount
   useEffect(() => {
@@ -660,7 +724,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
     : discountOffer.percentage;
   
   // Calculate final price with wellness discount and loyalty discount
-  let finalPrice = product.price;
+  let finalPrice = getCurrentPrice();
   
   // Apply wellness discount if available
   if (wellnessDiscountApplied && !wellnessDiscountUsed && discountOffer.enabled) {
@@ -673,7 +737,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   }
     
   const discountPercentage = Math.round(
-    ((product.originalPrice - product.price) / product.originalPrice) * 100
+    ((getCurrentOriginalPrice() - getCurrentPrice()) / getCurrentOriginalPrice()) * 100
   );
 
   const handleBuyNow = () => {
@@ -1546,8 +1610,8 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                   <MediaImage
                     assetId={product.images[currentImageIndex]}
                     alt={product.name}
-                    className={`w-full h-full object-cover cursor-zoom-in transition-all duration-500 ease-out ${
-                      isTransitioning ? 'opacity-50 scale-95' : 'opacity-100 scale-100'
+                    className={`w-full h-full object-cover cursor-zoom-in transition-opacity duration-300 ${
+                      isTransitioning ? 'opacity-50' : 'opacity-100'
                     }`}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 hover:opacity-100 transition-all duration-300 flex items-center justify-center">
@@ -1555,47 +1619,48 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                       <ZoomIn className="h-4 w-4 sm:h-6 sm:w-6 text-primary" />
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white backdrop-blur-sm transition-all duration-300 ease-out transform hover:scale-110 active:scale-95 disabled:pointer-events-none shadow-lg border border-border/20"
+                  <button
+                    className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white backdrop-blur-sm shadow-lg border border-border/20 rounded-md p-2 disabled:opacity-50 disabled:pointer-events-none"
                     onClick={prevImage}
                     disabled={isTransitioning}
                   >
                     <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white backdrop-blur-sm transition-all duration-300 ease-out transform hover:scale-110 active:scale-95 disabled:pointer-events-none shadow-lg border border-border/20"
+                  </button>
+                  <button
+                    className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white backdrop-blur-sm shadow-lg border border-border/20 rounded-md p-2 disabled:opacity-50 disabled:pointer-events-none"
                     onClick={nextImage}
                     disabled={isTransitioning}
                   >
                     <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                  </Button>
+                  </button>
                 </div>
 
                 {/* Thumbnail Images */}
                 <div className="flex gap-2 sm:gap-3 overflow-x-auto overflow-y-hidden p-2">
-                  {product.images.map((image, index) => (
+                  {product.variants.map((variant, index) => (
                     <button
-                      key={index}
+                      key={variant.id}
                       onClick={() => {
                         if (isTransitioning) return;
                         setIsTransitioning(true);
-                        setCurrentImageIndex(index);
+                        setSelectedVariant(variant.id);
+                        // Find the image index for this variant
+                        const imageIndex = product.images.findIndex(img => img === variant.image);
+                        if (imageIndex !== -1) {
+                          setCurrentImageIndex(imageIndex);
+                        }
                         setTimeout(() => setIsTransitioning(false), 300);
                       }}
-                      className={`flex-shrink-0 w-16 h-16 sm:w-24 sm:h-24 rounded-lg sm:rounded-xl overflow-hidden border-2 transition-all duration-300 ease-out transform hover:scale-110 disabled:pointer-events-none shadow-md ${
-                        currentImageIndex === index
-                          ? "border-primary scale-110 shadow-lg shadow-primary/20"
+                      className={`flex-shrink-0 w-16 h-16 sm:w-24 sm:h-24 rounded-lg sm:rounded-xl overflow-hidden border-2 transition-colors duration-200 disabled:pointer-events-none shadow-md ${
+                        selectedVariant === variant.id
+                          ? "border-primary shadow-lg shadow-primary/20"
                           : "border-border/30 hover:border-primary/50 hover:shadow-lg"
                       }`}
                       disabled={isTransitioning}
                     >
                       <MediaImage
-                        assetId={image}
-                        alt={`${product.name} ${index + 1}`}
+                        assetId={variant.image}
+                        alt={variant.name}
                         className="w-full h-full object-cover"
                       />
                     </button>
@@ -1652,19 +1717,60 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                   </div>
                 </div>
 
-                                {/* Pricing */}
+                {/* Model Selector */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-primary mb-3">Select Model</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {product.variants.map((variant) => (
+                      <button
+                        key={variant.id}
+                        onClick={() => {
+                          if (isTransitioning) return;
+                          setIsTransitioning(true);
+                          setSelectedVariant(variant.id);
+                          // Find the image index for this variant and update main image
+                          const imageIndex = product.images.findIndex(img => img === variant.image);
+                          if (imageIndex !== -1) {
+                            setCurrentImageIndex(imageIndex);
+                          }
+                          setTimeout(() => setIsTransitioning(false), 300);
+                        }}
+                        className={`p-3 rounded-lg border-2 transition-all duration-200 ${
+                          selectedVariant === variant.id
+                            ? "border-primary bg-primary/5 shadow-lg"
+                            : "border-border/30 hover:border-primary/30 hover:bg-primary/5"
+                        }`}
+                      >
+                        <div className="aspect-square mb-2 rounded-md overflow-hidden">
+                          <MediaImage
+                            assetId={variant.image}
+                            alt={variant.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="text-center">
+                          <div className="font-medium text-sm text-primary mb-1">{variant.name}</div>
+                          <div className="text-lg font-bold text-primary">${variant.price}</div>
+                          <div className="text-xs text-muted-foreground line-through">${variant.originalPrice}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Pricing */}
                 <div className="bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8">
                   <div className="flex items-baseline gap-2 sm:gap-4 mb-3">
                     <span className="text-3xl sm:text-4xl lg:text-5xl font-bold text-primary">
                       ${finalPrice.toFixed(2)}
                     </span>
                     <span className="text-lg sm:text-xl lg:text-2xl text-muted-foreground line-through">
-                      ${product.originalPrice}
+                      ${getCurrentOriginalPrice()}
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                     <Badge variant="secondary" className="text-xs sm:text-sm px-2 sm:px-3 py-1 bg-secondary text-white">
-                      Save ${(product.originalPrice - finalPrice).toFixed(2)} ({discountPercentage}% OFF)
+                      Save ${(getCurrentOriginalPrice() - finalPrice).toFixed(2)} ({discountPercentage}% OFF)
                   </Badge>
                     {(wellnessDiscountApplied && !wellnessDiscountUsed) && (
                       <Badge variant="secondary" className="text-xs sm:text-sm px-2 sm:px-3 py-1 bg-orange-500 text-white">
