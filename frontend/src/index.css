@@ -194,6 +194,12 @@
   100% { transform: translateX(-50%); }
 }
 
+/* Video carousel marquee - slower and smoother */
+@keyframes video-marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
 @keyframes feature-glow {
   0%, 100% { box-shadow: 0 0 5px rgba(198, 166, 120, 0.3); }
   50% { box-shadow: 0 0 20px rgba(198, 166, 120, 0.6); }
@@ -214,6 +220,42 @@
   display: flex; white-space: nowrap; will-change: transform;
   animation: marquee 30s linear infinite;
 }
+
+/* Video carousel marquee - slower animation for better video viewing */
+.marquee:has(.marquee__track:has([class*="w-64"])) .marquee__track {
+  animation: video-marquee 60s linear infinite;
+  /* Ensure proper spacing - each video card is now w-64 (256px) + gap-3 (12px) = 268px */
+  /* We need exactly 50% of the total width to be the first set */
+  width: calc(200% + 2rem); /* 200% for two sets + extra gap to prevent overlap */
+  gap: 1rem; /* Ensure consistent gap */
+}
+
+/* Faster animation on mobile for better UX */
+@media (max-width: 768px) {
+  .marquee:has(.marquee__track:has([class*="w-64"])) .marquee__track {
+    animation: video-marquee 8s linear infinite !important; /* Much faster on mobile - 8 seconds */
+  }
+  
+  /* Alternative selector in case the first one doesn't work */
+  .marquee .marquee__track {
+    animation: video-marquee 8s linear infinite !important;
+  }
+  
+  /* Direct class selector for mobile fast animation */
+  .mobile-fast {
+    animation: video-marquee 8s linear infinite !important;
+  }
+}
+
+/* Force text wrapping in video testimonial cards */
+.video-testimonial-text {
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: normal !important;
+  overflow: visible !important;
+}
+
 .marquee__item { margin-right: 2rem; }
 
 .feature-glow {

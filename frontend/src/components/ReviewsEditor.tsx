@@ -26,6 +26,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { MediaImage } from '@/components/ui/MediaImage';
 
 
 interface Review {
@@ -267,10 +268,16 @@ const ReviewsEditor: React.FC<ReviewsEditorProps> = ({
                     <div className="flex items-start gap-4">
                       {review.profileImage && (
                         <div className="flex-shrink-0">
-                          <img
-                            src={review.profileImage}
+                          <MediaImage
+                            assetId={review.profileImage}
                             alt={review.name}
                             className="w-12 h-12 rounded-full object-cover"
+                            fallbackUrl="placeholder-image"
+                            errorFallback={
+                              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                                <span className="text-xs text-muted-foreground">Profile</span>
+                              </div>
+                            }
                           />
                         </div>
                       )}

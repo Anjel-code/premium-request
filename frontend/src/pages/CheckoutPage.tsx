@@ -10,6 +10,7 @@ import { ArrowLeft, ShoppingCart, CreditCard, MapPin, Shield, Zap, AlertCircle }
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { trackUserActivity } from "@/lib/liveViewUtils";
+import { MediaImage } from "@/components/ui/MediaImage";
 
 interface CheckoutFormData {
   firstName: string;
@@ -292,11 +293,19 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ user, appId }) => {
                   // Direct order items
                   directOrderInfo.items.map((item: any, index: number) => (
                     <div key={index} className="flex items-center gap-4 p-3 border rounded-lg">
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-16 h-16 object-cover rounded-md"
-                      />
+                      <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
+                        <MediaImage
+                          assetId={item.image}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                          fallbackUrl="placeholder-image"
+                          errorFallback={
+                            <div className="w-full h-full bg-muted flex items-center justify-center">
+                              <span className="text-xs text-muted-foreground">Image</span>
+                            </div>
+                          }
+                        />
+                      </div>
                       <div className="flex-1">
                         <h3 className="font-medium">{item.name}</h3>
                         <p className="text-sm text-muted-foreground">
@@ -314,11 +323,19 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ user, appId }) => {
                   // Cart items
                   items.map((item) => (
                     <div key={item.id} className="flex items-center gap-4 p-3 border rounded-lg">
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-16 h-16 object-cover rounded-md"
-                      />
+                      <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
+                        <MediaImage
+                          assetId={item.image}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                          fallbackUrl="placeholder-image"
+                          errorFallback={
+                            <div className="w-full h-full bg-muted flex items-center justify-center">
+                              <span className="text-xs text-muted-foreground">Image</span>
+                            </div>
+                          }
+                        />
+                      </div>
                       <div className="flex-1">
                         <h3 className="font-medium">{item.name}</h3>
                         <p className="text-sm text-muted-foreground">

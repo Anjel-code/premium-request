@@ -26,6 +26,7 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
   const navigate = useNavigate(); // Initialize useNavigate hook
   const [isAdminUser, setIsAdminUser] = useState(false);
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
+  const [isHeroImageLoaded, setIsHeroImageLoaded] = useState(false);
 
   // Debug logging for MediaBackground
   console.log('[Home] Component rendering');
@@ -59,6 +60,18 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
     navigate("/store");
   };
 
+  // Handle hero image load
+  const handleHeroImageLoad = () => {
+    console.log('[Home] Hero background image loaded successfully');
+    setIsHeroImageLoaded(true);
+  };
+
+  const handleHeroImageError = (error: Error) => {
+    console.error('[Home] Hero background image failed to load:', error);
+    // Still allow the page to render even if image fails
+    setIsHeroImageLoaded(true);
+  };
+
   return (
     <div className="min-h-screen bg-background overflow-hidden">
       {/* Navigation component is now rendered at the App.jsx level, not here. */}
@@ -70,77 +83,84 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
           className="absolute inset-0 w-full h-full object-cover"
           overlay={true}
           overlayOpacity={0.6}
+          waitForLoad={true}
+          onLoad={handleHeroImageLoad}
+          onError={handleHeroImageError}
         />
-        <div className="relative container mx-auto text-center pt-24 sm:pt-32 md:pt-36 pb-24 sm:pb-32 md:pb-36 z-10">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold text-white mb-4 sm:mb-6 animate-fade-in leading-tight drop-shadow-2xl">
-            Premium Wireless
-            <span className="block text-primary drop-shadow-2xl">Headphones</span>
-          </h1>
-          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-white mb-6 sm:mb-8 max-w-3xl mx-auto animate-slide-up px-2 drop-shadow-lg">
-            Experience crystal-clear sound with our premium wireless headphones
-            featuring active noise cancellation, 30-hour battery life, and
-            premium comfort for all-day wear.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center animate-scale-in px-2">
-            <Button
-              variant="premium"
-              size="lg"
-              className="text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 w-full sm:w-auto"
-              onClick={handleShopNowClick}
-            >
-              <span className="relative z-10">Shop Now</span>{" "}
-              <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5 z-10" />
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              size="lg"
-              className="text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 border-2 border-white/30 text-white bg-white/10 backdrop-blur-sm hover:bg-white/20 hover:border-white/50 transition-all duration-300 w-full sm:w-auto"
-            >
-              <Link to="/about">Learn More</Link>
-            </Button>
-          </div>
+        
+        {/* Only render hero content when image is loaded */}
+        {isHeroImageLoaded && (
+          <div className="relative container mx-auto text-center pt-24 sm:pt-32 md:pt-36 pb-24 sm:pb-32 md:pb-36 z-10">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold text-white mb-4 sm:mb-6 animate-fade-in leading-tight drop-shadow-2xl">
+              Premium Wireless
+              <span className="block text-primary drop-shadow-2xl">Headphones</span>
+            </h1>
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-white mb-6 sm:mb-8 max-w-3xl mx-auto animate-slide-up px-2 drop-shadow-lg">
+              Experience crystal-clear sound with our premium wireless headphones
+              featuring active noise cancellation, 30-hour battery life, and
+              premium comfort for all-day wear.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center animate-scale-in px-2">
+              <Button
+                variant="premium"
+                size="lg"
+                className="text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 w-full sm:w-auto"
+                onClick={handleShopNowClick}
+              >
+                <span className="relative z-10">Shop Now</span>{" "}
+                <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5 z-10" />
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                size="lg"
+                className="text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 border-2 border-white/30 text-white bg-white/10 backdrop-blur-sm hover:bg-white/20 hover:border-white/50 transition-all duration-300 w-full sm:w-auto"
+              >
+                <Link to="/about">Learn More</Link>
+              </Button>
+            </div>
 
-          {/* Statistics */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-8 mt-8 sm:mt-14 max-w-4xl mx-auto px-2">
-            <div className="text-center">
-              <div className="flex items-center justify-center mb-2">
-                <Users className="h-6 w-6 sm:h-8 sm:w-8 text-primary mr-2" />
-                <AnimatedCounter
-                  end={2370}
-                  suffix="+"
-                  className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary"
-                  duration={2500}
-                />
+            {/* Statistics */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-8 mt-8 sm:mt-14 max-w-4xl mx-auto px-2">
+              <div className="text-center">
+                <div className="flex items-center justify-center mb-2">
+                  <Users className="h-6 w-6 sm:h-8 sm:w-8 text-primary mr-2" />
+                  <AnimatedCounter
+                    end={2370}
+                    suffix="+"
+                    className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary"
+                    duration={2500}
+                  />
+                </div>
+                <p className="text-white text-sm sm:text-base drop-shadow-md">Satisfied Clients</p>
               </div>
-              <p className="text-white text-sm sm:text-base drop-shadow-md">Satisfied Clients</p>
-            </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center mb-2">
-                <Trophy className="h-6 w-6 sm:h-8 sm:w-8 text-primary mr-2" />
-                <AnimatedCounter
-                  end={100}
-                  suffix="%"
-                  className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary"
-                  duration={2500}
-                />
+              <div className="text-center">
+                <div className="flex items-center justify-center mb-2">
+                  <Trophy className="h-6 w-6 sm:h-8 sm:w-8 text-primary mr-2" />
+                  <AnimatedCounter
+                    end={100}
+                    suffix="%"
+                    className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary"
+                    duration={2500}
+                  />
+                </div>
+                <p className="text-white text-sm sm:text-base drop-shadow-md">Quality Guarantee</p>
               </div>
-              <p className="text-white text-sm sm:text-base drop-shadow-md">Quality Guarantee</p>
-            </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center mb-2">
-                <Zap className="h-6 w-6 sm:h-8 sm:w-8 text-primary mr-2" />
-                <AnimatedCounter
-                  end={30}
-                  suffix="h"
-                  className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary"
-                  duration={2500}
-                />
+              <div className="text-center">
+                <div className="flex items-center justify-center mb-2">
+                  <Zap className="h-6 w-6 sm:h-8 sm:w-8 text-primary mr-2" />
+                  <AnimatedCounter
+                    end={30}
+                    suffix="h"
+                    className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary"
+                    duration={2500}
+                  />
+                </div>
+                <p className="text-white text-sm sm:text-base drop-shadow-md">Battery Life</p>
               </div>
-              <p className="text-white text-sm sm:text-base drop-shadow-md">Battery Life</p>
             </div>
           </div>
-        </div>
+        )}
       </section>
 
              {/* Why Choose Our Product */}

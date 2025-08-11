@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { X, Trash2, Plus, Minus, ShoppingCart, Heart, ArrowRight } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/hooks/use-toast';
+import { MediaImage } from '@/components/ui/MediaImage';
 
 const CartPanel: React.FC = () => {
   const navigate = useNavigate();
@@ -155,10 +156,16 @@ const CartPanel: React.FC = () => {
                         <div className="flex gap-4">
                           {/* Item Image */}
                           <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
-                            <img
-                              src={item.image}
+                            <MediaImage
+                              assetId={item.image}
                               alt={item.name}
                               className="w-full h-full object-cover"
+                              fallbackUrl="placeholder-image"
+                              errorFallback={
+                                <div className="w-full h-full bg-muted flex items-center justify-center">
+                                  <span className="text-xs text-muted-foreground">Image</span>
+                                </div>
+                              }
                             />
                           </div>
                           
@@ -230,10 +237,16 @@ const CartPanel: React.FC = () => {
                         <div className="flex gap-4">
                           {/* Item Image */}
                           <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
-                            <img
-                              src={item.image}
+                            <MediaImage
+                              assetId={item.image}
                               alt={item.name}
                               className="w-full h-full object-cover"
+                              fallbackUrl="placeholder-image"
+                              errorFallback={
+                                <div className="w-full h-full bg-muted flex items-center justify-center">
+                                  <span className="text-xs text-muted-foreground">Image</span>
+                                </div>
+                              }
                             />
                           </div>
                           

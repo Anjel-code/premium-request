@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +25,7 @@ import {
   CreditCard,
   Lock,
   Loader2,
-  Edit,
+
   Volume2,
   Maximize2,
   X,
@@ -50,6 +50,9 @@ import {
   MessageCircle,
   DollarSign,
   ArrowRight,
+  Pause,
+  TestTube,
+  Image,
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -63,9 +66,7 @@ import {
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import PopupOffer from "@/components/PopupOffer";
-import AdminStoreEditor from "@/components/AdminStoreEditor";
-import ReviewsEditor from "@/components/ReviewsEditor";
-import VideoEditor from "@/components/VideoEditor";
+
 import Footer from "@/components/Footer";
 import { isAdmin } from "@/lib/userUtils";
 import { checkStorageQuota, clearAllStorage } from "@/lib/storageUtils";
@@ -74,7 +75,8 @@ import { collection, query, where, onSnapshot, getDocs, deleteDoc, addDoc, doc, 
 import { db } from "../firebase";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { MediaBackground, MediaImage } from "@/components/ui/MediaImage";
-import { getMediaAsset } from "@/lib/mediaAssets";
+import { getMediaAsset, getMediaAssetTestimonial, getMediaAssetText, getBundleSectionContent, getFeelTheDifferenceContent, getReviewsSectionContent, getAllReviewsContent, getVideoReviewsContent, getStoreGeneralText, getProductSpecifications, getMarqueeText, getProductUIText, getBundleSectionHeader } from "@/lib/mediaAssets";
+import { useImageOptimization } from "@/hooks/useImageOptimization";
 
 // Product data interface - this will be easily configurable
 interface VideoReview {
@@ -136,13 +138,12 @@ interface FAQ {
 }
 
 // Mock product data - this will be easily replaceable for different products
-const mockProductData: ProductData = {
-  id: "premium-wireless-headphones",
-  name: "Premium Wireless Noise-Canceling Headphones",
-  description:
-    "Experience crystal-clear sound with our premium wireless headphones featuring active noise cancellation, 30-hour battery life, and premium comfort for all-day wear.",
-  price: 199.99,
-  originalPrice: 299.99,
+  const mockProductData: ProductData = {
+    id: "premium-luxury-watch",
+  name: "The RICEGGO 'Azure' Arabic Dial Watch",
+  description: getProductSpecifications()?.description || "A masterpiece of design, where classic style meets unique heritage.",
+  price: 32.99,
+  originalPrice: 49.24,
   images: [
     "product-main-image",
     "product-gallery-1",
@@ -150,129 +151,39 @@ const mockProductData: ProductData = {
     "product-gallery-3",
   ],
   videos: ["product-video"],
-  videoReviews: [
-    {
-      id: "1",
-      thumbnail: "video-review-thumb-1",
-      videoUrl: "video-review-1",
-      testimonial: "These headphones are incredible! The noise cancellation is amazing.",
-      customerName: "Sarah M.",
-    },
-    {
-      id: "2",
-      thumbnail: "video-review-thumb-2",
-      videoUrl: "video-review-2",
-      testimonial: "Best headphones I've ever owned. So comfortable!",
-      customerName: "Mike R.",
-    },
-    {
-      id: "3",
-      thumbnail: "video-review-thumb-3",
-      videoUrl: "video-review-3",
-      testimonial: "Perfect for work calls and music. Highly recommend!",
-      customerName: "Jennifer L.",
-    },
-    {
-      id: "4",
-      thumbnail: "video-review-thumb-4",
-      videoUrl: "video-review-4",
-      testimonial: "Absolutely love these headphones! Crystal clear sound.",
-      customerName: "David K.",
-    },
-    {
-      id: "5",
-      thumbnail: "video-review-thumb-5",
-      videoUrl: "video-review-5",
-      testimonial: "The battery life is incredible. Lasts all day!",
-      customerName: "Emma T.",
-    },
-  ],
+  videoReviews: getVideoReviewsContent(),
   rating: 4.8,
   reviewCount: 1247,
-  benefits: [
-    "Active noise cancellation for immersive listening",
-    "30-hour battery life with quick charge",
-    "Premium comfort with memory foam ear cushions",
-    "Bluetooth 5.0 with stable connection",
+  benefits: getProductSpecifications()?.benefits || [
+    "Premium Arabic Dial Design",
+    "Stainless Steel Construction",
+    "Quartz Movement Precision",
+    "Elegant Bracelet Style",
   ],
-  features: [
-    "Active Noise Cancellation",
-    "30-Hour Battery Life",
-    "Quick Charge (10 min = 5 hours)",
-    "Bluetooth 5.0",
-    "Touch Controls",
-    "Built-in Microphone",
-    "Foldable Design",
-    "Carrying Case Included",
+  features: getProductSpecifications()?.features || [
+    "Azure Sunray Dial",
+    "Cyclops Date Magnifier",
+    "Jubilee-Style Bracelet",
+    "Luminous Hands",
+    "Screw-Down Crown",
+    "Exhibition Caseback",
+    "Complete Calendar",
+    "Business Style",
   ],
-  specifications: {
-    "Driver Size": "40mm",
-    "Frequency Response": "20Hz - 20kHz",
-    Impedance: "32Ω",
-    Sensitivity: "110dB",
-    "Battery Life": "30 hours",
-    "Charging Time": "2 hours",
-    Weight: "250g",
-    Connection: "Bluetooth 5.0",
+  specifications: getProductSpecifications()?.specifications || {
+    "Hign-concerned Chemical": "None",
+    "Case Thickness": "12.2",
+    "Movement origin": "CN (Origin)",
+    "Movement": "Quartz",
+    "Item Type": "Quartz Wristwatches",
+    "Band Material Type": "Stainless Steel",
+    "Case Material": "Alloy",
+    "Clasp Type": "Bracelet Clasp",
+    "Water Resistance Depth": "No Waterproof",
+    "Display Type": "Arabic Numeral Markers"
   },
-          reviews: [
-          {
-            id: "1",
-            name: "Sarah M.",
-            rating: 5,
-            comment:
-              "These headphones are incredible! The noise cancellation is amazing and the battery life is exactly as advertised. Worth every penny!",
-            date: "2024-01-15",
-            verified: true,
-            productImage: "review-product-image",
-            profileImage: "review-profile-1",
-          },
-          {
-            id: "2",
-            name: "Mike R.",
-            rating: 5,
-            comment:
-              "Best headphones I've ever owned. The sound quality is outstanding and they're so comfortable I forget I'm wearing them.",
-            date: "2024-01-10",
-            verified: true,
-            productImage: "review-product-image",
-            profileImage: "review-profile-2",
-          },
-          {
-            id: "3",
-            name: "Jennifer L.",
-            rating: 4,
-            comment:
-              "Great sound quality and very comfortable. The only minor issue is the touch controls can be a bit sensitive sometimes.",
-            date: "2024-01-08",
-            verified: true,
-            productImage: "review-product-image",
-            profileImage: "review-profile-3",
-          },
-          {
-            id: "4",
-            name: "David K.",
-            rating: 5,
-            comment:
-              "Absolutely love these headphones! The sound quality is crystal clear and the noise cancellation works perfectly for my daily commute.",
-            date: "2024-01-05",
-            verified: true,
-            productImage: "review-product-image",
-            profileImage: "review-profile-4",
-          },
-          {
-            id: "5",
-            name: "Emma T.",
-            rating: 5,
-            comment:
-              "Perfect for work calls and music. The microphone quality is excellent and the battery lasts all day. Highly recommend!",
-            date: "2024-01-03",
-            verified: true,
-            productImage: "review-product-image",
-            profileImage: "review-profile-5",
-          },
-        ],
-  faqs: [
+          reviews: getAllReviewsContent(),
+  faqs: getProductSpecifications()?.faqs || [
     {
       question: "How long does shipping take?",
       answer:
@@ -295,42 +206,42 @@ const mockProductData: ProductData = {
     },
   ],
   stockCount: 15,
-  shippingInfo: "Free 3-day shipping",
-  guarantee: "30-day money-back guarantee",
-  returnPolicy: "Easy returns within 30 days",
+  shippingInfo: getProductSpecifications()?.shippingInfo || "Free 9-14 day shipping",
+  guarantee: getProductSpecifications()?.guarantee || "30-day money-back guarantee",
+  returnPolicy: getProductSpecifications()?.returnPolicy || "Easy returns within 30 days",
   variants: [
     {
       id: "variant1",
-      name: "Classic Black",
-      price: 199.99,
-      originalPrice: 299.99,
+      name: "The Gilded Oasis",
+      price: 32.99,
+      originalPrice: 49.24,
       image: "product-gallery-1",
       stockCount: 8,
       isActive: true,
     },
     {
       id: "variant2",
-      name: "Silver Premium",
-      price: 249.99,
-      originalPrice: 349.99,
+      name: "The Cobalt Classic",
+      price: 34.50,
+      originalPrice: 51.49,
       image: "product-gallery-2",
       stockCount: 5,
       isActive: true,
     },
     {
       id: "variant3",
-      name: "Rose Gold",
-      price: 279.99,
-      originalPrice: 379.99,
+      name: "The Graphite Regent",
+      price: 36.00,
+      originalPrice: 53.73,
       image: "product-gallery-3",
       stockCount: 3,
       isActive: true,
     },
     {
       id: "variant4",
-      name: "Limited Edition",
-      price: 329.99,
-      originalPrice: 429.99,
+      name: "The Arctic Legacy ",
+      price: 38.75,
+      originalPrice: 57.84,
       image: "product-main-image",
       stockCount: 2,
       isActive: true,
@@ -347,6 +258,117 @@ interface StoreProps {
   appId?: string;
 }
 
+/**
+ * BeforeAfterSlider Component
+ *
+ * This component creates a draggable slider that shows two images side-by-side
+ * for the 30-day money-back guarantee section. It demonstrates the "before"
+ * and "after" states of using the product.
+ *
+ * IMAGE SOURCES:
+ * - leftImage: Uses "guarantee-before-image" asset for "Before" state
+ * - rightImage: Uses "guarantee-after-image" asset for "After" state
+ *
+ * These are dedicated assets specifically for the guarantee section,
+ * separate from the product gallery images. To update these images,
+ * modify the UploadThing links in mediaAssets.ts for these specific assets.
+ */
+const BeforeAfterSlider: React.FC<{
+  leftImage: string;
+  rightImage: string;
+  leftLabel?: string;
+  rightLabel?: string;
+}> = ({ leftImage, rightImage, leftLabel = "Before", rightLabel = "After" }) => {
+  const [position, setPosition] = useState(50); // percent
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
+
+  const onPointerMove = (clientX: number) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = Math.min(Math.max(clientX - rect.left, 0), rect.width);
+    setPosition(Math.round((x / rect.width) * 100));
+  };
+
+  const handlePointerDown: React.PointerEventHandler<HTMLDivElement> = (e) => {
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    onPointerMove(e.clientX);
+  };
+
+  const handlePointerMove: React.PointerEventHandler<HTMLDivElement> = (e) => {
+    if (e.buttons !== 1) return; // dragging
+    onPointerMove(e.clientX);
+  };
+
+  const handleTouchMove: React.TouchEventHandler<HTMLDivElement> = (e) => {
+    if (!containerRef.current) return;
+    onPointerMove(e.touches[0].clientX);
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative w-full aspect-[16/10] overflow-hidden rounded-xl border border-border bg-muted select-none"
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onTouchMove={handleTouchMove}
+            role="slider"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={position}
+    >
+      {/* Left side (Before) */}
+      <div className="absolute inset-0 w-full h-full">
+        <MediaImage
+          assetId={leftImage}
+          alt={`${leftLabel} state`}
+          className="w-full h-full object-cover"
+        />
+        {/* Dimming overlay */}
+        <div className="absolute inset-0 bg-black/20" />
+        {/* Top-left label */}
+        <span className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 text-white text-xs sm:text-sm font-semibold bg-black/50 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg">
+          {getMediaAssetText(leftImage, 'title') || leftLabel}
+        </span>
+      </div>
+
+      {/* Right side (After) */}
+      <div 
+        className="absolute inset-0 h-full overflow-hidden"
+        style={{ width: `${100 - position}%`, left: `${position}%` }}
+      >
+        <div
+          style={{ 
+            width: `${100 / ((100 - position) / 100)}%`,
+            marginLeft: `-${position / ((100 - position) / 100)}%`
+          }}
+        >
+          <MediaImage
+            assetId={rightImage}
+            alt={`${rightLabel} state`}
+            className="w-full h-full object-cover"
+          />
+        </div>
+        {/* Dimming overlay */}
+        <div className="absolute inset-0 bg-black/20" />
+        {/* Top-right label */}
+        <span className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10 text-white text-xs sm:text-sm font-semibold bg-black/50 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg">
+          {getMediaAssetText(rightImage, 'title') || rightLabel}
+        </span>
+      </div>
+
+      {/* Slider handle */}
+      <div 
+        className="absolute top-0 bottom-0 w-1 bg-white shadow-lg cursor-ew-resize"
+        style={{ left: `${position}%` }}
+      >
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full shadow-lg border-2 border-primary flex items-center justify-center">
+          <div className="w-1 h-4 bg-primary rounded-full"></div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Store: React.FC<StoreProps> = ({ user, appId }) => {
   console.log('🚀 [Store] Component is rendering!');
   console.log('🚀 [Store] User:', user);
@@ -359,9 +381,8 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [isUserAdmin, setIsUserAdmin] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isEditingReviews, setIsEditingReviews] = useState(false);
-  const [isEditingVideos, setIsEditingVideos] = useState(false);
+
+  const [showAdminButtons, setShowAdminButtons] = useState(false); // Hide admin buttons by default
   const [showPopupOffer, setShowPopupOffer] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<string>("");
   const [realTimeStock, setRealTimeStock] = useState<number | null>(null);
@@ -369,10 +390,9 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<VideoReview | null>(null);
   const [showVideoModal, setShowVideoModal] = useState(false);
-  const [displayedReviews, setDisplayedReviews] = useState(3);
+  const [displayedReviews, setDisplayedReviews] = useState(4);
   const [userOrders, setUserOrders] = useState<any[]>([]);
   const [loyaltyLevel, setLoyaltyLevel] = useState({ level: "Bronze", discount: 0 });
-  const [carouselRef, setCarouselRef] = useState<HTMLDivElement | null>(null);
   const [storageWarning, setStorageWarning] = useState(false);
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -383,103 +403,15 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   const [showLoyaltyFab, setShowLoyaltyFab] = useState(true);
   const [shareLoading, setShareLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-                  /**
-                 * BeforeAfterSlider Component
-                 *
-                 * This component creates a draggable slider that shows two images side-by-side
-                 * for the 30-day money-back guarantee section. It demonstrates the "before"
-                 * and "after" states of using the product.
-                 *
-                 * IMAGE SOURCES:
-                 * - leftImage: Uses "guarantee-before-image" asset for "Before" state
-                 * - rightImage: Uses "guarantee-after-image" asset for "After" state
-                 *
-                 * These are dedicated assets specifically for the guarantee section,
-                 * separate from the product gallery images. To update these images,
-                 * modify the UploadThing links in mediaAssets.ts for these specific assets.
-                 */
-  const BeforeAfterSlider: React.FC<{
-    leftImage: string;
-    rightImage: string;
-    leftLabel?: string;
-    rightLabel?: string;
-  }> = ({ leftImage, rightImage, leftLabel = "Before", rightLabel = "After" }) => {
-    const [position, setPosition] = useState(50); // percent
-    const containerRef = React.useRef<HTMLDivElement | null>(null);
-
-    const onPointerMove = (clientX: number) => {
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const x = Math.min(Math.max(clientX - rect.left, 0), rect.width);
-      setPosition(Math.round((x / rect.width) * 100));
-    };
-
-    const handlePointerDown: React.PointerEventHandler<HTMLDivElement> = (e) => {
-      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-      onPointerMove(e.clientX);
-    };
-
-    const handlePointerMove: React.PointerEventHandler<HTMLDivElement> = (e) => {
-      if (e.buttons !== 1) return; // dragging
-      onPointerMove(e.clientX);
-    };
-
-    const handleTouchMove: React.TouchEventHandler<HTMLDivElement> = (e) => {
-      if (!containerRef.current) return;
-      onPointerMove(e.touches[0].clientX);
-    };
-
-    return (
-      <div
-        ref={containerRef}
-        className="relative w-full aspect-[16/10] overflow-hidden rounded-xl border border-border bg-muted select-none"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onTouchMove={handleTouchMove}
-        role="slider"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={position}
-      >
-        {/* Right image as the base */}
-        <MediaImage
-          assetId={rightImage}
-          alt={rightLabel}
-          className="absolute inset-0 w-full h-full object-cover object-center"
-        />
-        {/* Left image clipped to the same scale as the right using clip-path */}
-        <div
-          className="absolute inset-0 w-full h-full will-change-transform"
-          style={{ clipPath: `polygon(0% 0%, ${position}% 0%, ${position}% 100%, 0% 100%)` }}
-        >
-          <MediaImage
-            assetId={leftImage}
-            alt={leftLabel}
-            className="absolute inset-0 w-full h-full object-cover object-center"
-          />
-        </div>
-
-        {/* Divider handle */}
-        <div
-          className="absolute top-0 bottom-0 w-1 sm:w-1.5 bg-primary/90 shadow-[0_0_0_2px_rgba(255,255,255,0.8)]"
-          style={{ left: `calc(${position}% - 0.5px)` }}
-        >
-          <div className="absolute -left-3 sm:-left-3 top-1/2 -translate-y-1/2 bg-primary text-primary-foreground rounded-full h-6 w-6 sm:h-7 sm:w-7 flex items-center justify-center shadow-lg border border-primary/60">
-            <span className="text-xs">↔</span>
-          </div>
-        </div>
-
-        {/* Labels */}
-        <div className="absolute left-3 top-3 px-2 py-1 rounded bg-secondary text-secondary-foreground text-[10px] sm:text-xs font-semibold shadow">
-          {leftLabel}
-        </div>
-        <div className="absolute right-3 top-3 px-2 py-1 rounded bg-secondary text-secondary-foreground text-[10px] sm:text-xs font-semibold shadow">
-          {rightLabel}
-        </div>
-      </div>
-    );
-  };
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [isMouseOverVideo, setIsMouseOverVideo] = useState(false);
+  const [showPlayButton, setShowPlayButton] = useState(true);
+  
+  // Video preloading state
+  const [preloadedVideos, setPreloadedVideos] = useState<Set<string>>(new Set());
+  const [isPreloadingVideos, setIsPreloadingVideos] = useState(false);
+  const [videoLoadingStates, setVideoLoadingStates] = useState<Record<string, boolean>>({});
 
   // Check if user is admin by querying the database
   useEffect(() => {
@@ -586,27 +518,8 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
     fetchUserOrders();
   }, [user?.uid, appId]);
 
-  // Load product data - check for admin-saved data first, then fall back to mock data
+  // Load product data - use mock data directly since admin editing is disabled
   const loadProductData = (): ProductData => {
-    const adminProduct = localStorage.getItem('adminStoreProduct');
-    console.log('[Store] Admin product from localStorage:', adminProduct);
-    
-    if (adminProduct) {
-      try {
-        const parsedProduct = JSON.parse(adminProduct);
-        console.log('[Store] Parsed admin product:', parsedProduct);
-        console.log('[Store] Admin product images:', parsedProduct.images);
-        
-        // Ensure videoReviews property exists
-        if (!parsedProduct.videoReviews) {
-          parsedProduct.videoReviews = mockProductData.videoReviews;
-        }
-        return parsedProduct;
-      } catch (error) {
-        console.error('Error parsing admin product data:', error);
-      }
-    }
-    
     console.log('[Store] Using mock product data:', mockProductData);
     console.log('[Store] Mock product images:', mockProductData.images);
     return mockProductData;
@@ -753,6 +666,9 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
       return;
     }
 
+    // Use the current image asset ID for the direct order
+    const currentImageAssetId = product.images[currentImageIndex] || product.images[0];
+
     // Create order info for direct purchase (not cart)
     const orderInfo = {
       orderId: `direct_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -760,7 +676,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
         name: product.name,
         price: finalPrice,
         quantity,
-        image: product.images[0],
+        image: currentImageAssetId, // Use current image asset ID
       }],
       totalPrice: finalPrice * quantity,
       createdAt: new Date().toISOString(),
@@ -811,12 +727,15 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
         );
       }
 
+      // Use the current image asset ID for the cart item
+      const currentImageAssetId = product.images[currentImageIndex] || product.images[0];
+      
       addToCart({
-          productId: product.id,
+        productId: product.id,
         name: product.name,
         price: finalPrice,
-          quantity,
-        image: product.images[0],
+        quantity,
+        image: currentImageAssetId, // This should be an asset ID like "product-main-image"
       });
 
       toast({
@@ -843,50 +762,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
     setShowPopupOffer(false);
   };
 
-  const handleEditStore = () => {
-    if (isUserAdmin) {
-      setIsEditing(true);
-    } else {
-      toast({
-        title: "Access Denied",
-        description: "You don't have admin privileges.",
-        variant: "destructive",
-      });
-    }
-  };
 
-  const handleSaveStore = (updatedProduct: ProductData, updatedDiscountOffer: any) => {
-    // The AdminStoreEditor already saves to localStorage
-    // Here we can add additional logic like saving to database
-    setIsEditing(false);
-    
-    // Reload the page to reflect changes
-    window.location.reload();
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditing(false);
-  };
-
-  const handleSaveReviews = (updatedReviews: Review[]) => {
-    const updatedProduct = { ...product, reviews: updatedReviews };
-    localStorage.setItem('adminStoreProduct', JSON.stringify(updatedProduct));
-    setIsEditingReviews(false);
-  };
-
-  const handleCancelReviews = () => {
-    setIsEditingReviews(false);
-  };
-
-  const handleSaveVideos = (updatedVideos: VideoReview[]) => {
-    const updatedProduct = { ...product, videoReviews: updatedVideos };
-    localStorage.setItem('adminStoreProduct', JSON.stringify(updatedProduct));
-    setIsEditingVideos(false);
-  };
-
-  const handleCancelVideos = () => {
-    setIsEditingVideos(false);
-  };
 
   const handleClearStorage = () => {
     if (confirm('This will clear all stored data including admin settings, cart, and preferences. Are you sure?')) {
@@ -895,109 +771,24 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
     }
   };
 
-  const handleCheckStorage = () => {
-    const quota = checkStorageQuota();
-    const localStorageMB = (quota.localStorage / (1024 * 1024)).toFixed(2);
-    const sessionStorageMB = (quota.sessionStorage / (1024 * 1024)).toFixed(2);
-    
-    alert(`Storage Usage:\nlocalStorage: ${localStorageMB}MB\nsessionStorage: ${sessionStorageMB}MB`);
-  };
 
-  /**
-   * Fixes corrupted product images by updating the media asset IDs in localStorage
-   *
-   * This function addresses the issue where product data contains invalid or missing
-   * media asset IDs, causing images and videos to fail to load. It replaces these
-   * with the correct asset IDs that match the available media assets in the system.
-   *
-   * What it fixes:
-   * - Product main images and gallery images
-   * - Product videos
-   * - Video review thumbnails and video URLs
-   * - Review product images and profile images
-   *
-   * IMPORTANT: The first two images (product-main-image, product-gallery-1) are also
-   * used in the 30-day guarantee section's BeforeAfterSlider component:
-   * - product.images[0] → "Before" image (left side of guarantee slider)
-   * - product.images[1] → "After" image (right side of guarantee slider)
-   *
-   * After fixing, it shows a success message and reloads the page to apply changes.
-   *
-   * Usage: Click the "Fix Images" button in the admin controls panel when
-   * product images are not displaying correctly due to corrupted asset IDs.
-   */
-  const fixProductImages = () => {
-    console.log('🔧 [Store] Fixing product images...');
-    const adminProduct = localStorage.getItem('adminStoreProduct');
-    if (adminProduct) {
-      try {
-        const parsedProduct = JSON.parse(adminProduct);
-        console.log('🔧 [Store] Current product data:', parsedProduct);
-        
-        // Update the images array to use correct media asset IDs
-        parsedProduct.images = [
-          "product-main-image",      // Main product image + Guarantee "Before" image
-          "product-gallery-1",       // Gallery image 1 + Guarantee "After" image  
-          "product-gallery-2",       // Gallery image 2
-          "product-gallery-3"        // Gallery image 3
-        ];
-        
-        // Update the videos array to use correct media asset IDs
-        parsedProduct.videos = ["product-video"];
-        
-        // Update video review thumbnails
-        if (parsedProduct.videoReviews && Array.isArray(parsedProduct.videoReviews)) {
-          parsedProduct.videoReviews.forEach((review: any, index: number) => {
-            review.thumbnail = `video-review-thumb-${index + 1}`;
-            review.videoUrl = `video-review-${index + 1}`;
-          });
-          console.log('🔧 [Store] Fixed video reviews:', parsedProduct.videoReviews);
-        }
-        
-        // Update review images
-        if (parsedProduct.reviews && Array.isArray(parsedProduct.reviews)) {
-          parsedProduct.reviews.forEach((review: any, index: number) => {
-            review.productImage = "review-product-image";
-            review.profileImage = `review-profile-${index + 1}`;
-          });
-          console.log('🔧 [Store] Fixed reviews:', parsedProduct.reviews);
-        }
-        
-        localStorage.setItem('adminStoreProduct', JSON.stringify(parsedProduct));
-        console.log('🔧 [Store] Product images fixed! Updated localStorage.');
-        
-        // Show success message
-        toast({
-          title: "Images Fixed!",
-          description: "Product images have been updated with correct media asset IDs.",
-          duration: 3000,
-        });
-        
-        // Reload after a short delay to ensure everything is updated
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
-      } catch (error) {
-        console.error('Error fixing product images:', error);
-        toast({
-          title: "Error",
-          description: "Failed to fix product images. Check console for details.",
-          variant: "destructive",
-          duration: 3000,
-        });
-      }
-    } else {
-      console.log('🔧 [Store] No adminStoreProduct found in localStorage');
-      toast({
-        title: "No Data Found",
-        description: "No product data found to fix. Please edit the store first.",
-        variant: "destructive",
-        duration: 3000,
-      });
-    }
-  };
+
+
 
   const handleVideoClick = (video: VideoReview) => {
+    console.log('[Video Click] Opening video modal for:', video);
+    console.log('[Video Click] Video URL:', video.videoUrl);
+    
+    // Check if it's a media asset ID
+    const isMediaAssetId = !video.videoUrl.startsWith('http') && !video.videoUrl.startsWith('data:') && !video.videoUrl.startsWith('/');
+    if (isMediaAssetId) {
+      const mediaAsset = getMediaAsset(video.videoUrl);
+      console.log('[Video Click] Media asset found:', mediaAsset);
+      if (mediaAsset) {
+        console.log('[Video Click] Final video URL:', mediaAsset.uploadLink);
+      }
+    }
+    
     setSelectedVideo(video);
     setShowVideoModal(true);
   };
@@ -1009,75 +800,15 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
 
   const handleLoadMoreReviews = () => {
     const remainingReviews = product.reviews.length - displayedReviews;
-    const nextBatch = Math.min(12, remainingReviews);
+    const nextBatch = Math.min(4, remainingReviews);
     setDisplayedReviews(prev => prev + nextBatch);
   };
 
-  // Auto-scroll carousel functionality
-  useEffect(() => {
-    if (!carouselRef) return;
-
-    const cardWidth = 320; // Width of each video card (w-80 = 320px)
-    const cardGap = 16; // Gap between cards (gap-4 = 16px)
-    const totalCardWidth = cardWidth + cardGap; // Total width including gap
-    const scrollInterval = 3000; // Scroll every 3 seconds
-    let scrollTimer: NodeJS.Timeout;
-    let isPaused = false;
-    let currentCardIndex = 0;
-
-    const scrollToNextCard = () => {
-      if (!carouselRef || isPaused) return;
-
-      // Calculate the exact position for the next card
-      currentCardIndex = (currentCardIndex + 1) % (product.videoReviews?.length || 1);
-      const targetScroll = currentCardIndex * totalCardWidth;
-      
-      // If we've reached the end of the visible set, reset to beginning
-      if (currentCardIndex === 0) {
-        // Reset to beginning without animation for seamless loop
-        carouselRef.scrollLeft = 0;
-        // Wait a bit then scroll to first card
-        setTimeout(() => {
-          if (carouselRef) {
-            carouselRef.scrollTo({
-              left: totalCardWidth,
-              behavior: 'smooth'
-            });
-          }
-        }, 100);
-        return;
-      }
-      
-      // Smooth scroll to exact card position
-      carouselRef.scrollTo({
-        left: targetScroll,
-        behavior: 'smooth'
-      });
-    };
-
-    // Pause on hover
-    const handleMouseEnter = () => {
-      isPaused = true;
-    };
-
-    const handleMouseLeave = () => {
-      isPaused = false;
-    };
-
-    carouselRef.addEventListener('mouseenter', handleMouseEnter);
-    carouselRef.addEventListener('mouseleave', handleMouseLeave);
-
-    // Start the auto-scroll timer
-    scrollTimer = setInterval(scrollToNextCard, scrollInterval);
-
-    return () => {
-      if (scrollTimer) {
-        clearInterval(scrollTimer);
-      }
-      carouselRef.removeEventListener('mouseenter', handleMouseEnter);
-      carouselRef.removeEventListener('mouseleave', handleMouseLeave);
-    };
-  }, [carouselRef, product.videoReviews]);
+  // Auto-scroll carousel functionality - REMOVED: Now using CSS marquee animation
+  // useEffect(() => {
+  //   if (!carouselRef) return;
+  //   // ... old auto-scroll logic removed
+  // }, [carouselRef, product.videoReviews]);
 
   const nextImage = () => {
     if (isTransitioning) return;
@@ -1111,39 +842,9 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
     return () => clearTimeout(timer);
   }, [discountOffer.enabled]);
 
-  // If in reviews editing mode, show the reviews editor
-  if (isEditingReviews) {
-    return (
-      <ReviewsEditor
-        reviews={product.reviews}
-        onSave={handleSaveReviews}
-        onCancel={handleCancelReviews}
-      />
-    );
-  }
 
-  // If in video editing mode, show the video editor
-  if (isEditingVideos) {
-    return (
-      <VideoEditor
-        videos={product.videoReviews}
-        onSave={handleSaveVideos}
-        onCancel={handleCancelVideos}
-      />
-    );
-  }
 
-  // If in editing mode, show the admin editor
-  if (isEditing) {
-    return (
-      <AdminStoreEditor
-        product={product}
-        appId={appId}
-        onSave={handleSaveStore}
-        onCancel={handleCancelEdit}
-      />
-    );
-  }
+
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
@@ -1219,7 +920,73 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
     }
   };
 
-  // Wishlist functionality using CartContext
+  // Enhanced video content renderer for video reviews with loading states
+  const renderVideoReviewContent = (video: VideoReview, className: string = "w-full h-full object-cover", videoId?: string) => {
+    const isMediaAssetId = !video.videoUrl.startsWith('http') && !video.videoUrl.startsWith('data:') && !video.videoUrl.startsWith('/');
+    const mediaAsset = isMediaAssetId ? getMediaAsset(video.videoUrl) : undefined;
+    const videoUrl = mediaAsset ? mediaAsset.uploadLink : video.videoUrl;
+
+    if (isGif(videoUrl)) {
+      return (
+        <img
+          src={videoUrl}
+          alt={`Video testimonial by ${video.customerName}`}
+          className={className}
+        />
+      );
+    } else {
+      return (
+        <video
+          src={videoUrl}
+          className={className}
+          muted
+          playsInline
+          autoPlay={false}
+          data-video-id={videoId}
+          onDoubleClick={() => {
+            if (videoId) {
+              handleFullscreen(videoId);
+            }
+          }}
+          onLoadStart={() => setVideoLoadingStates(prev => ({ ...prev, [videoUrl]: true }))}
+          onLoadedData={() => setVideoLoadingStates(prev => ({ ...prev, [videoUrl]: false }))}
+          onError={(e) => {
+            console.error(`[Video Error] Failed to load video: ${videoUrl}`, e);
+            setVideoLoadingStates(prev => ({ ...prev, [videoUrl]: false }));
+          }}
+          onPlay={() => console.log(`[Video Play] Video started playing: ${videoUrl}`)}
+          onPause={() => console.log(`[Video Pause] Video paused: ${videoUrl}`)}
+        />
+      );
+    }
+  };
+
+  const handleFullscreen = (videoId: string) => {
+    const videoElement = document.querySelector(`video[data-video-id="${videoId}"]`) as HTMLVideoElement;
+    if (videoElement) {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        videoElement.requestFullscreen().catch(err => {
+          console.error('[Fullscreen] Failed to enter fullscreen:', err);
+        });
+      }
+    }
+  };
+
+  const toggleFullscreen = () => {
+    const videoElement = document.querySelector('video') as HTMLVideoElement;
+    if (videoElement) {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        videoElement.requestFullscreen().catch(err => {
+          console.error('[Fullscreen] Failed to enter fullscreen:', err);
+        });
+      }
+    }
+  };
+
   const handleWishlistToggle = () => {
     if (!user) {
       toast({
@@ -1230,18 +997,21 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
       return;
     }
 
-    if (isInWishlist("premium-headphones")) {
-      removeFromWishlist("premium-headphones");
+    // Use the current image asset ID for the wishlist item
+    const currentImageAssetId = product.images[currentImageIndex] || product.images[0];
+
+    if (isInWishlist("premium-luxury-watch")) {
+      removeFromWishlist("premium-luxury-watch");
       toast({
         title: "Removed from wishlist",
         description: "Product removed from your wishlist.",
       });
     } else {
       addToWishlist({
-        productId: "premium-headphones",
+        productId: "premium-luxury-watch",
         name: product.name,
         price: product.price,
-        image: product.images[0],
+        image: currentImageAssetId, // This should be an asset ID like "product-main-image"
       });
       toast({
         title: "Added to wishlist",
@@ -1289,6 +1059,315 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
     }
   };
 
+  const handlePlayVideo = () => {
+    if (videoRef.current) {
+      if (videoRef.current.paused) {
+        videoRef.current.play();
+        setIsVideoPlaying(true);
+        // Don't hide button - keep it visible for pause functionality
+      } else {
+        videoRef.current.pause();
+        setIsVideoPlaying(false);
+        // Keep button visible when paused
+      }
+    }
+  };
+
+  const handleVideoStateChange = () => {
+    if (videoRef.current) {
+      setIsVideoPlaying(!videoRef.current.paused);
+    }
+  };
+
+  const handleMouseEnter = () => {
+    setIsMouseOverVideo(true);
+    setShowPlayButton(true); // Always show button when mouse enters
+  };
+
+  const handleMouseLeave = () => {
+    setIsMouseOverVideo(false);
+    setShowPlayButton(false); // Hide button when mouse leaves
+  };
+
+  const handleMouseMove = () => {
+    setShowPlayButton(true); // Always show button on mouse movement
+  };
+
+  // Video preloading function
+  const preloadVideos = useCallback(async () => {
+    console.log('[Video Preloading] preloadVideos called');
+    console.log('[Video Preloading] Current state:', { isPreloadingVideos, videoReviewsCount: product.videoReviews?.length, preloadedCount: preloadedVideos.size });
+    
+    if (isPreloadingVideos || !product.videoReviews || product.videoReviews.length === 0) {
+      console.log('[Video Preloading] Skipping preload:', { isPreloadingVideos, hasVideoReviews: !!product.videoReviews, videoReviewsLength: product.videoReviews?.length });
+      return;
+    }
+
+    setIsPreloadingVideos(true);
+    console.log('[Video Preloading] Starting to preload video review videos...');
+
+    try {
+      const videoUrls = product.videoReviews.map(video => {
+        const isMediaAssetId = !video.videoUrl.startsWith('http') && !video.videoUrl.startsWith('data:') && !video.videoUrl.startsWith('/');
+        const mediaAsset = isMediaAssetId ? getMediaAsset(video.videoUrl) : undefined;
+        const finalUrl = mediaAsset ? mediaAsset.uploadLink : video.videoUrl;
+        console.log(`[Video Preloading] Video URL resolved:`, { original: video.videoUrl, isMediaAssetId, mediaAssetId: mediaAsset?.id, finalUrl });
+        return finalUrl;
+      });
+
+      console.log('[Video Preloading] Video URLs to preload:', videoUrls);
+
+      // Preload each video
+      const preloadPromises = videoUrls.map(async (url, index) => {
+        if (preloadedVideos.has(url)) {
+          console.log(`[Video Preloading] Video ${index + 1} already preloaded:`, url);
+          return;
+        }
+
+        console.log(`[Video Preloading] Preloading video ${index + 1}:`, url);
+        
+        return new Promise<void>((resolve) => {
+          const video = document.createElement('video');
+          video.preload = 'metadata';
+          video.muted = true;
+          video.playsInline = true;
+          
+          video.onloadedmetadata = () => {
+            console.log(`[Video Preloading] Video ${index + 1} metadata loaded:`, url);
+            setPreloadedVideos(prev => new Set([...prev, url]));
+            setVideoLoadingStates(prev => ({ ...prev, [url]: false }));
+            resolve();
+          };
+          
+          video.onerror = (error) => {
+            console.warn(`[Video Preloading] Failed to preload video ${index + 1}:`, url, error);
+            setVideoLoadingStates(prev => ({ ...prev, [url]: false }));
+            resolve();
+          };
+          
+          video.src = url;
+          video.load();
+        });
+      });
+
+      await Promise.all(preloadPromises);
+      console.log('[Video Preloading] All videos preloaded successfully');
+      
+    } catch (error) {
+      console.error('[Video Preloading] Error preloading videos:', error);
+    } finally {
+      setIsPreloadingVideos(false);
+    }
+  }, [product.videoReviews, preloadedVideos, isPreloadingVideos]);
+
+  // Debug function to see what video reviews are available in the product data
+  const debugVideoReviews = useCallback(() => {
+    console.log('🔍 [Video Reviews Debug] ========================================');
+    console.log('🔍 [Video Reviews Debug] Product videoReviews array:', product.videoReviews);
+    console.log('🔍 [Video Reviews Debug] Product videoReviews length:', product.videoReviews?.length);
+    
+    if (product.videoReviews && product.videoReviews.length > 0) {
+      console.log('🔍 [Video Reviews Debug] Individual video review details:');
+      product.videoReviews.forEach((review, index) => {
+        console.log(`🔍 [Video Reviews Debug] Video Review ${index + 1}:`, {
+          id: review.id,
+          thumbnail: review.thumbnail,
+          videoUrl: review.videoUrl,
+          testimonial: review.testimonial,
+          customerName: review.customerName
+        });
+        
+        // Check if videoUrl is a media asset ID
+        const isMediaAssetId = !review.videoUrl.startsWith('http') && !review.videoUrl.startsWith('data:') && !review.videoUrl.startsWith('/');
+        if (isMediaAssetId) {
+          const mediaAsset = getMediaAsset(review.videoUrl);
+          console.log(`🔍 [Video Reviews Debug] Media Asset for ${review.videoUrl}:`, mediaAsset);
+          if (mediaAsset) {
+            console.log(`🔍 [Video Reviews Debug] Final video URL: ${mediaAsset.uploadLink}`);
+          }
+        }
+      });
+    }
+    
+    console.log('🔍 [Video Reviews Debug] Preloaded videos:', Array.from(preloadedVideos));
+    console.log('🔍 [Video Reviews Debug] Video loading states:', videoLoadingStates);
+    console.log('🔍 [Video Reviews Debug] ========================================');
+  }, [product.videoReviews, preloadedVideos, videoLoadingStates]);
+
+  // Function to test video playback
+  const testVideoPlayback = useCallback(async (video: VideoReview) => {
+    console.log('🎬 [Video Playback Test] Testing video playback for:', video);
+    
+    const isMediaAssetId = !video.videoUrl.startsWith('http') && !video.videoUrl.startsWith('data:') && !video.videoUrl.startsWith('/');
+    const mediaAsset = isMediaAssetId ? getMediaAsset(video.videoUrl) : undefined;
+    const videoUrl = mediaAsset ? mediaAsset.uploadLink : video.videoUrl;
+    
+    console.log('🎬 [Video Playback Test] Video URL:', videoUrl);
+    console.log('🎬 [Video Playback Test] Is preloaded:', preloadedVideos.has(videoUrl));
+    
+    // Test if video can be loaded
+    try {
+      const videoElement = document.createElement('video');
+      videoElement.src = videoUrl;
+      videoElement.muted = true;
+      videoElement.playsInline = true;
+      
+      await new Promise((resolve, reject) => {
+        videoElement.onloadedmetadata = resolve;
+        videoElement.onerror = reject;
+        videoElement.load();
+      });
+      
+      console.log('🎬 [Video Playback Test] Video metadata loaded successfully');
+      console.log('🎬 [Video Playback Test] Video duration:', videoElement.duration);
+      console.log('🎬 [Video Playback Test] Video dimensions:', videoElement.videoWidth, 'x', videoElement.videoHeight);
+      
+      // Test playback
+      try {
+        await videoElement.play();
+        console.log('🎬 [Video Playback Test] Video playback started successfully');
+        videoElement.pause();
+        videoElement.currentTime = 0;
+      } catch (playError) {
+        console.error('🎬 [Video Playback Test] Failed to play video:', playError);
+      }
+      
+    } catch (error) {
+      console.error('🎬 [Video Playback Test] Failed to load video:', error);
+    }
+  }, [preloadedVideos]);
+
+  // Test video preloading from mediaAssets file
+  const testMediaAssetsVideoPreloading = useCallback(async () => {
+    console.log('🧪 [Media Assets Test] Testing video preloading from mediaAssets file...');
+    
+    try {
+      // Import the functions from mediaAssets
+      const { getVideoReviews, getVideoReviewThumbnails, preloadAllVideoReviews } = await import('@/lib/mediaAssets');
+      
+      console.log('🧪 [Media Assets Test] Functions imported successfully');
+      
+      // Get video reviews from mediaAssets
+      const videoReviews = getVideoReviews();
+      console.log('🧪 [Media Assets Test] Video reviews from mediaAssets:', videoReviews);
+      
+      // Get thumbnails from mediaAssets
+      const thumbnails = getVideoReviewThumbnails();
+      console.log('🧪 [Media Assets Test] Thumbnails from mediaAssets:', thumbnails);
+      
+      // Test preloading all videos
+      console.log('🧪 [Media Assets Test] Starting to preload all videos from mediaAssets...');
+      await preloadAllVideoReviews();
+      console.log('🧪 [Media Assets Test] Video preloading from mediaAssets completed');
+      
+    } catch (error) {
+      console.error('🧪 [Media Assets Test] Error testing mediaAssets video preloading:', error);
+    }
+  }, []);
+
+  // Call debug function when component mounts or product changes
+  useEffect(() => {
+    console.log('[Video Reviews Debug] Component mounted or product changed, debugging video reviews...');
+    debugVideoReviews();
+    
+    // Also test mediaAssets video preloading
+    testMediaAssetsVideoPreloading();
+  }, [debugVideoReviews, testMediaAssetsVideoPreloading]);
+
+  // Intersection Observer for video preloading
+  const feelTheDifferenceRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    console.log('[Video Preloading] Setting up intersection observer for Feel the Difference section');
+    
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          console.log('[Video Preloading] Intersection observed:', entry.isIntersecting, entry.intersectionRatio);
+          if (entry.isIntersecting) {
+            console.log('[Video Preloading] Feel the Difference section visible, starting video preload...');
+            preloadVideos();
+            observer.disconnect(); // Only trigger once
+          }
+        });
+      },
+      { threshold: 0.3 } // Trigger when 30% of the section is visible
+    );
+
+    if (feelTheDifferenceRef.current) {
+      console.log('[Video Preloading] Observing Feel the Difference section');
+      observer.observe(feelTheDifferenceRef.current);
+    } else {
+      console.log('[Video Preloading] Feel the Difference ref not found');
+    }
+
+    return () => {
+      console.log('[Video Preloading] Cleaning up intersection observer');
+      observer.disconnect();
+    };
+  }, [preloadVideos]);
+
+  // Auto-preload videos when component mounts
+  useEffect(() => {
+    if (product.videoReviews && product.videoReviews.length > 0) {
+      preloadVideos();
+    }
+  }, [product.videoReviews]);
+
+  // Debug function to check video review thumbnails
+  const debugVideoReviewThumbnails = useCallback(() => {
+    console.log('[Store] Debugging video review thumbnails...');
+    console.log('[Store] Product video reviews:', product.videoReviews);
+    
+    if (product.videoReviews) {
+      product.videoReviews.forEach((review, index) => {
+        console.log(`[Store] Video Review ${index + 1}:`, {
+          id: review.id,
+          thumbnail: review.thumbnail,
+          videoUrl: review.videoUrl,
+          customerName: review.customerName
+        });
+        
+        // Check if thumbnail asset exists
+        const thumbnailAsset = getMediaAsset(review.thumbnail);
+        console.log(`[Store] Thumbnail asset for ${review.thumbnail}:`, thumbnailAsset);
+        
+        // Check if video asset exists
+        const videoAsset = getMediaAsset(review.videoUrl);
+        console.log(`[Store] Video asset for ${review.videoUrl}:`, videoAsset);
+      });
+    }
+  }, [product.videoReviews]);
+
+  // Test thumbnail URLs directly
+  const testThumbnailUrls = useCallback(async () => {
+    console.log('[Store] Testing thumbnail URLs directly...');
+    
+    if (product.videoReviews) {
+      for (const review of product.videoReviews) {
+        const thumbnailAsset = getMediaAsset(review.thumbnail);
+        if (thumbnailAsset) {
+          console.log(`[Store] Testing thumbnail URL: ${thumbnailAsset.uploadLink}`);
+          
+          try {
+            const response = await fetch(thumbnailAsset.uploadLink, { method: 'HEAD' });
+            console.log(`[Store] Thumbnail ${review.thumbnail} status:`, response.status, response.ok);
+            
+            if (!response.ok) {
+              console.error(`[Store] Thumbnail ${review.thumbnail} failed to load:`, response.status, response.statusText);
+            }
+          } catch (error) {
+            console.error(`[Store] Thumbnail ${review.thumbnail} network error:`, error);
+          }
+        } else {
+          console.error(`[Store] Thumbnail asset not found: ${review.thumbnail}`);
+        }
+      }
+    }
+  }, [product.videoReviews]);
+
+
+
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile Navigation Header */}
@@ -1303,7 +1382,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
             <Menu className="h-5 w-5" />
             <span className="text-sm font-medium">Menu</span>
             </Button>
-          <div className="text-lg font-bold text-primary">Store</div>
+          <div className="text-lg font-bold text-primary">{getStoreGeneralText()?.navigation?.store || "Store"}</div>
           {/* Cart Button for Mobile */}
           <Button
             variant="ghost"
@@ -1329,7 +1408,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
         <div className="container mx-auto px-6 py-2">
           <div className="flex items-center justify-between">
             <Link to="/" className="text-2xl font-bold text-primary">
-              Quibble
+              {getStoreGeneralText()?.brandName || "Quibble"}
             </Link>
 
             <div className="flex items-center space-x-8">
@@ -1337,32 +1416,32 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                 to="/"
                 className="transition-colors text-foreground hover:text-primary"
               >
-                Home
+                {getStoreGeneralText()?.navigation?.home || "Home"}
               </Link>
               <Link
                 to="/store"
                 className="transition-colors text-primary"
               >
-                Store
+                {getStoreGeneralText()?.navigation?.store || "Store"}
               </Link>
               <Link
                 to="/about"
                 className="transition-colors text-foreground hover:text-primary"
               >
-                About
+                {getStoreGeneralText()?.navigation?.about || "About"}
               </Link>
               <Link
                 to="/contact"
                 className="transition-colors text-foreground hover:text-primary"
               >
-                Contact
+                {getStoreGeneralText()?.navigation?.contact || "Contact"}
               </Link>
               {user && (
                 <Link
                   to="/dashboard"
                   className="transition-colors text-foreground hover:text-primary"
                 >
-                  Dashboard
+                  {getStoreGeneralText()?.navigation?.dashboard || "Dashboard"}
                 </Link>
               )}
             </div>
@@ -1479,7 +1558,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
           {/* Footer */}
           <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border">
             <div className="text-sm text-muted-foreground text-center">
-              Premium Request Store
+              {getStoreGeneralText()?.storeName || "Premium Request Store"}
             </div>
           </div>
         </div>
@@ -1491,79 +1570,26 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
       {/* Add top padding for desktop to account for fixed header */}
       <div className="hidden lg:block pt-16"></div>
 
-      {/* 
-        Admin Controls Section
-        Provides admin-only tools for managing the store:
-        - Edit Store: Modify product details, pricing, descriptions
-        - Check Storage: Monitor browser storage usage and quotas
-        - Clear Storage: Remove all stored data (useful for troubleshooting)
-        - Fix Images: Update corrupted media asset IDs with correct ones
-        
-        These controls are positioned in the top-right corner for easy access
-        and are only visible to authenticated admin users.
-      */}
-      {isUserAdmin ? (
-        <div className="fixed top-4 right-4 z-50">
-          <div className="flex flex-col items-end gap-2">
-            <Badge variant="secondary" className="text-xs">
-              Admin
-            </Badge>
-            {/* Admin Controls Help - Quick reference for admin users */}
-            <div className="text-xs text-muted-foreground bg-background/80 backdrop-blur-sm px-2 py-1 rounded text-center max-w-48">
-              <p className="font-medium mb-1">Admin Controls:</p>
-              <p className="text-xs">• Edit Store: Modify product details</p>
-              <p className="text-xs">• Check Storage: Monitor browser storage</p>
-              <p className="text-xs">• Clear Storage: Remove all stored data</p>
-              <p className="text-xs">• Fix Images: Update media asset IDs</p>
-            </div>
-            {/* Primary action: Edit store content and settings */}
-            <Button
-              onClick={handleEditStore}
-              className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
-            >
-              <Edit className="h-4 w-4" />
-              Edit Store
-            </Button>
-            {/* Utility buttons for admin maintenance tasks */}
-            <div className="flex gap-2">
-              {/* Monitor browser storage usage and quotas */}
-              <Button
-                onClick={handleCheckStorage}
-                variant="outline"
-                size="sm"
-                className="text-xs"
-              >
-                Check Storage
-              </Button>
-              {/* Remove all stored data (useful for troubleshooting) */}
-              <Button
-                onClick={handleClearStorage}
-                variant="outline"
-                size="sm"
-                className="text-xs text-red-600 hover:text-red-700"
-              >
-                Clear Storage
-              </Button>
-              {/* Fix corrupted media asset IDs */}
-              <Button
-                onClick={fixProductImages}
-                variant="outline"
-                size="sm"
-                className="text-xs text-blue-600 hover:text-blue-700"
-              >
-                <Wrench className="h-3 w-3 mr-1" />
-                Fix Images
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
       {showPopupOffer && (
         <PopupOffer
           onClose={handlePopupClose}
           onGoalSelect={handleGoalSelect}
         />
+      )}
+
+      {/* Admin Controls - Always Visible for Admin Users */}
+      {isUserAdmin && (
+        <div className="fixed top-20 right-4 z-50 bg-primary/10 border border-primary/30 text-primary px-4 py-3 rounded-lg shadow-lg backdrop-blur-sm">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium">🔧 Admin Tools</span>
+            <button
+              onClick={handleClearStorage}
+              className="px-3 py-1 bg-primary text-primary-foreground rounded-md text-xs hover:bg-primary/80 transition-colors"
+            >
+              Clear Storage
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Storage Warning */}
@@ -1602,10 +1628,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
               <div className="lg:sticky lg:top-24 lg:self-start order-1 lg:order-1">
               {/* Product Images */}
               <div className="space-y-4 sm:space-y-6">
-                {(() => {
-                  console.log('🎯 [Store] About to render main product image with assetId:', product.images[currentImageIndex]);
-                  return null;
-                })()}
+                {/* Debug log for main product image */}
                 <div className="relative aspect-square bg-gradient-to-br from-muted/50 to-muted rounded-xl sm:rounded-2xl overflow-hidden shadow-lg sm:shadow-2xl shadow-black/10 border border-border/50">
                   <MediaImage
                     assetId={product.images[currentImageIndex]}
@@ -1683,7 +1706,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                   </Badge>
                 </div>
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary mb-3 leading-tight">
-                  {product.name}
+                  {getMediaAssetText('product-main-image', 'title') || product.name}
                 </h1>
 
                 {/* Rating and Reviews */}
@@ -1706,20 +1729,20 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                         {product.rating}
                       </span>
                       <span className="text-xs sm:text-sm text-muted-foreground">
-                        {product.reviewCount} verified reviews
+                        {product.reviewCount} {getProductUIText()?.verifiedReviews || "verified reviews"}
                       </span>
                     </div>
                   </div>
                   <div className="hidden sm:block h-8 w-px bg-border"></div>
                   <div className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-secondary" />
-                    <span className="text-xs sm:text-sm text-muted-foreground">Verified Purchase</span>
+                    <span className="text-xs sm:text-sm text-muted-foreground">{getProductUIText()?.verifiedPurchase || "Verified Purchase"}</span>
                   </div>
                 </div>
 
                 {/* Model Selector */}
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-primary mb-3">Select Model</h3>
+                  <h3 className="text-lg font-semibold text-primary mb-3">{getProductUIText()?.selectModel || "Select Model"}</h3>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {product.variants.map((variant) => (
                       <button
@@ -1790,7 +1813,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                   <div className="mt-3 text-xs sm:text-sm text-muted-foreground flex flex-wrap items-center gap-2 sm:gap-4">
                     <div className="flex items-center gap-1">
                       <CreditCardIcon className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
-                      <span>Secure payment</span>
+                      <span>{getProductUIText()?.securePayment || "Secure payment"}</span>
                     </div>
                     <span className="text-muted-foreground/50">•</span>
                     <div className="flex items-center gap-1">
@@ -1828,7 +1851,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
 
                 {/* Key Benefits */}
                 <div className="bg-white border border-border/50 rounded-lg sm:rounded-xl p-4 sm:p-6 mb-6 sm:mb-8 shadow-sm">
-                  <h3 className="text-base sm:text-lg font-semibold text-primary mb-4">✨ Why Choose This Product?</h3>
+                  <h3 className="text-base sm:text-lg font-semibold text-primary mb-4">✨ Why Choose This Timepiece?</h3>
                   <div className="grid gap-3">
                     {product.benefits.map((benefit, index) => (
                       <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/20">
@@ -1929,14 +1952,14 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                     variant="ghost"
                     size="lg"
                     className="flex-1 bg-white border border-border/50 hover:bg-primary/5 hover:border-primary/30 transition-all duration-300 rounded-lg sm:rounded-xl text-xs sm:text-sm"
-                    onClick={handleWishlistToggle}
+                    onClick={() => handleWishlistToggle()}
                   >
                     <Heart
                       className={`mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5 transition-all duration-300 ${
-                        isInWishlist("premium-headphones") ? "fill-primary text-primary scale-110" : "text-muted-foreground"
+                        isInWishlist("premium-luxury-watch") ? "fill-primary text-primary scale-110" : "text-muted-foreground"
                       }`}
                     />
-                    <span className="text-muted-foreground">{isInWishlist("premium-headphones") ? "Wishlisted" : "Wishlist"}</span>
+                    <span className="text-muted-foreground">{isInWishlist("premium-luxury-watch") ? "Wishlisted" : "Wishlist"}</span>
                   </Button>
                   <Button 
                     variant="ghost" 
@@ -2067,7 +2090,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
 
             <div className="px-0">
               <p className="text-muted-foreground leading-relaxed text-base sm:text-lg">
-                {product.description}
+                {getMediaAssetText('product-main-image', 'description') || product.description}
               </p>
             </div>
 
@@ -2131,24 +2154,24 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                 {/* two synchronized tracks fill the whole viewport width and loop seamlessly */}
                 <div className="marquee font-semibold uppercase tracking-wide text-xs sm:text-sm h-5 sm:h-6">
                   <div className="marquee__track">
-                    <span className="marquee__item">Empower Your Life</span>
-                    <span className="marquee__item">Revitalize Your Body</span>
-                    <span className="marquee__item">Recover Smarter</span>
-                    <span className="marquee__item">Empower Your Life</span>
-                    <span className="marquee__item">Revitalize Your Body</span>
-                    <span className="marquee__item">Recover Smarter</span>
-                    <span className="marquee__item">Empower Your Life</span>
-                    <span className="marquee__item">Revitalize Your Body</span>
-                    <span className="marquee__item">Recover Smarter</span>
-                    <span className="marquee__item">Empower Your Life</span>
-                    <span className="marquee__item">Revitalize Your Body</span>
-                    <span className="marquee__item">Recover Smarter</span>
-                    <span className="marquee__item">Empower Your Life</span>
-                    <span className="marquee__item">Revitalize Your Body</span>
-                    <span className="marquee__item">Recover Smarter</span>
-                    <span className="marquee__item">Empower Your Life</span>
-                    <span className="marquee__item">Revitalize Your Body</span>
-                    <span className="marquee__item">Recover Smarter</span>
+                    {(getMarqueeText() || ["Define Your Style", "Elevate Your Look", "Command Respect"]).map((phrase, index) => (
+                      <span key={index} className="marquee__item">{phrase}</span>
+                    ))}
+                    {(getMarqueeText() || ["Define Your Style", "Elevate Your Look", "Command Respect"]).map((phrase, index) => (
+                      <span key={`repeat-${index}`} className="marquee__item">{phrase}</span>
+                    ))}
+                    {(getMarqueeText() || ["Define Your Style", "Elevate Your Look", "Command Respect"]).map((phrase, index) => (
+                      <span key={`repeat2-${index}`} className="marquee__item">{phrase}</span>
+                    ))}
+                    {(getMarqueeText() || ["Define Your Style", "Elevate Your Look", "Command Respect"]).map((phrase, index) => (
+                      <span key={`repeat3-${index}`} className="marquee__item">{phrase}</span>
+                    ))}
+                    {(getMarqueeText() || ["Define Your Style", "Elevate Your Look", "Command Respect"]).map((phrase, index) => (
+                      <span key={`repeat4-${index}`} className="marquee__item">{phrase}</span>
+                    ))}
+                    {(getMarqueeText() || ["Define Your Style", "Elevate Your Look", "Command Respect"]).map((phrase, index) => (
+                      <span key={`repeat5-${index}`} className="marquee__item">{phrase}</span>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -2156,7 +2179,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
 
             {/* Product Video + Accent Panel (full-width square composition) */}
             {product.videos.length > 0 && (
-              <div className="max-w-7xl mx-auto px-0">
+              <div ref={feelTheDifferenceRef} className="max-w-7xl mx-auto px-0">
                 {/* Mobile: Stacked layout (video on top, panel below) */}
                 <div className="block lg:hidden">
                   {/* Video on top - Mobile optimized for TikTok-like resolution */}
@@ -2169,20 +2192,24 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                   <div className="w-full px-4">
                     <div className="w-full bg-secondary text-secondary-foreground py-8 sm:py-12 rounded-b-lg">
                       <div className="max-w-2xl mx-auto px-4">
-                        <h3 className="text-2xl sm:text-3xl font-extrabold leading-tight">Feel The Difference</h3>
+                        <h3 className="text-2xl sm:text-3xl font-extrabold leading-tight">
+                          {getFeelTheDifferenceContent()?.title || "Feel The Difference"}
+                        </h3>
                         <p className="mt-3 sm:mt-4 text-sm sm:text-base opacity-90">
-                          Discover how consistent, targeted recovery elevates your daily routine. Our device combines engineered pressure, heat management, and ergonomic design to help loosen tight muscles and restore natural mobility in minutes.
+                          {getFeelTheDifferenceContent()?.description || "Discover how consistent, targeted recovery elevates your daily routine. Our device combines engineered pressure, heat management, and ergonomic design to help loosen tight muscles and restore natural mobility in minutes."}
                         </p>
                         <p className="mt-3 text-sm sm:text-base opacity-90">
-                          Whether you are preparing for a workout, resetting after sitting all day, or winding down before bed, a few focused minutes can change the way your body feels. Most people notice improved range of motion, less stiffness, and a calmer, more relaxed state right away.
+                          {getFeelTheDifferenceContent()?.features?.[0] || "Whether you are preparing for a workout, resetting after sitting all day, or winding down before bed, a few focused minutes can change the way your body feels. Most people notice improved range of motion, less stiffness, and a calmer, more relaxed state right away."}
                         </p>
                         <p className="mt-3 text-sm sm:text-base opacity-90">
-                          Built with premium materials and tuned for everyday use, it is designed to be quiet, powerful, and reliable. And if you do not love it, our 30‑day money‑back guarantee makes it completely risk‑free to try.
+                          {getFeelTheDifferenceContent()?.features?.[1] || "Built with premium materials and tuned for everyday use, it is designed to be quiet, powerful, and reliable. And if you do not love it, our 30‑day money‑back guarantee makes it completely risk‑free to try."}
                         </p>
                         <div className="mt-5 sm:mt-6 flex flex-wrap gap-2">
-                          <span className="px-3 py-1 rounded-full bg-secondary-foreground/10 text-secondary-foreground text-xs sm:text-sm font-semibold">Premium Build</span>
-                          <span className="px-3 py-1 rounded-full bg-secondary-foreground/10 text-secondary-foreground text-xs sm:text-sm font-semibold">Fast Relief</span>
-                          <span className="px-3 py-1 rounded-full bg-secondary-foreground/10 text-secondary-foreground text-xs sm:text-sm font-semibold">Trusted by Pros</span>
+                          {(getFeelTheDifferenceContent()?.benefits || ["Premium Build", "Fast Relief", "Trusted by Pros"]).map((benefit) => (
+                            <span key={benefit} className="px-3 py-1 rounded-full bg-secondary-foreground/10 text-secondary-foreground text-xs sm:text-sm font-semibold">
+                              {benefit}
+                            </span>
+                          ))}
                         </div>
                       </div>
                     </div>
@@ -2200,20 +2227,24 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                   {/* Right: promo panel */}
                   <div className="absolute inset-y-0 right-0 w-1/2">
                     <div className="w-full h-full rounded-none bg-secondary text-secondary-foreground p-6 sm:p-10 flex flex-col justify-center border-0 overflow-y-auto">
-                      <h3 className="text-2xl sm:text-4xl font-extrabold leading-tight">Feel The Difference</h3>
+                      <h3 className="text-2xl sm:text-4xl font-extrabold leading-tight">
+                        {getFeelTheDifferenceContent()?.title || "Feel The Difference"}
+                      </h3>
                       <p className="mt-3 sm:mt-4 text-sm sm:text-base opacity-90">
-                        Discover how consistent, targeted recovery elevates your daily routine. Our device combines engineered pressure, heat management, and ergonomic design to help loosen tight muscles and restore natural mobility in minutes.
+                        {getFeelTheDifferenceContent()?.description || "Discover how consistent, targeted recovery elevates your daily routine. Our device combines engineered pressure, heat management, and ergonomic design to help loosen tight muscles and restore natural mobility in minutes."}
                       </p>
                       <p className="mt-3 text-sm sm:text-base opacity-90">
-                        Whether you are preparing for a workout, resetting after sitting all day, or winding down before bed, a few focused minutes can change the way your body feels. Most people notice improved range of motion, less stiffness, and a calmer, more relaxed state right away.
+                        {getFeelTheDifferenceContent()?.features?.[0] || "Whether you are preparing for a workout, resetting after sitting all day, or winding down before bed, a few focused minutes can change the way your body feels. Most people notice improved range of motion, less stiffness, and a calmer, more relaxed state right away."}
                       </p>
                       <p className="mt-3 text-sm sm:text-base opacity-90">
-                        Built with premium materials and tuned for everyday use, it is designed to be quiet, powerful, and reliable. And if you do not love it, our 30‑day money‑back guarantee makes it completely risk‑free to try.
+                        {getFeelTheDifferenceContent()?.features?.[1] || "Built with premium materials and tuned for everyday use, it is designed to be quiet, powerful, and reliable. And if you do not love it, our 30‑day money‑back guarantee makes it completely risk‑free to try."}
                       </p>
                       <div className="mt-5 sm:mt-6 flex flex-wrap gap-2">
-                        <span className="px-3 py-1 rounded-full bg-secondary-foreground/10 text-secondary-foreground text-xs sm:text-sm font-semibold">Premium Build</span>
-                        <span className="px-3 py-1 rounded-full bg-secondary-foreground/10 text-secondary-foreground text-xs sm:text-sm font-semibold">Fast Relief</span>
-                        <span className="px-3 py-1 rounded-full bg-secondary-foreground/10 text-secondary-foreground text-xs sm:text-sm font-semibold">Trusted by Pros</span>
+                        {(getFeelTheDifferenceContent()?.benefits || ["Premium Build", "Fast Relief", "Trusted by Pros"]).map((benefit) => (
+                          <span key={benefit} className="px-3 py-1 rounded-full bg-secondary-foreground/10 text-secondary-foreground text-xs sm:text-sm font-semibold">
+                            {benefit}
+                          </span>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -2223,6 +2254,8 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
           </div>
         </div>
       </section>
+
+
 
       {/* Video Reviews Carousel */}
       <section className="py-16 sm:py-24 px-4 sm:px-6 bg-gradient-to-br from-primary/5 via-secondary/5 to-primary/10">
@@ -2231,175 +2264,531 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
             <div className="text-center sm:text-left flex-1 mb-4 sm:mb-0">
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary mb-3 sm:mb-4 flex items-center justify-center sm:justify-start gap-3">
                 <Video className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-                Real Customer Stories
+                {getReviewsSectionContent()?.subtitle || "Real Customer Stories"}
               </h2>
               <p className="text-base sm:text-xl text-muted-foreground max-w-2xl mx-auto sm:mx-0">
-                See what our customers are saying about their experience with our premium headphones
+                {getReviewsSectionContent()?.description || "See what our customers are saying about their experience with our premium watch"}
               </p>
+              {/* Video preloading controls and status - REMOVED: Now automatic */}
             </div>
-            {isUserAdmin && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsEditingVideos(true)}
-                className="flex items-center gap-2"
-              >
-                <Edit className="h-4 w-4 text-primary" />
-                Edit Videos
-              </Button>
-            )}
+
           </div>
           <div className="relative">
-            <div 
-              ref={setCarouselRef}
-              className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 group [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
-              style={{ 
-                scrollBehavior: 'smooth'
-              }}
-            >
-              {/* Create infinite scroll by repeating videos multiple times */}
-              {Array.from({ length: 5 }, (_, repeatIndex) => 
-                (product.videoReviews || []).map((video, index) => (
-                  <div 
-                    key={`${video.id}-${repeatIndex}-${index}`} 
-                    className="flex-shrink-0 w-56 sm:w-64"
-                  >
-                                         <div 
-                      className="group relative bg-white rounded-lg sm:rounded-xl shadow-lg overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-105"
-                       onClick={() => handleVideoClick(video)}
-                       onMouseEnter={() => setHoveredVideo(video.id)}
-                       onMouseLeave={() => setHoveredVideo(null)}
-                     >
-                       <div className="aspect-[9/16] bg-muted relative">
-                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                         
-                         {/* Video Player - Shows on hover */}
-                         {hoveredVideo === video.id && (
-                           <div className="absolute inset-0 bg-black animate-in fade-in duration-300">
-                             {renderVideoContent(video.videoUrl, "w-full h-full object-cover", false)}
-                           </div>
-                         )}
-                         
-                         {/* Thumbnail - Shows when not hovered */}
-                         {hoveredVideo !== video.id && (
-                           <>
-                             {/* Play overlay indicator */}
-                             <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center">
-                                <Play className="h-5 w-5 sm:h-6 sm:w-6 text-black ml-1" />
-                               </div>
-                             </div>
-                             
-                            <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 right-2 sm:right-3">
-                               <div className="flex items-center justify-between">
-                                 <div className="flex items-center gap-1">
-                                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center cursor-pointer hover:bg-white/30 transition-colors">
-                                    <Play className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white" />
-                                   </div>
-                                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center cursor-pointer hover:bg-white/30 transition-colors">
-                                    <Volume2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white" />
-                                   </div>
-                                 </div>
-                                <div className="w-5 h-5 sm:w-6 sm:h-6 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center cursor-pointer hover:bg-white/30 transition-colors">
-                                  <Maximize2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white" />
-                                 </div>
-                               </div>
-                             </div>
-                             <MediaImage
-                               assetId={video.thumbnail}
-                               alt={`Video testimonial by ${video.customerName}`}
-                               className="w-full h-full object-cover"
-                             />
-                           </>
-                         )}
-                       </div>
-                      <div className="p-2 sm:p-3">
-                        <p className="text-xs text-muted-foreground leading-relaxed">
-                          "{video.testimonial}"
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-2 font-medium">
-                          - {video.customerName}
-                        </p>
+            {/* Video carousel with infinite scroll using marquee pattern */}
+            <div className="marquee overflow-hidden pb-4 group" onMouseEnter={() => {
+              // Pause carousel animation on hover
+              const track = document.querySelector('.marquee__track') as HTMLElement;
+              if (track) {
+                track.style.animationPlayState = 'paused';
+              }
+            }} onMouseLeave={() => {
+              // Resume carousel animation when leaving
+              const track = document.querySelector('.marquee__track') as HTMLElement;
+              if (track) {
+                track.style.animationPlayState = 'running';
+              }
+            }}>
+              <div className="marquee__track flex gap-3 sm:gap-4 mobile-fast">
+                {/* First set of videos */}
+                {(product.videoReviews || []).map((video, index) => {
+                  const isMediaAssetId = !video.videoUrl.startsWith('http') && !video.videoUrl.startsWith('data:') && !video.videoUrl.startsWith('/');
+                  const mediaAsset = isMediaAssetId ? getMediaAsset(video.videoUrl) : undefined;
+                  const videoUrl = mediaAsset ? mediaAsset.uploadLink : video.videoUrl;
+                  const isLoading = videoLoadingStates[videoUrl] || !preloadedVideos.has(videoUrl);
+                  const videoId = `first-${video.id}`; // Unique ID for first set
+                  
+                  return (
+                    <div 
+                      key={`${video.id}-first-${index}`} 
+                      className="flex-shrink-0 w-64 sm:w-72"
+                    >
+                      <div 
+                        className="group relative bg-white rounded-lg sm:rounded-xl shadow-lg overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-105"
+                        onClick={() => handleVideoClick(video)}
+                        onMouseEnter={() => {
+                          setHoveredVideo(videoId);
+                          // Auto-play video when hovering
+                          setTimeout(() => {
+                            const videoElement = document.querySelector(`video[data-video-id="${videoId}"]`) as HTMLVideoElement;
+                            if (videoElement) {
+                              videoElement.play().catch(err => {
+                                console.error('[Video Auto-Play] Failed to play video:', err);
+                              });
+                            }
+                          }, 100);
+                        }}
+                        onMouseLeave={() => setHoveredVideo(null)}
+                      >
+                        <div className="aspect-[9/16] bg-muted relative">
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                          
+                          {/* Video Player - Shows on hover */}
+                          {hoveredVideo === videoId && (
+                            <div className="absolute inset-0 bg-black animate-in fade-in duration-300">
+                              {/* Loading indicator while video is loading */}
+                              {isLoading && (
+                                <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
+                                  <div className="text-center">
+                                    <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                                    <p className="text-white text-sm">Loading video...</p>
+                                  </div>
+                                </div>
+                              )}
+                              {renderVideoReviewContent(video, "w-full h-full object-cover", videoId)}
+                            </div>
+                          )}
+                          
+                          {/* Loading indicator overlay on thumbnail when videos are preloading */}
+                          {!hoveredVideo && isPreloadingVideos && !preloadedVideos.has(videoUrl) && (
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                              <div className="text-center">
+                                <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-1"></div>
+                                <p className="text-white text-xs">Preloading...</p>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Subtle pulsing effect for videos being preloaded */}
+                          {!hoveredVideo && isPreloadingVideos && !preloadedVideos.has(videoUrl) && (
+                            <div className="absolute inset-0 bg-primary/10 animate-pulse rounded-lg"></div>
+                          )}
+                          
+                          {/* Thumbnail - Shows when not hovered */}
+                          {hoveredVideo !== videoId && (
+                            <>
+                              {/* Play overlay indicator */}
+                              <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center">
+                                  <Play className="h-5 w-5 sm:h-6 sm:w-6 text-black ml-1" />
+                                </div>
+                              </div>
+                              
+                              {/* Click to play button - always visible */}
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setHoveredVideo(videoId);
+                                    // Small delay to ensure hover state is set before video loads
+                                    setTimeout(() => {
+                                      const videoElement = document.querySelector(`video[data-video-id="${videoId}"]`) as HTMLVideoElement;
+                                      if (videoElement) {
+                                        videoElement.play().catch(err => {
+                                          console.error('[Video Play] Failed to play video:', err);
+                                        });
+                                      }
+                                    }, 100);
+                                  }}
+                                  className="w-16 h-16 sm:w-20 sm:h-20 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-all duration-200 hover:scale-110 shadow-lg"
+                                  title="Click to play video"
+                                >
+                                  <Play className="h-8 w-8 sm:h-10 sm:w-10 text-black ml-1" />
+                                </button>
+                              </div>
+                              
+                              {/* Preloading info tooltip - REMOVED: Now automatic */}
+                              
+                              {/* Preloaded indicator - REMOVED: Now automatic */}
+                              
+                              <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 right-2 sm:right-3">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-1">
+                                    <div 
+                                      className="w-5 h-5 sm:w-6 sm:h-6 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center cursor-pointer hover:bg-white/30 transition-colors"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const videoElement = document.querySelector(`video[data-video-id="${videoId}"]`) as HTMLVideoElement;
+                                        if (videoElement) {
+                                          if (videoElement.paused) {
+                                            videoElement.play().catch(err => {
+                                              console.error('[Video Play] Failed to play video:', err);
+                                            });
+                                          } else {
+                                            videoElement.pause();
+                                          }
+                                        }
+                                      }}
+                                      title="Play/Pause"
+                                    >
+                                      <Play className="h-2.5 w-2.5 sm:h-3 w-3 text-white" />
+                                    </div>
+                                    <div 
+                                      className="w-5 h-5 sm:w-6 sm:h-6 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center cursor-pointer hover:bg-white/30 transition-colors"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const videoElement = document.querySelector(`video[data-video-id="${videoId}"]`) as HTMLVideoElement;
+                                        if (videoElement) {
+                                          videoElement.muted = !videoElement.muted;
+                                        }
+                                      }}
+                                      title="Toggle Mute"
+                                    >
+                                      <Volume2 className="h-2.5 w-2.5 sm:h-3 w-3 text-white" />
+                                    </div>
+                                  </div>
+                                  <div 
+                                    className="w-5 h-5 sm:w-6 sm:h-6 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center cursor-pointer hover:bg-white/30 transition-colors"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleFullscreen(videoId);
+                                    }}
+                                    title="Toggle fullscreen"
+                                  >
+                                    <Maximize2 className="h-2.5 w-2.5 sm:h-3 w-3 text-white" />
+                                  </div>
+                                </div>
+                              </div>
+                              <MediaImage
+                                assetId={video.thumbnail}
+                                alt={`Video testimonial by ${video.customerName}`}
+                                className="w-full h-full object-cover"
+                                fallbackUrl="/placeholder.svg"
+                                errorFallback={
+                                  <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
+                                    <div className="text-center">
+                                      <Play className="h-8 w-8 text-primary mx-auto mb-2" />
+                                      <p className="text-xs text-muted-foreground">Video Review</p>
+                                    </div>
+                                  </div>
+                                }
+                              />
+                            </>
+                          )}
+                        </div>
+                        <div className="p-3 sm:p-4 min-h-[120px] sm:min-h-[140px] overflow-visible video-testimonial-text">
+                          {(() => {
+                            // Try to get text content from media asset first
+                            const mediaAssetTestimonial = getMediaAssetTestimonial(video.videoUrl);
+                            const testimonialText = mediaAssetTestimonial?.testimonial || video.testimonial;
+                            const customerName = mediaAssetTestimonial?.customerName || video.customerName;
+                            
+                            return (
+                              <>
+                                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed break-words whitespace-normal overflow-visible">
+                                  "{testimonialText}"
+                                </p>
+                                <p className="text-xs sm:text-sm text-muted-foreground mt-2 font-medium">
+                                  - {customerName}
+                                </p>
+                              </>
+                            );
+                          })()}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
-              )}
+                  );
+                })}
+                
+                {/* Duplicate set for seamless loop */}
+                {(product.videoReviews || []).map((video, index) => {
+                  const isMediaAssetId = !video.videoUrl.startsWith('http') && !video.videoUrl.startsWith('data:') && !video.videoUrl.startsWith('/');
+                  const mediaAsset = isMediaAssetId ? getMediaAsset(video.videoUrl) : undefined;
+                  const videoUrl = mediaAsset ? mediaAsset.uploadLink : video.videoUrl;
+                  const isLoading = videoLoadingStates[videoUrl] || !preloadedVideos.has(videoUrl);
+                  const videoId = `second-${video.id}`; // Unique ID for second set
+                  
+                  return (
+                    <div 
+                      key={`${video.id}-second-${index}`} 
+                      className="flex-shrink-0 w-64 sm:w-72"
+                    >
+                      <div 
+                        className="group relative bg-white rounded-lg sm:rounded-xl shadow-lg overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-105"
+                        onClick={() => handleVideoClick(video)}
+                        onMouseEnter={() => {
+                          setHoveredVideo(videoId);
+                          // Auto-play video when hovering
+                          setTimeout(() => {
+                            const videoElement = document.querySelector(`video[data-video-id="${videoId}"]`) as HTMLVideoElement;
+                            if (videoElement) {
+                              videoElement.play().catch(err => {
+                                console.error('[Video Auto-Play] Failed to play video:', err);
+                              });
+                            }
+                          }, 100);
+                        }}
+                        onMouseLeave={() => setHoveredVideo(null)}
+                      >
+                        <div className="aspect-[9/16] bg-muted relative">
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                          
+                          {/* Video Player - Shows on hover */}
+                          {hoveredVideo === videoId && (
+                            <div className="absolute inset-0 bg-black animate-in fade-in duration-300">
+                              {/* Loading indicator while video is loading */}
+                              {isLoading && (
+                                <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
+                                  <div className="text-center">
+                                    <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                                    <p className="text-white text-sm">Loading video...</p>
+                                  </div>
+                                </div>
+                              )}
+                              {renderVideoReviewContent(video, "w-full h-full object-cover", videoId)}
+                            </div>
+                          )}
+                          
+                          {/* Loading indicator overlay on thumbnail when videos are preloading */}
+                          {!hoveredVideo && isPreloadingVideos && !preloadedVideos.has(videoUrl) && (
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                              <div className="text-center">
+                                <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-1"></div>
+                                <p className="text-white text-xs">Preloading...</p>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Subtle pulsing effect for videos being preloaded */}
+                          {!hoveredVideo && isPreloadingVideos && !preloadedVideos.has(videoUrl) && (
+                            <div className="absolute inset-0 bg-primary/10 animate-pulse rounded-lg"></div>
+                          )}
+                          
+                          {/* Thumbnail - Shows when not hovered */}
+                          {hoveredVideo !== videoId && (
+                            <>
+                              {/* Play overlay indicator */}
+                              <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center">
+                                  <Play className="h-5 w-5 sm:h-6 sm:w-6 text-black ml-1" />
+                                </div>
+                              </div>
+                              
+                              {/* Click to play button - always visible */}
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setHoveredVideo(videoId);
+                                    // Small delay to ensure hover state is set before video loads
+                                    setTimeout(() => {
+                                      const videoElement = document.querySelector(`video[data-video-id="${videoId}"]`) as HTMLVideoElement;
+                                      if (videoElement) {
+                                        videoElement.play().catch(err => {
+                                          console.error('[Video Play] Failed to play video:', err);
+                                        });
+                                      }
+                                    }, 100);
+                                  }}
+                                  className="w-16 h-16 sm:w-20 sm:h-20 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-all duration-200 hover:scale-110 shadow-lg"
+                                  title="Click to play video"
+                                >
+                                  <Play className="h-8 w-8 sm:h-10 sm:w-10 text-black ml-1" />
+                                </button>
+                              </div>
+                              
+                              {/* Preloading info tooltip - REMOVED: Now automatic */}
+                              
+                              {/* Preloaded indicator - REMOVED: Now automatic */}
+                              
+                              <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 right-2 sm:right-3">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-1">
+                                    <div 
+                                      className="w-5 h-5 sm:w-6 sm:h-6 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center cursor-pointer hover:bg-white/30 transition-colors"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const videoElement = document.querySelector(`video[data-video-id="${videoId}"]`) as HTMLVideoElement;
+                                        if (videoElement) {
+                                          if (videoElement.paused) {
+                                            videoElement.play().catch(err => {
+                                              console.error('[Video Play] Failed to play video:', err);
+                                            });
+                                          } else {
+                                            videoElement.pause();
+                                          }
+                                        }
+                                      }}
+                                      title="Play/Pause"
+                                    >
+                                      <Play className="h-2.5 w-2.5 sm:h-3 w-3 text-white" />
+                                    </div>
+                                    <div 
+                                      className="w-5 h-5 sm:w-6 sm:h-6 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center cursor-pointer hover:bg-white/30 transition-colors"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const videoElement = document.querySelector(`video[data-video-id="${videoId}"]`) as HTMLVideoElement;
+                                        if (videoElement) {
+                                          videoElement.muted = !videoElement.muted;
+                                        }
+                                      }}
+                                      title="Toggle Mute"
+                                    >
+                                      <Volume2 className="h-2.5 w-2.5 sm:h-3 w-3 text-white" />
+                                    </div>
+                                  </div>
+                                  <div 
+                                    className="w-5 h-5 sm:w-6 sm:h-6 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center cursor-pointer hover:bg-white/30 transition-colors"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleFullscreen(videoId);
+                                    }}
+                                    title="Toggle fullscreen"
+                                  >
+                                    <Maximize2 className="h-2.5 w-2.5 sm:h-3 w-3 text-white" />
+                                  </div>
+                                </div>
+                              </div>
+                              <MediaImage
+                                assetId={video.thumbnail}
+                                alt={`Video testimonial by ${video.customerName}`}
+                                className="w-full h-full object-cover"
+                                fallbackUrl="/placeholder.svg"
+                                errorFallback={
+                                  <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
+                                    <div className="text-center">
+                                      <Play className="h-8 w-8 text-primary mx-auto mb-2" />
+                                      <p className="text-xs text-muted-foreground">Video Review</p>
+                                    </div>
+                                  </div>
+                                }
+                              />
+                            </>
+                          )}
+                        </div>
+                        <div className="p-3 sm:p-4 min-h-[120px] sm:min-h-[140px] overflow-visible video-testimonial-text">
+                          {(() => {
+                            // Try to get text content from media asset first
+                            const mediaAssetTestimonial = getMediaAssetTestimonial(video.videoUrl);
+                            const testimonialText = mediaAssetTestimonial?.testimonial || video.testimonial;
+                            const customerName = mediaAssetTestimonial?.customerName || video.customerName;
+                            
+                            return (
+                              <>
+                                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed break-words whitespace-normal overflow-visible">
+                                  "{testimonialText}"
+                                </p>
+                                <p className="text-xs sm:text-sm text-muted-foreground mt-2 font-medium">
+                                  - {customerName}
+                                </p>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Bundle Section - Clean & Effective Results */}
+      {/* Bundle Section - Style & Elegance Results */}
       <section className="py-16 sm:py-24 px-4 sm:px-6 bg-gradient-to-br from-muted/20 via-background to-muted/10">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 items-center">
             {/* Left: Text Content */}
             <div className="space-y-6 sm:space-y-8">
               <div>
-                <p className="text-sm sm:text-base font-semibold text-secondary uppercase tracking-wide mb-2">WITH THE BUNDLE</p>
+                <p className="text-sm sm:text-base font-semibold text-secondary uppercase tracking-wide mb-2">
+                  {getBundleSectionContent()?.title || "WITH THE BUNDLE"}
+                </p>
                 <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-primary leading-tight">
-                  Clean & Effective Results Guaranteed
+                  {getBundleSectionContent()?.subtitle || "Style & Elegance Results Guaranteed"}
                 </h2>
               </div>
               
               <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
-                Experience the <span className="font-semibold text-primary">Uproot Clean Complete Package</span> - your all-in-one solution for comprehensive cleaning. This premium bundle includes everything you need to transform your space into a pristine, hair-free sanctuary.
+                {getBundleSectionContent()?.description || "Experience the RICEGGO Azure Complete Package - your all-in-one solution for comprehensive style. This premium bundle includes everything you need to transform your look into a sophisticated, elegant presence."}
               </p>
               
               <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
-                Our complete package features a compact precision tool for hard-to-reach spots, a powerful cleaning weapon for stubborn fur, a double-width cleaner for larger areas, and a professional-grade deshedder. Each component is engineered for maximum effectiveness and durability.
+                Our complete package features a premium watch with a unique Arabic dial design, a comfortable jubilee-style bracelet, precision quartz movement, and a durable stainless steel case. Each component is engineered for maximum style and reliability.
               </p>
               
               <div>
-                <h3 className="text-lg sm:text-xl font-semibold text-primary mb-4">Designed to clean:</h3>
+                <h3 className="text-lg sm:text-xl font-semibold text-primary mb-4">
+                  {getBundleSectionHeader()?.headerText || "Designed to impress:"}
+                </h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-                  {[
-                    { name: 'Carpets', icon: '🟦' },
-                    { name: 'Cars', icon: '🚗' },
-                    { name: 'Dogs', icon: '🐕' },
-                    { name: 'Cats', icon: '🐱' },
-                    { name: 'Wiry Coats', icon: '🌀' },
-                    { name: 'Double Coats', icon: '⚡' },
-                    { name: 'Long Coats', icon: '✨' },
-                    { name: 'Furniture', icon: '🛋️' },
-                    { name: 'Bedding', icon: '🛏️' }
-                  ].map((item) => (
-                    <div key={item.name} className="flex items-center gap-2 p-2 sm:p-3 rounded-lg bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/20">
-                      <span className="text-lg sm:text-xl">{item.icon}</span>
-                      <span className="text-sm sm:text-base font-medium text-primary">{item.name}</span>
-                    </div>
-                  ))}
+                  {(getBundleSectionContent()?.benefits || [
+                    'Dynamic Dial', 'Iconic Look', 'Comfortable Fit', 'Versatile Style', 'Gifts', 
+                    'Casual Wear', 'Watch Collectors', 'Daily Use'
+                  ]).map((item, index) => {
+                    const icons = getBundleSectionHeader()?.benefitsIcons || ["⌚", "✨", "💎", "🌟", "🎯", "🔥", "💫", "🏆", "⭐"];
+                    return (
+                      <div key={item} className="flex items-center gap-2 p-2 sm:p-3 rounded-lg bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/20">
+                        <span className="text-lg sm:text-xl">{icons[index] || '✨'}</span>
+                        <span className="text-sm sm:text-base font-medium text-primary">{item}</span>
+                      </div>
+                    );
+                  })}
                 </div>
                 <div className="flex items-center gap-2 mt-4 text-secondary font-semibold">
                   <span className="text-lg">✨</span>
-                  <span className="text-sm sm:text-base">And much more!</span>
+                  <span className="text-sm sm:text-base">
+                    {getBundleSectionContent()?.ctaText || "And much more!"}
+                  </span>
                 </div>
               </div>
             </div>
             
             {/* Right: Dynamic Visual */}
             <div className="relative">
-              <div className="aspect-[4/3] sm:aspect-[3/2] rounded-xl overflow-hidden shadow-2xl border border-border/50">
-                <div className="w-full h-full bg-gradient-to-br from-secondary/20 to-primary/20 relative">
-                  {/* Placeholder for dynamic visual - replace with actual video/image */}
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center space-y-4">
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-secondary/20 rounded-full flex items-center justify-center mx-auto">
-                        <Play className="h-8 w-8 sm:h-10 sm:w-10 text-secondary ml-1" />
+              <div 
+                className="relative"
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+                onMouseMove={handleMouseMove}
+              >
+                <div className="aspect-[4/3] sm:aspect-[3/2] rounded-xl overflow-hidden shadow-2xl border border-border/50">
+                  {/* Bundle Demonstration Video */}
+                  <MediaImage
+                    assetId="bundle-demonstration-video"
+                    alt={getBundleSectionContent()?.description || "Bundle Product Demonstration - Watch how our watch bundle transforms your style"}
+                    className="w-full h-full object-cover"
+                    fallbackUrl="placeholder-image"
+                    // Video-specific props
+                    autoPlay={false}
+                    muted={true}
+                    loop={true}
+                    controls={false} // Native controls removed
+                    playsInline={true}
+                    ref={videoRef} // Pass ref
+                    onPlay={handleVideoStateChange} // Event handlers
+                    onPause={handleVideoStateChange}
+                    onEnded={() => setIsVideoPlaying(false)}
+                    errorFallback={
+                      <div className="w-full h-full bg-gradient-to-br from-secondary/20 to-primary/20 relative flex items-center justify-center">
+                        <div className="text-center space-y-4">
+                          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-secondary/20 rounded-full flex items-center justify-center mx-auto">
+                            <Play className="h-8 w-8 sm:h-10 sm:h-10 text-secondary ml-1" />
+                          </div>
+                          <p className="text-sm sm:text-base font-medium text-primary">
+                            {getBundleSectionContent()?.title || "Product Demonstration"}
+                          </p>
+                          <p className="text-xs sm:text-sm text-muted-foreground">
+                            {getBundleSectionContent()?.subtitle || "Watch how our bundle transforms your style"}
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-sm sm:text-base font-medium text-primary">Product Demonstration</p>
-                      <p className="text-xs sm:text-sm text-muted-foreground">Watch how our bundle transforms cleaning</p>
+                    }
+                  />
+
+                  {/* Play button overlay - only show when conditions are met */}
+                  {showPlayButton && (
+                    <div
+                      className="absolute inset-0 flex items-center justify-center cursor-pointer"
+                      onClick={handlePlayVideo}
+                    >
+                                        <div className={`w-16 h-16 sm:w-20 sm:h-20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/30 transition-colors ${
+                    isVideoPlaying ? 'bg-primary/30' : 'bg-white/20'
+                  }`}>
+                        {isVideoPlaying ? (
+                          <Pause className="h-8 w-8 sm:h-10 sm:h-10 text-white" />
+                        ) : (
+                          <Play className="h-8 w-8 sm:h-10 sm:h-10 text-white ml-1" />
+                        )}
+                      </div>
+                      {/* Playing indicator */}
+                      {isVideoPlaying && (
+                        <div className="absolute top-2 right-2 bg-green-500/80 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
+                          Playing
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  
-                  {/* Overlay elements to simulate the cleaning effect */}
-                  <div className="absolute top-4 left-4 w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
-                    <div className="w-3 h-3 bg-secondary rounded-full"></div>
-                  </div>
-                  
-                  {/* Simulated cleaning path */}
-                  <div className="absolute top-1/2 left-1/4 w-1/2 h-1 bg-secondary/40 rounded-full transform -translate-y-1/2"></div>
+                  )}
                 </div>
               </div>
             </div>
@@ -2412,19 +2801,9 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
         <div className="container mx-auto max-w-7xl">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 sm:mb-8">
             <h2 className="text-2xl sm:text-3xl font-bold text-primary mb-4 sm:mb-0">
-              Reviews
+              {getReviewsSectionContent()?.title || "Reviews"}
             </h2>
-            {isUserAdmin && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsEditingReviews(true)}
-                className="flex items-center gap-2"
-              >
-                <Edit className="h-4 w-4 text-primary" />
-                Edit Reviews
-              </Button>
-            )}
+
           </div>
           
           {/* Mobile Grid Layout */}
@@ -2487,8 +2866,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
           <div className="hidden sm:flex gap-4 lg:gap-6">
              {/* Column 1 - Tall cards */}
                          <div className="flex-1 space-y-4 lg:space-y-6">
-              {product.reviews.slice(0, displayedReviews).map((review, index) => {
-                 if (index % 4 !== 0) return null; // Only show cards for column 1
+              {product.reviews.slice(0, displayedReviews).filter((_, index) => index % 4 === 0).map((review, index) => {
                  return (
                    <div key={review.id} className="transform transition-all duration-300 hover:scale-105">
                      <Card className="border shadow-sm bg-white overflow-hidden h-[500px]">
@@ -2546,8 +2924,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
 
              {/* Column 2 - Short cards */}
             <div className="flex-1 space-y-4 lg:space-y-6">
-              {product.reviews.slice(0, displayedReviews).map((review, index) => {
-                 if (index % 4 !== 1) return null; // Only show cards for column 2
+              {product.reviews.slice(0, displayedReviews).filter((_, index) => index % 4 === 1).map((review, index) => {
                  return (
                    <div key={review.id} className="transform transition-all duration-300 hover:scale-105">
                      <Card className="border shadow-sm bg-white overflow-hidden h-[450px]">
@@ -2605,8 +2982,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
 
              {/* Column 3 - Tall cards */}
             <div className="flex-1 space-y-4 lg:space-y-6">
-              {product.reviews.slice(0, displayedReviews).map((review, index) => {
-                 if (index % 4 !== 2) return null; // Only show cards for column 3
+              {product.reviews.slice(0, displayedReviews).filter((_, index) => index % 4 === 2).map((review, index) => {
                  return (
                    <div key={review.id} className="transform transition-all duration-300 hover:scale-105">
                      <Card className="border shadow-sm bg-white overflow-hidden h-[500px]">
@@ -2664,8 +3040,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
 
              {/* Column 4 - Short cards */}
             <div className="flex-1 space-y-4 lg:space-y-6">
-              {product.reviews.slice(0, displayedReviews).map((review, index) => {
-                 if (index % 4 !== 3) return null; // Only show cards for column 4
+              {product.reviews.slice(0, displayedReviews).filter((_, index) => index % 4 === 3).map((review, index) => {
                  return (
                    <div key={review.id} className="transform transition-all duration-300 hover:scale-105">
                      <Card className="border shadow-sm bg-white overflow-hidden h-[450px]">
@@ -2727,14 +3102,11 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
             <div className="flex justify-center mt-6 sm:mt-8">
               <Button
                 onClick={handleLoadMoreReviews}
-                variant="outline"
+                variant="default"
                 size="lg"
                 className="px-6 sm:px-8 py-2 sm:py-3"
               >
-                Load More Reviews
-                <span className="ml-2 text-xs sm:text-sm text-muted-foreground">
-                  ({product.reviews.length - displayedReviews} remaining)
-                </span>
+                {getReviewsSectionContent()?.loadMoreButton || "Load More Reviews"}
               </Button>
             </div>
           )}
@@ -2814,24 +3186,30 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
       {/* Video Modal */}
       {showVideoModal && selectedVideo && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-2 sm:p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+          <div className="video-modal bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
             <div className="flex items-center justify-between p-3 sm:p-4 border-b">
               <h3 className="text-base sm:text-lg font-semibold">Video Testimonial</h3>
               <div className="flex gap-2">
-                {isUserAdmin && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setShowVideoModal(false);
-                      setIsEditingVideos(true);
-                    }}
-                    className="flex items-center gap-2 text-xs sm:text-sm"
-                  >
-                    <Edit className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
-                    Edit Video
-                  </Button>
-                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const videoElement = document.querySelector('.video-modal video') as HTMLVideoElement;
+                    if (videoElement) {
+                      if (document.fullscreenElement) {
+                        document.exitFullscreen();
+                      } else {
+                        videoElement.requestFullscreen().catch(err => {
+                          console.error('[Fullscreen] Failed to enter fullscreen:', err);
+                        });
+                      }
+                    }
+                  }}
+                  className="flex items-center gap-2 text-xs sm:text-sm"
+                >
+                  <Maximize2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                  Fullscreen
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -2856,18 +3234,55 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                      src={selectedVideo.videoUrl}
                      controls
                      className="w-full h-full"
+                     autoPlay={false}
+                     muted
+                     playsInline
                    />
                  ) : (
-                   // YouTube or external video
-                   <iframe
-                     src={`${selectedVideo.videoUrl}?rel=0&modestbranding=1`}
-                     title={`Video testimonial by ${selectedVideo.customerName}`}
-                     className="w-full h-full"
-                     frameBorder="0"
-                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                     allowFullScreen
-                     sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-                   />
+                   // Check if it's a media asset ID or external URL
+                   (() => {
+                     const isMediaAssetId = !selectedVideo.videoUrl.startsWith('http') && !selectedVideo.videoUrl.startsWith('data:') && !selectedVideo.videoUrl.startsWith('/');
+                     if (isMediaAssetId) {
+                       // Media asset ID - get the actual video URL
+                       const mediaAsset = getMediaAsset(selectedVideo.videoUrl);
+                       if (mediaAsset) {
+                         console.log('[Video Modal] Playing media asset:', mediaAsset);
+                         return (
+                           <video
+                             src={mediaAsset.uploadLink}
+                             controls
+                             className="w-full h-full"
+                             autoPlay={false}
+                             muted
+                             playsInline
+                             onError={(e) => {
+                               console.error('[Video Modal] Failed to load video:', e);
+                             }}
+                           />
+                         );
+                       } else {
+                         console.error('[Video Modal] Media asset not found:', selectedVideo.videoUrl);
+                         return (
+                           <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                             Video not found
+                           </div>
+                         );
+                       }
+                     } else {
+                       // External URL - use iframe for YouTube/other external videos
+                       return (
+                         <iframe
+                           src={`${selectedVideo.videoUrl}?rel=0&modestbranding=1`}
+                           title={`Video testimonial by ${selectedVideo.customerName}`}
+                           className="w-full h-full"
+                           frameBorder="0"
+                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                           allowFullScreen
+                           sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                         />
+                       );
+                     }
+                   })()
                  )}
                </div>
               <div className="space-y-2">
