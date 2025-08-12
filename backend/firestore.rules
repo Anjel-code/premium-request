@@ -2,8 +2,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-
-
     // --- User Profiles (Top-level 'users' collection) ---
     match /users/{userId} {
       // Allow users to read and update their own profiles
@@ -16,6 +14,30 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['admin']);
     }
 
+    // --- Email Marketing Collections (Root level) ---
+    match /emailMarketing/{document} {
+      // Allow authenticated users to read and write
+      allow read, write: if request.auth != null;
+    }
+    
+    match /emailCampaigns/{document} {
+      // Allow authenticated users to read and write
+      allow read, write: if request.auth != null;
+    }
+    
+    match /discountEmails/{document} {
+      // Allow anyone to create discount emails (for the popup)
+      allow create: if true;
+      
+      // Only admins can read discount emails
+      allow read: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['admin']);
+      
+      // Only admins can update or delete discount emails
+      allow update, delete: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['admin']);
+    }
+
     // --- Public Data for Applications ---
     match /artifacts/{appId}/public/data {
       // --- User Satisfaction Ratings ---
@@ -25,7 +47,6 @@ service cloud.firestore {
         // Users can create or update their own satisfaction score
         allow create, update: if request.auth != null && request.auth.uid == userId;
       }
-
 
       // --- Orders Collection ---
       match /orders/{orderId} {
@@ -261,6 +282,11 @@ service cloud.firestore {
         // Allow delete if the user is removing from their own wishlist
         allow delete: if request.auth != null && request.auth.uid == userId;
       }
+    }
+
+    // Default rule - deny all
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

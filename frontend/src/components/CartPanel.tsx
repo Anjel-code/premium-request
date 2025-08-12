@@ -160,7 +160,7 @@ const CartPanel: React.FC = () => {
                               assetId={item.image}
                               alt={item.name}
                               className="w-full h-full object-cover"
-                              fallbackUrl="placeholder-image"
+                              fallbackUrl="https://mro774wfph.ufs.sh/f/bwRfX2qUMqkgu0s6cMr5U3Hp2kVCI4csGZFedlbAq61QSPyt"
                               errorFallback={
                                 <div className="w-full h-full bg-muted flex items-center justify-center">
                                   <span className="text-xs text-muted-foreground">Image</span>
@@ -241,7 +241,7 @@ const CartPanel: React.FC = () => {
                               assetId={item.image}
                               alt={item.name}
                               className="w-full h-full object-cover"
-                              fallbackUrl="placeholder-image"
+                              fallbackUrl="https://mro774wfph.ufs.sh/f/bwRfX2qUMqkgu0s6cMr5U3Hp2kVCI4csGZFedlbAq61QSPyt"
                               errorFallback={
                                 <div className="w-full h-full bg-muted flex items-center justify-center">
                                   <span className="text-xs text-muted-foreground">Image</span>

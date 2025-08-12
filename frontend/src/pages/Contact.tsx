@@ -261,15 +261,15 @@ const Contact = () => {
                         General inquiries and support
                       </p>
                       <a
-                        href="mailto:support@productconcierge.com"
+                        href="mailto:contact.quibble@gmail.com"
                         className="text-accent hover:underline"
                       >
-                        support@quibble.com
+                        contact.quibble@gmail.com
                       </a>
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-4">
+                  {/* <div className="flex items-start gap-4">
                     <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center flex-shrink-0">
                       <Phone className="h-6 w-6 text-accent" />
                     </div>
@@ -279,15 +279,15 @@ const Contact = () => {
                         Speak directly with our team
                       </p>
                       <a
-                        href="tel:+15551234567"
+                        href="tel:+15125081563"
                         className="text-accent hover:underline"
                       >
                         +1 (555) 123-4567
                       </a>
                     </div>
-                  </div>
+                  </div> */}
 
-                  <div className="flex items-start gap-4">
+                  {/* <div className="flex items-start gap-4">
                     <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center flex-shrink-0">
                       <MapPin className="h-6 w-6 text-accent" />
                     </div>
@@ -304,7 +304,7 @@ const Contact = () => {
                         New York, NY 10001
                       </address>
                     </div>
-                  </div>
+                  </div> */}
 
                   <div className="flex items-start gap-4">
                     <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center flex-shrink-0">

@@ -32,7 +32,7 @@ export const MediaAssetsExample: React.FC = () => {
             <MediaImage 
               assetId="product-main-image" 
               className="w-full h-64 object-cover rounded-lg border"
-              fallbackUrl="placeholder-image"
+              fallbackUrl="https://mro774wfph.ufs.sh/f/bwRfX2qUMqkgu0s6cMr5U3Hp2kVCI4csGZFedlbAq61QSPyt"
             />
           </div>
           <div>
@@ -158,7 +158,7 @@ export const MediaAssetsExample: React.FC = () => {
             <MediaImage 
               assetId="non-existent-asset" 
               className="w-full h-32 object-cover rounded-lg border"
-              fallbackUrl="placeholder-image"
+              fallbackUrl="https://mro774wfph.ufs.sh/f/bwRfX2qUMqkgu0s6cMr5U3Hp2kVCI4csGZFedlbAq61QSPyt"
             />
           </div>
         </div>

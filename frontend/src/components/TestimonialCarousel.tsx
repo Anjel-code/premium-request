@@ -3,41 +3,40 @@ import { Star } from "lucide-react";
 
 const testimonials = [
   {
-    name: "Sarah Chen",
-    role: "Technology Executive",
-    content:
-      "Absolutely exceptional service. They found exactly what I needed at a price I never could have negotiated myself.",
+    "name": "Alex Carter",
+    "role": "Business Consultant",
+    "content": "The classic design with the Arabic numerals is exactly what I was looking for. It's the perfect accessory to complete my professional look."
   },
   {
-    name: "Michael Rodriguez",
-    role: "Investment Manager",
-    content:
-      "The level of detail and care they put into each request is remarkable. Truly a premium experience.",
+    "name": "Mark Evans",
+    "role": "Financial Analyst",
+    "content": "I'm impressed with the quality for the price. The stainless steel band feels solid and the quartz movement keeps perfect time."
   },
   {
-    name: "Emily Watson",
-    role: "Creative Director",
-    content:
-      "They handle everything so professionally. I can't imagine going back to researching products myself.",
+    "name": "Jordan Lee",
+    "role": "Architect",
+    "content": "This watch has a timeless elegance that works for any occasion. The simple yet sophisticated style makes it a daily essential for me."
   },
   {
-    name: "David Park",
-    role: "Entrepreneur",
-    content:
-      "Outstanding results every time. Their expertise saved me countless hours and delivered exactly what I envisioned.",
+    "name": "Sarah Miller",
+    "role": "Creative Director",
+    "content": "The complete calendar feature is a nice touch. It's a functional and stylish piece that gets compliments every time I wear it."
   },
   {
-    name: "Lisa Thompson",
-    role: "Marketing Director",
-    content:
-      "The personalized attention and quality of service exceeded all my expectations. Highly recommended!",
+    "name": "Ryan Scott",
+    "role": "Marketing Manager",
+    "content": "Professional and stylish. The details, like the fluted bezel and the clear glass face, make it look much more expensive than it is. Highly recommended."
   },
   {
-    name: "James Wilson",
-    role: "Consultant",
-    content:
-      "Professional, efficient, and incredibly thorough. This service has become essential for my business.",
+    "name": "Emily Wilson",
+    "role": "Entrepreneur",
+    "content": "I bought this as a gift, and it was a huge hit. The recipient loved the classic design and the comfortable fit of the stainless steel band."
   },
+  {
+    "name": "James Thompson",
+    "role": "Consultant",
+    "content": "The personalized attention and quality of service exceeded all my expectations. Highly recommended!"
+  }
 ];
 
 const TestimonialCarousel = () => {

@@ -40,8 +40,6 @@ export const useMediaAsset = (
   const [asset, setAsset] = useState<MediaAsset | undefined>();
 
   useEffect(() => {
-    console.log(`[useMediaAsset] Hook called for assetId: ${assetId}`);
-    
     const loadAsset = async () => {
       try {
         setIsLoading(true);
@@ -51,7 +49,6 @@ export const useMediaAsset = (
         const isFullUrl = assetId.startsWith('http') || assetId.startsWith('data:') || assetId.startsWith('/');
         
         if (isFullUrl) {
-          console.log(`[useMediaAsset] Full URL detected, returning directly: ${assetId}`);
           // Create a mock asset for full URLs
           const mockAsset: MediaAsset = {
             id: assetId,
@@ -67,26 +64,20 @@ export const useMediaAsset = (
           return;
         }
         
-        console.log(`[useMediaAsset] Fetching asset: ${assetId}`);
         const mediaAsset = getMediaAsset(assetId);
-        console.log(`[useMediaAsset] Found asset:`, mediaAsset);
         
         if (!mediaAsset) {
-          console.error(`[useMediaAsset] Asset not found: ${assetId}`);
           throw new Error(`Media asset not found: ${assetId}`);
         }
         
         // Validate the asset
         if (!validateMediaAsset(mediaAsset)) {
-          console.error(`[useMediaAsset] Invalid media asset: ${assetId}`);
           throw new Error(`Invalid media asset: ${assetId}`);
         }
         
-        console.log(`[useMediaAsset] Setting asset successfully:`, mediaAsset);
         setAsset(mediaAsset);
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Unknown error loading media asset');
-        console.error(`[useMediaAsset] Error fetching asset ${assetId}:`, err);
         setError(error);
         options.onError?.(error);
       } finally {
@@ -101,7 +92,7 @@ export const useMediaAsset = (
     if (asset?.uploadLink) {
       return asset.uploadLink;
     }
-    return options.fallbackUrl || '';
+    return options.fallbackUrl || 'https://mro774wfph.ufs.sh/f/bwRfX2qUMqkgu0s6cMr5U3Hp2kVCI4csGZFedlbAq61QSPyt';
   }, [asset?.uploadLink, options.fallbackUrl]);
 
   const altText = useMemo(() => {

@@ -73,7 +73,7 @@ export const MEDIA_CONFIG = {
     logErrors: process.env.NODE_ENV === 'development',
     
     // Fallback image for broken images
-    fallbackImage: '/placeholder.svg',
+    fallbackImage: 'https://mro774wfph.ufs.sh/f/bwRfX2qUMqkgu0s6cMr5U3Hp2kVCI4csGZFedlbAq61QSPyt',
     
     // Retry attempts for failed loads
     maxRetries: 3,

@@ -1,5 +1,5 @@
 // src/pages/SuccessPage.tsx
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams, useLocation } from "react-router-dom";
 import {
   doc,
@@ -38,15 +38,6 @@ const SuccessPage: React.FC = () => {
     const storedOrderInfo = sessionStorage.getItem("storeOrderInfo");
     const cartOrderInfo = sessionStorage.getItem("cartOrderInfo");
     const directOrderInfo = sessionStorage.getItem("directOrderInfo");
-    console.log("Stored order info:", storedOrderInfo);
-    console.log("Cart order info:", cartOrderInfo);
-    console.log("Direct order info:", directOrderInfo);
-    console.log(
-      "URL params - ticketId:",
-      idFromUrl,
-      "orderId:",
-      orderIdFromUrl
-    );
 
     let isStoreOrderLocal = false;
     let storeOrderInfoLocal: any = null;
@@ -55,10 +46,6 @@ const SuccessPage: React.FC = () => {
          if (directOrderInfo) {
        try {
          const parsedInfo = JSON.parse(directOrderInfo);
-         console.log("Raw direct order info from sessionStorage:", directOrderInfo);
-         console.log("Parsed direct order info:", parsedInfo);
-         console.log("Items in parsed info:", parsedInfo.items);
-         console.log("Total price in parsed info:", parsedInfo.totalPrice);
          storeOrderInfoLocal = parsedInfo;
          isStoreOrderLocal = true;
          ticketIdLocal = parsedInfo.orderId;
@@ -73,10 +60,6 @@ const SuccessPage: React.FC = () => {
      } else if (cartOrderInfo) {
        try {
          const parsedInfo = JSON.parse(cartOrderInfo);
-         console.log("Raw cart order info from sessionStorage:", cartOrderInfo);
-         console.log("Parsed cart order info:", parsedInfo);
-         console.log("Items in parsed info:", parsedInfo.items);
-         console.log("Total price in parsed info:", parsedInfo.totalPrice);
          storeOrderInfoLocal = parsedInfo;
          isStoreOrderLocal = true;
          ticketIdLocal = parsedInfo.orderId;
@@ -91,7 +74,6 @@ const SuccessPage: React.FC = () => {
      } else if (storedOrderInfo) {
        try {
          const parsedInfo = JSON.parse(storedOrderInfo);
-         console.log("Parsed store order info:", parsedInfo);
          storeOrderInfoLocal = parsedInfo;
          isStoreOrderLocal = true;
          ticketIdLocal = parsedInfo.orderId;
@@ -105,7 +87,6 @@ const SuccessPage: React.FC = () => {
        }
     } else if (orderIdFromUrl) {
       // If orderId is in URL but no sessionStorage, create a basic order info
-      console.log("Using orderId from URL:", orderIdFromUrl);
       ticketIdLocal = orderIdFromUrl;
       isStoreOrderLocal = true;
       storeOrderInfoLocal = {
@@ -135,34 +116,27 @@ const SuccessPage: React.FC = () => {
         const unsubscribe = auth.onAuthStateChanged(async (user) => {
           if (user) {
             currentUserId = user.uid;
-            console.log("User authenticated:", currentUserId);
             // Now that authentication is handled, proceed with updating payment status
             if (isStoreOrderLocal && storeOrderInfoLocal) {
-              console.log("Processing as store order");
               await updateStorePaymentStatus(
                 storeOrderInfoLocal,
                 currentUserId
               );
             } else {
-              console.log("Processing as regular order");
               await updatePaymentStatus(idFromUrl, currentUserId);
             }
           } else {
-            console.log("No user authenticated, attempting sign-in.");
             try {
               // Try to sign in anonymously
               await signInAnonymously(auth);
-              console.log("Signed in anonymously on SuccessPage.");
               currentUserId = auth.currentUser?.uid;
               if (currentUserId) {
                 if (isStoreOrderLocal && storeOrderInfoLocal) {
-                  console.log("Processing as store order (anonymous)");
                   await updateStorePaymentStatus(
                     storeOrderInfoLocal,
                     currentUserId
                   );
                 } else {
-                  console.log("Processing as regular order (anonymous)");
                   await updatePaymentStatus(idFromUrl, currentUserId);
                 }
               } else {
@@ -198,7 +172,6 @@ const SuccessPage: React.FC = () => {
     currentUserId: string | undefined
   ) => {
     try {
-      console.log("Updating store payment status for order:", orderInfo);
 
       if (!currentUserId) {
         setError("User not authenticated. Cannot confirm payment.");
@@ -214,12 +187,7 @@ const SuccessPage: React.FC = () => {
         return;
       }
 
-      console.log("Using appId:", appId);
-      console.log("Order ID:", orderInfo.orderId);
-      console.log(
-        "Collection path:",
-        `artifacts/${appId}/public/data/store-orders`
-      );
+
 
       // Get session ID from URL to retrieve payment intent ID
       const queryParams = new URLSearchParams(location.search);
@@ -229,11 +197,10 @@ const SuccessPage: React.FC = () => {
       if (sessionId) {
         try {
           const response = await fetch(`${API_ENDPOINTS.GET_PAYMENT_INTENT}/${sessionId}`);
-          if (response.ok) {
-            const data = await response.json();
-            paymentIntentId = data.paymentIntentId;
-            console.log("Retrieved payment intent ID:", paymentIntentId);
-          } else {
+                  if (response.ok) {
+          const data = await response.json();
+          paymentIntentId = data.paymentIntentId;
+        } else {
             console.warn("Failed to retrieve payment intent ID:", response.statusText);
           }
         } catch (error) {
@@ -246,11 +213,6 @@ const SuccessPage: React.FC = () => {
       
       if (isNewOrder) {
          // For new orders (cart or direct), create the order document
-         console.log("Processing new order:", orderInfo.orderId);
-         console.log("Order info:", orderInfo);
-         console.log("Items:", orderInfo.items);
-         console.log("Total price:", orderInfo.totalPrice);
-         console.log("Customer info:", orderInfo.customerInfo);
         const orderRef = doc(
           db,
           `artifacts/${appId}/public/data/store-orders`,
@@ -293,21 +255,17 @@ const SuccessPage: React.FC = () => {
             }),
          });
 
-         console.log("New order created successfully:", orderInfo.orderId);
-         
          // Mark wellness discount as used if it was applied
          const wellnessDiscountApplied = localStorage.getItem('wellnessDiscountApplied') === 'true';
          if (wellnessDiscountApplied) {
            localStorage.setItem('wellnessDiscountUsed', 'true');
            localStorage.setItem('wellnessDiscountUsedAt', new Date().toISOString());
            localStorage.setItem('wellnessDiscountUsedForOrder', orderInfo.orderId);
-           console.log("Wellness discount marked as used for order:", orderInfo.orderId);
          }
          
          // Clear the cart after successful cart order payment (only for cart orders)
          if (orderInfo.orderId.startsWith("cart_")) {
            clearCart();
-           console.log("Cart cleared after successful payment");
          }
        } else {
          // For existing store orders, update the payment status
@@ -329,10 +287,7 @@ const SuccessPage: React.FC = () => {
           return;
         }
 
-        console.log("Found store order document:", orderDoc.data());
-        console.log("Current user ID:", currentUserId);
-        console.log("Store order user ID:", orderDoc.data().userId);
-        console.log("Attempting to update store order...");
+
 
         await updateDoc(orderRef, {
           paymentStatus: "completed",

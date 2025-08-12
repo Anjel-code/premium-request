@@ -1,5 +1,5 @@
 // src/pages/RefundSupportChat.tsx
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   doc,
@@ -30,8 +30,7 @@ import {
   Calendar,
   X,
 } from "lucide-react";
-import { auth, db } from "../firebase";
-import { useAuth } from "../contexts/AuthContext";
+import { db } from "../firebase";
 
 interface RefundSupportChatProps {
   user: any;
@@ -79,33 +78,30 @@ const RefundSupportChat: React.FC<RefundSupportChatProps> = ({ user, appId, isAd
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
   
-  console.log("RefundSupportChat props:", { user, appId, isAdmin, orderId });
-  console.log("Current URL:", window.location.pathname);
-  console.log("Is Admin Route:", window.location.pathname.includes("/refund-support-chat/"));
-  console.log("Is Customer Route:", window.location.pathname.includes("/customer-refund-chat/"));
-  
-  // Ensure customer is using the correct route
-  if (!isAdmin && window.location.pathname.includes("/refund-support-chat/")) {
-    console.error("Customer is accessing admin route!");
-    navigate("/");
-    return null;
-  }
-  
-  // Ensure admin is using the correct route
-  if (isAdmin && window.location.pathname.includes("/customer-refund-chat/")) {
-    console.error("Admin is accessing customer route!");
-    navigate("/");
-    return null;
-  }
+  const [orderDetails, setOrderDetails] = useState<StoreOrder | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  const [orderDetails, setOrderDetails] = useState<StoreOrder | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [uploadingFile, setUploadingFile] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-     const messagesEndRef = useRef<HTMLDivElement>(null);
-   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [isSending, setIsSending] = useState(false);
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  // Route protection
+  useEffect(() => {
+    if (isAdmin && window.location.pathname.includes("/customer-refund-chat/")) {
+      console.error("Admin is accessing customer route!");
+      setError("Access denied: Admins cannot access customer routes");
+      return;
+    }
+
+    if (!isAdmin && window.location.pathname.includes("/refund-support-chat/")) {
+      console.error("Customer is accessing admin route!");
+      setError("Access denied: Customers cannot access admin routes");
+      return;
+    }
+  }, [isAdmin]);
 
   // Fetch order details
   useEffect(() => {
@@ -130,7 +126,7 @@ const RefundSupportChat: React.FC<RefundSupportChatProps> = ({ user, appId, isAd
         console.error("Error fetching order details:", err);
         setError("Failed to load order details");
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
@@ -173,53 +169,41 @@ const RefundSupportChat: React.FC<RefundSupportChatProps> = ({ user, appId, isAd
    }, [messages]);
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !user || !orderId) return;
+    if (!newMessage.trim() || !orderDetails) return;
 
-    console.log("Sending message:", { newMessage, user, orderId, isAdmin });
-    console.log("Sender name will be:", isAdmin ? "Refund Support" : (user.displayName || user.email || "Customer"));
+    const messageData = {
+      text: newMessage.trim(),
+      senderId: user.uid,
+      senderName: isAdmin ? "Refund Support" : (user.displayName || user.email || "Customer"),
+      timestamp: new Date(),
+      isFromSupport: isAdmin,
+      attachments: attachments.length > 0 ? attachments.map(file => ({
+        name: file.name,
+        url: URL.createObjectURL(file),
+        type: file.type
+      })) : undefined
+    };
 
     try {
-      const messagesRef = collection(
-        db,
-        `artifacts/${appId}/public/data/store-orders/${orderId}/refund-chat`
-      );
+      const messageRef = collection(db, `artifacts/${appId}/public/data/store-orders/${orderDetails.id}/refund-chat`);
+      await addDoc(messageRef, messageData);
 
-      const messageData: any = {
-        senderId: user.uid,
-        senderName: isAdmin ? "Refund Support" : (user.displayName || user.email || "Customer"),
-        text: newMessage.trim(),
-        timestamp: serverTimestamp(),
-        isFromSupport: isAdmin,
-      };
-
-      // Add file attachment if selected
-      if (selectedFile) {
-        // In a real implementation, you'd upload the file to storage
-        // For now, we'll just store the file name
-        messageData.attachments = [{
-          name: selectedFile.name,
-          url: "#", // Placeholder - in real implementation, this would be the uploaded file URL
-          type: selectedFile.type,
-        }];
-      }
-
-      await addDoc(messagesRef, messageData);
       setNewMessage("");
-      setSelectedFile(null);
-    } catch (err) {
-      console.error("Error sending message:", err);
-      setError("Failed to send message");
+      setAttachments([]);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      setError("Failed to send message. Please try again.");
     }
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      setSelectedFile(file);
+      setAttachments([...attachments, file]);
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -455,16 +439,18 @@ const RefundSupportChat: React.FC<RefundSupportChatProps> = ({ user, appId, isAd
                           <Upload className="h-3 w-3 sm:h-4 sm:w-4" />
                           <span>Attach File</span>
                         </Label>
-                        {selectedFile && (
+                        {attachments.length > 0 && (
                           <div className="flex items-center gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-primary/10 text-primary rounded-md border border-primary/20">
                             <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
-                            <span className="text-xs sm:text-sm font-medium truncate max-w-[120px] sm:max-w-[200px]">{selectedFile.name}</span>
+                            <span className="text-xs sm:text-sm font-medium truncate max-w-[120px] sm:max-w-[200px]">
+                              {attachments.map(file => file.name).join(", ")}
+                            </span>
                             <Button
                               type="button"
                               variant="ghost"
                               size="sm"
                               className="h-4 w-4 p-0 hover:bg-primary/20"
-                              onClick={() => setSelectedFile(null)}
+                              onClick={() => setAttachments([])}
                             >
                               <X className="h-3 w-3" />
                             </Button>
@@ -477,7 +463,7 @@ const RefundSupportChat: React.FC<RefundSupportChatProps> = ({ user, appId, isAd
                       onClick={handleSendMessage}
                       size="lg"
                       className="px-3 sm:px-4 self-end sm:self-auto"
-                      disabled={!newMessage.trim()}
+                      disabled={!newMessage.trim() || attachments.length === 0}
                     >
                       <Send className="h-4 w-4" />
                     </Button>

@@ -798,7 +798,7 @@ function App() {
       // Test Firebase connection if env vars are set
       testFirebaseConnection().then((success) => {
         if (success) {
-          console.log("🎉 Firebase connection test passed!");
+  
         } else {
           console.error("❌ Firebase connection test failed!");
         }

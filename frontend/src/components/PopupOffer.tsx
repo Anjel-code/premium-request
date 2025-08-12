@@ -1,135 +1,101 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { X, Gift, ChevronUp } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { X, Gift, Mail, CheckCircle } from "lucide-react";
+import { db } from "../firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 interface PopupOfferProps {
   onClose?: () => void;
-  onGoalSelect?: (goal: string) => void;
 }
 
-// Load wellness goals from admin settings or use defaults
-const loadWellnessGoals = () => {
-  const adminDiscount = localStorage.getItem('adminDiscountOffer');
-  if (adminDiscount) {
-    try {
-      const discountData = JSON.parse(adminDiscount);
-      return discountData.goals || [
-        "Build some serious strength",
-        "Manage my weight", 
-        "Get my digestion in check",
-        "Support overall wellness & energy"
-      ];
-    } catch (error) {
-      console.error('Error parsing admin discount data:', error);
-    }
-  }
-  return [
-    "Build some serious strength",
-    "Manage my weight", 
-    "Get my digestion in check",
-    "Support overall wellness & energy"
-  ];
-};
+const PopupOffer: React.FC<PopupOfferProps> = ({ onClose }) => {
+  const [email, setEmail] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
-const wellnessGoals = loadWellnessGoals();
-
-const PopupOffer: React.FC<PopupOfferProps> = ({ onClose, onGoalSelect }) => {
-  const [selectedGoal, setSelectedGoal] = useState<string>("");
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  // Check if email has already been collected
+  const emailCollected = localStorage.getItem('wellnessEmail') === email.trim();
   
-  // Load discount offer settings
-  const loadDiscountSettings = () => {
-    const adminDiscount = localStorage.getItem('adminDiscountOffer');
-    if (adminDiscount) {
-      try {
-        return JSON.parse(adminDiscount);
-      } catch (error) {
-        console.error('Error parsing admin discount data:', error);
-      }
-    }
-    return {
-      enabled: true,
-      percentage: 10,
-      title: "What's Your #1 Wellness Goal?",
-      description: "Help us personalize your journey and get 10% off your first order.",
-      socialProof: {
-        shopperCount: 125,
-        message: "shoppers have unlocked 10% off in the past 24 hours!"
-      }
-    };
-  };
-
-  const discountSettings = loadDiscountSettings();
-  const shopperCount = discountSettings.socialProof?.shopperCount || 125;
-
-  // Check if discount has already been applied or used
-  const wellnessDiscountApplied = localStorage.getItem('wellnessDiscountApplied') === 'true';
-  const wellnessDiscountUsed = localStorage.getItem('wellnessDiscountUsed') === 'true';
-  
-  // If discount already applied and used, or if it was never applied, don't show the popup
-  if (wellnessDiscountApplied || wellnessDiscountUsed) {
+  // If this email was already collected, don't show the popup
+  if (emailCollected && email.trim()) {
     return null;
   }
 
-  const handleGoalSelect = (goal: string) => {
-    setSelectedGoal(goal);
-    onGoalSelect?.(goal);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email.trim()) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      // Store email in Firebase with email marketing data
+      await addDoc(collection(db, "emailMarketing"), {
+        email: email.trim(),
+        timestamp: serverTimestamp(),
+        userAgent: navigator.userAgent,
+        source: "popup_collection",
+        status: "active",
+        emailSent: false,
+        discountCodeSent: false,
+        cartReminderSent: false,
+        abandonmentEmailSent: false,
+        lastActivity: serverTimestamp(),
+        cartItems: [],
+        purchaseHistory: [],
+        tags: ["popup_collector"]
+      });
+
+      // Store email in localStorage to prevent showing popup again
+      localStorage.setItem('wellnessEmail', email.trim());
+      localStorage.setItem('emailCollectedAt', new Date().toISOString());
+      
+      setShowSuccess(true);
+      
+      // Close popup after 3 seconds
+      setTimeout(() => {
+        onClose?.();
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Error saving email:', error);
+      // Still mark as collected even if Firebase save fails
+      localStorage.setItem('wellnessEmail', email.trim());
+      localStorage.setItem('emailCollectedAt', new Date().toISOString());
+      setShowSuccess(true);
+      
+      setTimeout(() => {
+        onClose?.();
+      }, 3000);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleGetDiscount = () => {
-    // Store the discount application in localStorage
-    localStorage.setItem('wellnessDiscountApplied', 'true');
-    localStorage.setItem('wellnessGoal', selectedGoal);
-    localStorage.setItem('discountAppliedAt', new Date().toISOString());
-    localStorage.setItem('wellnessDiscountPercentage', discountSettings.percentage.toString());
-    
-    console.log(`Applying ${discountSettings.percentage}% discount for goal:`, selectedGoal);
+  const handleClose = () => {
     onClose?.();
   };
 
-  const handleCollapse = () => {
-    setIsCollapsed(true);
-  };
-
-  const handleExpand = () => {
-    setIsCollapsed(false);
-  };
-
-  // Auto-collapse after 10 seconds if not interacted with
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (!selectedGoal) {
-        setIsCollapsed(true);
-      }
-    }, 10000);
-
-    return () => clearTimeout(timer);
-  }, [selectedGoal]);
-
-  if (isCollapsed) {
+  if (showSuccess) {
     return (
-      <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-4 duration-300">
-        <Card className="shadow-xl border-0 bg-gradient-to-r from-accent to-accent/90 text-accent-foreground">
-          <CardContent className="p-0">
-            <Button
-              onClick={handleExpand}
-              variant="ghost"
-              size="sm"
-              className="h-auto p-4 text-accent-foreground hover:bg-accent/20 rounded-lg"
-            >
-                             <div className="flex items-center gap-3">
-                 <div className="relative">
-                   <Gift className="h-6 w-6" />
-                 </div>
-                                 <div className="text-left">
-                   <div className="font-bold text-sm">Get {discountSettings.percentage}% Off</div>
-                   <div className="text-xs opacity-80">Limited Time</div>
-                 </div>
-                <ChevronUp className="h-4 w-4" />
-              </div>
-            </Button>
+      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+        <Card className="w-full max-w-md mx-auto shadow-2xl border-0 animate-in slide-in-from-bottom-4 duration-300 bg-gradient-to-br from-green-50 to-green-100">
+          <CardContent className="p-8 text-center">
+            <div className="h-16 w-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="h-8 w-8 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-green-800 mb-2">
+              Thank You!
+            </h2>
+            <p className="text-green-700 mb-4">
+              Check your email for your exclusive 10% discount code!
+            </p>
+            <p className="text-sm text-green-600">
+              We'll also send you special offers and wellness tips.
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -137,100 +103,90 @@ const PopupOffer: React.FC<PopupOfferProps> = ({ onClose, onGoalSelect }) => {
   }
 
   return (
-              <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-       <Card className="w-full max-w-4xl mx-auto shadow-2xl border-0 animate-in slide-in-from-bottom-4 duration-300 bg-gradient-to-br from-background to-muted/30">
-         <CardContent className="p-6">
-                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-             {/* Left Column - Header and Goals */}
-             <div>
-               {/* Header */}
-               <div className="flex justify-between items-start mb-6">
-                 <div className="flex-1">
-                   <div className="flex items-center gap-3 mb-4">
-                     <div className="h-10 w-10 bg-gradient-to-br from-accent to-accent/80 rounded-full flex items-center justify-center">
-                       <Gift className="h-5 w-5 text-accent-foreground" />
-                     </div>
-                     <div>
-                                               <h2 className="text-2xl font-bold text-primary mb-1">
-                          {discountSettings.title}
-                        </h2>
-                        <p className="text-sm text-muted-foreground">
-                          {discountSettings.description.replace('10%', `${discountSettings.percentage}%`)}
-                        </p>
-                     </div>
-                   </div>
-                 </div>
-                 <Button
-                   variant="ghost"
-                   size="sm"
-                   onClick={handleCollapse}
-                   className="h-8 w-8 p-0 hover:bg-muted rounded-full"
-                 >
-                   <X className="h-4 w-4" />
-                 </Button>
-               </div>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+      <Card className="w-full max-w-md mx-auto shadow-2xl border-0 animate-in slide-in-from-bottom-4 duration-300 bg-gradient-to-br from-background to-muted/30">
+        <CardContent className="p-6">
+          {/* Header */}
+          <div className="flex justify-between items-start mb-6">
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 bg-gradient-to-br from-accent to-accent/80 rounded-full flex items-center justify-center">
+                <Gift className="h-6 w-6 text-accent-foreground" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-primary mb-1">
+                  Get 10% Off!
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Enter your email to receive your discount code
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClose}
+              className="h-8 w-8 p-0 hover:bg-muted rounded-full"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
 
-               {/* Goal Options */}
-               <div className="space-y-3 mb-6">
-                 {wellnessGoals.map((goal) => (
-                   <label
-                     key={goal}
-                     className={`flex items-center space-x-3 p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 hover:shadow-md ${
-                       selectedGoal === goal
-                         ? "border-accent bg-accent/5 shadow-md"
-                         : "border-border hover:border-accent/50 hover:bg-muted/30"
-                     }`}
-                   >
-                     <div className="relative">
-                       <input
-                         type="radio"
-                         name="wellness-goal"
-                         value={goal}
-                         checked={selectedGoal === goal}
-                         onChange={() => handleGoalSelect(goal)}
-                                                   className="h-4 w-4 text-accent border-2 border-border focus:ring-0"
-                       />
-                       
-                     </div>
-                     <span className="text-sm font-medium text-foreground">{goal}</span>
-                   </label>
-                 ))}
-               </div>
+          {/* Email Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm font-medium text-foreground">
+                Email Address
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="your@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full"
+                autoFocus
+              />
+            </div>
 
-               {/* CTA Button */}
-               <Button
-                 onClick={handleGetDiscount}
-                 disabled={!selectedGoal}
-                 className="w-full bg-gradient-to-r from-accent to-accent/80 hover:from-accent/90 hover:to-accent text-accent-foreground font-bold py-3 text-base rounded-lg mb-4 shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-               >
-                                   <Gift className="mr-2 h-4 w-4" />
-                  Get your {discountSettings.percentage}% off
-               </Button>
-             </div>
+            <Button
+              type="submit"
+              disabled={!email.trim() || isSubmitting}
+              className="w-full bg-gradient-to-r from-accent to-accent/80 hover:from-accent/90 hover:to-accent text-accent-foreground font-bold py-3 text-base rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mx-auto"></div>
+              ) : (
+                <>
+                  <Mail className="mr-2 h-4 w-4" />
+                  Get My Discount Code
+                </>
+              )}
+            </Button>
+          </form>
 
-             {/* Right Column - Social Proof and Visual */}
-             <div className="flex flex-col justify-center">
-               <div className="text-center bg-muted/30 rounded-lg p-6">
-                 <div className="flex items-center justify-center gap-2 mb-3">
-                   <div className="flex -space-x-2">
-                     {[...Array(3)].map((_, i) => (
-                       <div key={i} className="h-8 w-8 bg-gradient-to-br from-accent to-accent/80 rounded-full border-2 border-background"></div>
-                     ))}
-                   </div>
-                   <span className="text-sm font-semibold text-muted-foreground">
-                     +{shopperCount - 3} others
-                   </span>
-                 </div>
-                                   <p className="text-sm font-semibold text-muted-foreground mb-3">
-                    {shopperCount} {discountSettings.socialProof?.message || "shoppers have unlocked 10% off in the past 24 hours!"}
-                  </p>
-                  <div className="bg-gradient-to-r from-accent/20 to-accent/10 rounded-lg p-4">
-                    <div className="text-2xl font-bold text-accent mb-1">{discountSettings.percentage}% OFF</div>
-                    <div className="text-xs text-muted-foreground">Limited Time Offer</div>
-                  </div>
-               </div>
-             </div>
-           </div>
+          {/* Benefits */}
+          <div className="mt-6 space-y-2">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <CheckCircle className="h-4 w-4 text-primary" />
+              <span>10% off your first order</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <CheckCircle className="h-4 w-4 text-primary" />
+              <span>Exclusive wellness tips</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <CheckCircle className="h-4 w-4 text-primary" />
+              <span>Special offers & updates</span>
+            </div>
+          </div>
+
+          {/* Social Proof */}
+          <div className="mt-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              Join 125+ shoppers who've already unlocked their discount!
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>

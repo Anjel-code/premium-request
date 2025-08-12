@@ -279,10 +279,10 @@ const ShippingPolicy = () => {
                 For questions about shipping, please contact us:
               </p>
               <div className="bg-muted p-4 rounded-lg">
-                <p className="font-medium">Email: shipping@productconcierge.com</p>
-                <p className="font-medium">Phone: +1 (555) 123-4567</p>
+                <p className="font-medium">Email: support@quibble.online</p>
+                {/* <p className="font-medium">Phone: +1 (555) 123-4567</p> */}
                 <p className="font-medium">Hours: Monday-Friday, 9 AM - 6 PM EST</p>
-                <p className="font-medium">Address: Shipping Department, 123 Shipping Street, Delivery City, DC 12345</p>
+                {/* <p className="font-medium">Address: Shipping Department, 123 Shipping Street, Delivery City, DC 12345</p> */}
               </div>
             </div>
           </section>

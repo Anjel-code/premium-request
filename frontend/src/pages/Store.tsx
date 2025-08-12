@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import {
   Accordion,
@@ -25,7 +26,6 @@ import {
   CreditCard,
   Lock,
   Loader2,
-
   Volume2,
   Maximize2,
   X,
@@ -53,6 +53,12 @@ import {
   Pause,
   TestTube,
   Image,
+  Watch,
+  Sparkles,
+  Gem,
+  Target,
+  Flame,
+  Trophy,
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -71,7 +77,7 @@ import Footer from "@/components/Footer";
 import { isAdmin } from "@/lib/userUtils";
 import { checkStorageQuota, clearAllStorage } from "@/lib/storageUtils";
 import { trackUserActivity } from "@/lib/liveViewUtils";
-import { collection, query, where, onSnapshot, getDocs, deleteDoc, addDoc, doc, serverTimestamp } from "firebase/firestore";
+import { collection, query, where, onSnapshot, getDocs, deleteDoc, addDoc, doc, serverTimestamp, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { MediaBackground, MediaImage } from "@/components/ui/MediaImage";
@@ -369,10 +375,22 @@ const BeforeAfterSlider: React.FC<{
   );
 };
 
+// Helper function to get icon components
+const getIconComponent = (iconName: string) => {
+  const iconMap: Record<string, React.ComponentType<any>> = {
+    watch: Watch,
+    sparkles: Sparkles,
+    gem: Gem,
+    star: Star,
+    target: Target,
+    flame: Flame,
+    zap: Zap,
+    trophy: Trophy,
+  };
+  return iconMap[iconName] || Star;
+};
+
 const Store: React.FC<StoreProps> = ({ user, appId }) => {
-  console.log('🚀 [Store] Component is rendering!');
-  console.log('🚀 [Store] User:', user);
-  console.log('🚀 [Store] AppId:', appId);
   const navigate = useNavigate();
   const { addToCart, items, addToWishlist, removeFromWishlist, isInWishlist, setIsCartOpen, totalItems } = useCart();
   const { toast } = useToast();
@@ -385,6 +403,8 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   const [showAdminButtons, setShowAdminButtons] = useState(false); // Hide admin buttons by default
   const [showPopupOffer, setShowPopupOffer] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<string>("");
+  const [discountCode, setDiscountCode] = useState('');
+  const [discountApplied, setDiscountApplied] = useState(false);
   const [realTimeStock, setRealTimeStock] = useState<number | null>(null);
   const [isLoadingStock, setIsLoadingStock] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -413,43 +433,25 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   const [isPreloadingVideos, setIsPreloadingVideos] = useState(false);
   const [videoLoadingStates, setVideoLoadingStates] = useState<Record<string, boolean>>({});
 
-  // Check if user is admin by querying the database
+  // Check if user is admin
   useEffect(() => {
     const checkAdminStatus = async () => {
-      if (!user?.uid) {
-        setIsUserAdmin(false);
-        setIsCheckingAdmin(false);
-        return;
-      }
-
-      try {
-        const adminStatus = await isAdmin(user.uid);
-        setIsUserAdmin(adminStatus);
-        
-        if (adminStatus) {
-          console.log('🔧 Admin role confirmed - Edit Store button should be visible');
+      if (user?.uid) {
+        try {
+          const userDoc = await getDoc(doc(db, "users", user.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            const hasAdminRole = userData.roles && userData.roles.includes("admin");
+            setIsUserAdmin(hasAdminRole);
+          }
+        } catch (error) {
+          console.error('Error checking admin status:', error);
         }
-        setIsCheckingAdmin(false);
-      } catch (error) {
-        console.error('Error checking admin status:', error);
-        setIsUserAdmin(false);
-        setIsCheckingAdmin(false);
       }
     };
 
     checkAdminStatus();
-    
-    // Track view activity with location if user is logged in
-    if (user && appId) {
-      trackUserActivity(
-        appId,
-        user.uid,
-        user.email,
-        user.displayName,
-        "view"
-      );
-    }
-  }, [user?.uid, user, appId]);
+  }, [user?.uid]);
 
   // Check storage quota and show warning if needed
   useEffect(() => {
@@ -520,16 +522,10 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
 
   // Load product data - use mock data directly since admin editing is disabled
   const loadProductData = (): ProductData => {
-    console.log('[Store] Using mock product data:', mockProductData);
-    console.log('[Store] Mock product images:', mockProductData.images);
     return mockProductData;
   };
 
   const product = loadProductData();
-  console.log('[Store] Final product data:', product);
-  console.log('[Store] Product images array:', product.images);
-  console.log('[Store] Current image index:', currentImageIndex);
-  console.log('[Store] Current image asset ID:', product.images[currentImageIndex]);
   
   // Load real-time stock from database
   const loadRealTimeStock = async () => {
@@ -640,7 +636,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   let finalPrice = getCurrentPrice();
   
   // Apply wellness discount if available
-  if (wellnessDiscountApplied && !wellnessDiscountUsed && discountOffer.enabled) {
+  if (wellnessDiscountApplied && !wellnessDiscountUsed) {
     finalPrice = Math.round((finalPrice * (1 - wellnessDiscountPercentage / 100)) * 100) / 100;
   }
   
@@ -690,76 +686,137 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   };
 
     const handleAddToCart = async () => {
-    // Validate stock availability
     if (quantity > availableStock) {
       toast({
         title: "Insufficient Stock",
         description: `Only ${availableStock} items available in stock. Please reduce quantity.`,
         variant: "destructive",
       });
-      // Reset quantity to available stock
       setQuantity(availableStock);
       return;
     }
 
-    try {
-      // Reserve stock in database
-      if (appId) {
-        const stockReserved = await reserveStock(appId, product.id, quantity);
-        if (!stockReserved) {
-          toast({
-            title: "Stock Unavailable",
-            description: "Not enough stock available. Please reduce quantity or try again later.",
-            variant: "destructive",
+    setIsLoading(true);
+
+    // Track cart activity for email marketing
+    const userEmail = localStorage.getItem('wellnessEmail');
+    if (userEmail) {
+      try {
+        // Find the user's email marketing record and update cart items
+        const emailMarketingRef = collection(db, "emailMarketing");
+        const q = query(emailMarketingRef, where("email", "==", userEmail));
+        const querySnapshot = await getDocs(q);
+        
+        if (!querySnapshot.empty) {
+          const userDoc = querySnapshot.docs[0];
+          const userData = userDoc.data();
+          
+          // Update cart items and last activity
+          await updateDoc(doc(db, "emailMarketing", userDoc.id), {
+            cartItems: [
+              ...(userData.cartItems || []),
+              {
+                productId: product.id,
+                name: product.name,
+                quantity,
+                addedAt: new Date()
+              }
+            ],
+            lastActivity: new Date()
           });
-          return;
         }
+      } catch (error) {
+        console.error('Error updating email marketing data:', error);
       }
-
-      // Track cart activity with location if user is logged in
-      if (user && appId) {
-        await trackUserActivity(
-          appId,
-          user.uid,
-          user.email,
-          user.displayName,
-          "cart"
-        );
-      }
-
-      // Use the current image asset ID for the cart item
-      const currentImageAssetId = product.images[currentImageIndex] || product.images[0];
+    }
+    try {
+      // Reserve stock first
+      await reserveStock(appId, product.id, quantity);
       
+      // Add to cart
       addToCart({
         productId: product.id,
         name: product.name,
-        price: finalPrice,
-        quantity,
-        image: currentImageAssetId, // This should be an asset ID like "product-main-image"
+        price: getCurrentPrice(),
+        image: product.images[currentImageIndex],
+        quantity
       });
 
       toast({
-        title: "Added to cart",
-        description: `${product.name} has been added to your cart.`,
+        title: "Added to Cart",
+        description: `${quantity} ${quantity === 1 ? 'item' : 'items'} added to cart`,
+        variant: "default",
       });
+
+      setIsCartOpen(true);
     } catch (error) {
       console.error('Error adding to cart:', error);
       toast({
         title: "Error",
-        description: "Unable to add item to cart. Please try again.",
+        description: "Failed to add item to cart. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleGoalSelect = (goal: string) => {
-    console.log("Selected wellness goal:", goal);
-    // You can store this in localStorage or send to your backend
-    localStorage.setItem("userWellnessGoal", goal);
-  };
+
 
   const handlePopupClose = () => {
     setShowPopupOffer(false);
+  };
+
+  const applyDiscountCode = () => {
+    if (!discountCode.trim()) return;
+    
+    // Check if it's a valid discount code (you can expand this logic)
+    const validCodes = ['WELLNESS10', 'COMEBACK20', 'FIRSTORDER'];
+    const code = discountCode.trim().toUpperCase();
+    
+    // Check if this code has already been used
+    const usedCodes = JSON.parse(localStorage.getItem('usedDiscountCodes') || '[]');
+    if (usedCodes.includes(code)) {
+      toast({
+        title: "Code Already Used",
+        description: "This discount code has already been applied and cannot be used again.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (validCodes.includes(code)) {
+      let percentage = 0;
+      if (code === 'WELLNESS10') {
+        percentage = 10;
+      } else if (code === 'COMEBACK20') {
+        percentage = 20;
+      } else if (code === 'FIRSTORDER') {
+        percentage = 15;
+      }
+      
+      // Mark this code as used
+      usedCodes.push(code);
+      localStorage.setItem('usedDiscountCodes', JSON.stringify(usedCodes));
+      
+      localStorage.setItem('wellnessDiscountPercentage', percentage.toString());
+      localStorage.setItem('wellnessDiscountApplied', 'true'); // Set the flag to true
+      setDiscountApplied(true);
+      setDiscountCode(''); // Clear the input field
+      toast({
+        title: "Discount Applied!",
+        description: `${percentage}% off your order!`,
+        variant: "default",
+      });
+      
+      // No need to reload - the discount will be applied through state updates
+    } else {
+      toast({
+        title: "Invalid Code",
+        description: "Please check your discount code and try again.",
+        variant: "destructive",
+      });
+    }
   };
 
 
@@ -775,20 +832,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
 
 
 
-  const handleVideoClick = (video: VideoReview) => {
-    console.log('[Video Click] Opening video modal for:', video);
-    console.log('[Video Click] Video URL:', video.videoUrl);
-    
-    // Check if it's a media asset ID
-    const isMediaAssetId = !video.videoUrl.startsWith('http') && !video.videoUrl.startsWith('data:') && !video.videoUrl.startsWith('/');
-    if (isMediaAssetId) {
-      const mediaAsset = getMediaAsset(video.videoUrl);
-      console.log('[Video Click] Media asset found:', mediaAsset);
-      if (mediaAsset) {
-        console.log('[Video Click] Final video URL:', mediaAsset.uploadLink);
-      }
-    }
-    
+  const handleVideoClick = (video: any) => {
     setSelectedVideo(video);
     setShowVideoModal(true);
   };
@@ -830,21 +874,30 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
   useEffect(() => {
     const wellnessDiscountApplied = localStorage.getItem('wellnessDiscountApplied') === 'true';
     const wellnessDiscountUsed = localStorage.getItem('wellnessDiscountUsed') === 'true';
+    const adminTestPopup = localStorage.getItem('adminTestPopup') === 'true';
     
-    if (!wellnessDiscountApplied || wellnessDiscountUsed || !discountOffer.enabled) {
-      return; // Don't show popup if discount is applied and used, disabled, or if it was never applied
+    // Clear admin test popup flag
+    if (adminTestPopup) {
+      localStorage.removeItem('adminTestPopup');
+      setShowPopupOffer(true);
+      return;
     }
     
+    // Don't show popup if discount is already applied or used
+    if (wellnessDiscountApplied || wellnessDiscountUsed || !discountOffer.enabled) {
+      return;
+    }
+    
+    // Set timer to show popup after 3 seconds
     const timer = setTimeout(() => {
       setShowPopupOffer(true);
     }, 3000);
-
-    return () => clearTimeout(timer);
+    
+    // Cleanup timer on unmount
+    return () => {
+      clearTimeout(timer);
+    };
   }, [discountOffer.enabled]);
-
-
-
-
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
@@ -954,22 +1007,20 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
             console.error(`[Video Error] Failed to load video: ${videoUrl}`, e);
             setVideoLoadingStates(prev => ({ ...prev, [videoUrl]: false }));
           }}
-          onPlay={() => console.log(`[Video Play] Video started playing: ${videoUrl}`)}
-          onPause={() => console.log(`[Video Pause] Video paused: ${videoUrl}`)}
+                          onPlay={() => {}}
+                onPause={() => {}}
         />
       );
     }
   };
 
-  const handleFullscreen = (videoId: string) => {
+  const handleFullscreen = async (videoId: string) => {
     const videoElement = document.querySelector(`video[data-video-id="${videoId}"]`) as HTMLVideoElement;
     if (videoElement) {
       if (document.fullscreenElement) {
-        document.exitFullscreen();
+        await document.exitFullscreen();
       } else {
-        videoElement.requestFullscreen().catch(err => {
-          console.error('[Fullscreen] Failed to enter fullscreen:', err);
-        });
+        await videoElement.requestFullscreen();
       }
     }
   };
@@ -1022,38 +1073,36 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
 
   // Share functionality
   const handleShare = async () => {
-    setShareLoading(true);
-    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: product.name,
+          text: `Check out this amazing product: ${product.name}`,
+          url: window.location.href,
+        });
+      } catch (error) {
+        if ((error as Error).name !== 'AbortError') {
+          console.error("Failed to copy:", error);
+        }
+      }
+    } else {
+      handleCopyLink();
+    }
+  };
+
+  const handleCopyLink = async () => {
     try {
-      await copyToClipboard(window.location.href);
+      await navigator.clipboard.writeText(window.location.href);
       toast({
-        title: "Link copied!",
-        description: "Product link copied to clipboard.",
+        title: "Link Copied",
+        description: "Product link copied to clipboard",
+        variant: "default",
       });
     } catch (error) {
       console.error("Error copying link:", error);
       toast({
-        title: "Failed to copy",
-        description: "Please copy the link manually.",
-        variant: "destructive",
-      });
-    } finally {
-      setShareLoading(false);
-    }
-  };
-
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast({
-        title: "Copied to clipboard!",
-        description: "Link copied successfully.",
-      });
-    } catch (error) {
-      console.error("Failed to copy:", error);
-      toast({
-        title: "Failed to copy",
-        description: "Please copy the link manually.",
+        title: "Error",
+        description: "Failed to copy link",
         variant: "destructive",
       });
     }
@@ -1095,214 +1144,127 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
 
   // Video preloading function
   const preloadVideos = useCallback(async () => {
-    console.log('[Video Preloading] preloadVideos called');
-    console.log('[Video Preloading] Current state:', { isPreloadingVideos, videoReviewsCount: product.videoReviews?.length, preloadedCount: preloadedVideos.size });
-    
     if (isPreloadingVideos || !product.videoReviews || product.videoReviews.length === 0) {
-      console.log('[Video Preloading] Skipping preload:', { isPreloadingVideos, hasVideoReviews: !!product.videoReviews, videoReviewsLength: product.videoReviews?.length });
       return;
     }
 
     setIsPreloadingVideos(true);
-    console.log('[Video Preloading] Starting to preload video review videos...');
 
     try {
-      const videoUrls = product.videoReviews.map(video => {
-        const isMediaAssetId = !video.videoUrl.startsWith('http') && !video.videoUrl.startsWith('data:') && !video.videoUrl.startsWith('/');
-        const mediaAsset = isMediaAssetId ? getMediaAsset(video.videoUrl) : undefined;
-        const finalUrl = mediaAsset ? mediaAsset.uploadLink : video.videoUrl;
-        console.log(`[Video Preloading] Video URL resolved:`, { original: video.videoUrl, isMediaAssetId, mediaAssetId: mediaAsset?.id, finalUrl });
-        return finalUrl;
-      });
-
-      console.log('[Video Preloading] Video URLs to preload:', videoUrls);
-
-      // Preload each video
-      const preloadPromises = videoUrls.map(async (url, index) => {
-        if (preloadedVideos.has(url)) {
-          console.log(`[Video Preloading] Video ${index + 1} already preloaded:`, url);
-          return;
+      for (let index = 0; index < product.videoReviews.length; index++) {
+        const video = product.videoReviews[index];
+        
+        // Get the actual video asset
+        const videoAsset = getMediaAsset(video.videoUrl);
+        if (!videoAsset || !videoAsset.uploadLink) {
+          continue;
         }
 
-        console.log(`[Video Preloading] Preloading video ${index + 1}:`, url);
-        
-        return new Promise<void>((resolve) => {
-          const video = document.createElement('video');
-          video.preload = 'metadata';
-          video.muted = true;
-          video.playsInline = true;
-          
-          video.onloadedmetadata = () => {
-            console.log(`[Video Preloading] Video ${index + 1} metadata loaded:`, url);
-            setPreloadedVideos(prev => new Set([...prev, url]));
-            setVideoLoadingStates(prev => ({ ...prev, [url]: false }));
-            resolve();
-          };
-          
-          video.onerror = (error) => {
-            console.warn(`[Video Preloading] Failed to preload video ${index + 1}:`, url, error);
-            setVideoLoadingStates(prev => ({ ...prev, [url]: false }));
-            resolve();
-          };
-          
-          video.src = url;
-          video.load();
-        });
-      });
+        const videoUrl = videoAsset.uploadLink;
+        if (preloadedVideos.has(videoUrl)) {
+          continue;
+        }
 
-      await Promise.all(preloadPromises);
-      console.log('[Video Preloading] All videos preloaded successfully');
-      
+        try {
+          const videoElement = document.createElement('video');
+          videoElement.preload = 'metadata';
+          videoElement.src = videoUrl;
+          
+          await new Promise((resolve, reject) => {
+            videoElement.addEventListener('loadedmetadata', resolve);
+            videoElement.addEventListener('error', reject);
+            videoElement.load();
+          });
+
+          setPreloadedVideos(prev => new Set(prev).add(videoUrl));
+        } catch (error) {
+          // Silently fail for video preloading errors
+        }
+      }
     } catch (error) {
-      console.error('[Video Preloading] Error preloading videos:', error);
+      // Silently fail for video preloading errors
     } finally {
       setIsPreloadingVideos(false);
     }
   }, [product.videoReviews, preloadedVideos, isPreloadingVideos]);
 
-  // Debug function to see what video reviews are available in the product data
-  const debugVideoReviews = useCallback(() => {
-    console.log('🔍 [Video Reviews Debug] ========================================');
-    console.log('🔍 [Video Reviews Debug] Product videoReviews array:', product.videoReviews);
-    console.log('🔍 [Video Reviews Debug] Product videoReviews length:', product.videoReviews?.length);
-    
-    if (product.videoReviews && product.videoReviews.length > 0) {
-      console.log('🔍 [Video Reviews Debug] Individual video review details:');
-      product.videoReviews.forEach((review, index) => {
-        console.log(`🔍 [Video Reviews Debug] Video Review ${index + 1}:`, {
-          id: review.id,
-          thumbnail: review.thumbnail,
-          videoUrl: review.videoUrl,
-          testimonial: review.testimonial,
-          customerName: review.customerName
-        });
-        
-        // Check if videoUrl is a media asset ID
-        const isMediaAssetId = !review.videoUrl.startsWith('http') && !review.videoUrl.startsWith('data:') && !review.videoUrl.startsWith('/');
-        if (isMediaAssetId) {
-          const mediaAsset = getMediaAsset(review.videoUrl);
-          console.log(`🔍 [Video Reviews Debug] Media Asset for ${review.videoUrl}:`, mediaAsset);
-          if (mediaAsset) {
-            console.log(`🔍 [Video Reviews Debug] Final video URL: ${mediaAsset.uploadLink}`);
-          }
-        }
-      });
-    }
-    
-    console.log('🔍 [Video Reviews Debug] Preloaded videos:', Array.from(preloadedVideos));
-    console.log('🔍 [Video Reviews Debug] Video loading states:', videoLoadingStates);
-    console.log('🔍 [Video Reviews Debug] ========================================');
-  }, [product.videoReviews, preloadedVideos, videoLoadingStates]);
+
 
   // Function to test video playback
-  const testVideoPlayback = useCallback(async (video: VideoReview) => {
-    console.log('🎬 [Video Playback Test] Testing video playback for:', video);
-    
-    const isMediaAssetId = !video.videoUrl.startsWith('http') && !video.videoUrl.startsWith('data:') && !video.videoUrl.startsWith('/');
-    const mediaAsset = isMediaAssetId ? getMediaAsset(video.videoUrl) : undefined;
-    const videoUrl = mediaAsset ? mediaAsset.uploadLink : video.videoUrl;
-    
-    console.log('🎬 [Video Playback Test] Video URL:', videoUrl);
-    console.log('🎬 [Video Playback Test] Is preloaded:', preloadedVideos.has(videoUrl));
-    
-    // Test if video can be loaded
+  const testVideoPlayback = useCallback(async (video: any) => {
+    // Get the actual video asset
+    const videoAsset = getMediaAsset(video.videoUrl);
+    if (!videoAsset || !videoAsset.uploadLink) {
+      return;
+    }
+
+    const videoUrl = videoAsset.uploadLink;
+
     try {
       const videoElement = document.createElement('video');
+      videoElement.preload = 'metadata';
       videoElement.src = videoUrl;
-      videoElement.muted = true;
-      videoElement.playsInline = true;
       
       await new Promise((resolve, reject) => {
-        videoElement.onloadedmetadata = resolve;
-        videoElement.onerror = reject;
+        videoElement.addEventListener('loadedmetadata', resolve);
+        videoElement.addEventListener('error', reject);
         videoElement.load();
       });
-      
-      console.log('🎬 [Video Playback Test] Video metadata loaded successfully');
-      console.log('🎬 [Video Playback Test] Video duration:', videoElement.duration);
-      console.log('🎬 [Video Playback Test] Video dimensions:', videoElement.videoWidth, 'x', videoElement.videoHeight);
-      
+
       // Test playback
       try {
         await videoElement.play();
-        console.log('🎬 [Video Playback Test] Video playback started successfully');
         videoElement.pause();
         videoElement.currentTime = 0;
       } catch (playError) {
-        console.error('🎬 [Video Playback Test] Failed to play video:', playError);
+        // Silently fail for video playback test errors
       }
-      
     } catch (error) {
-      console.error('🎬 [Video Playback Test] Failed to load video:', error);
-    }
-  }, [preloadedVideos]);
-
-  // Test video preloading from mediaAssets file
-  const testMediaAssetsVideoPreloading = useCallback(async () => {
-    console.log('🧪 [Media Assets Test] Testing video preloading from mediaAssets file...');
-    
-    try {
-      // Import the functions from mediaAssets
-      const { getVideoReviews, getVideoReviewThumbnails, preloadAllVideoReviews } = await import('@/lib/mediaAssets');
-      
-      console.log('🧪 [Media Assets Test] Functions imported successfully');
-      
-      // Get video reviews from mediaAssets
-      const videoReviews = getVideoReviews();
-      console.log('🧪 [Media Assets Test] Video reviews from mediaAssets:', videoReviews);
-      
-      // Get thumbnails from mediaAssets
-      const thumbnails = getVideoReviewThumbnails();
-      console.log('🧪 [Media Assets Test] Thumbnails from mediaAssets:', thumbnails);
-      
-      // Test preloading all videos
-      console.log('🧪 [Media Assets Test] Starting to preload all videos from mediaAssets...');
-      await preloadAllVideoReviews();
-      console.log('🧪 [Media Assets Test] Video preloading from mediaAssets completed');
-      
-    } catch (error) {
-      console.error('🧪 [Media Assets Test] Error testing mediaAssets video preloading:', error);
+      // Silently fail for video load test errors
     }
   }, []);
 
-  // Call debug function when component mounts or product changes
+  // Test video preloading from mediaAssets file
+  const testMediaAssetsVideoPreloading = useCallback(async () => {
+    try {
+      // Get video reviews from mediaAssets
+      const videoReviews = getVideoReviewsContent();
+
+      // Preload all videos from mediaAssets
+      for (const video of videoReviews) {
+        await testVideoPlayback(video);
+      }
+    } catch (error) {
+      // Silently fail for media assets test errors
+    }
+  }, []);
+
+  // Test mediaAssets video preloading when component mounts
   useEffect(() => {
-    console.log('[Video Reviews Debug] Component mounted or product changed, debugging video reviews...');
-    debugVideoReviews();
-    
-    // Also test mediaAssets video preloading
     testMediaAssetsVideoPreloading();
-  }, [debugVideoReviews, testMediaAssetsVideoPreloading]);
+  }, [testMediaAssetsVideoPreloading]);
 
   // Intersection Observer for video preloading
   const feelTheDifferenceRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
-    console.log('[Video Preloading] Setting up intersection observer for Feel the Difference section');
-    
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          console.log('[Video Preloading] Intersection observed:', entry.isIntersecting, entry.intersectionRatio);
-          if (entry.isIntersecting) {
-            console.log('[Video Preloading] Feel the Difference section visible, starting video preload...');
+          if (entry.isIntersecting && entry.intersectionRatio > 0.1) {
             preloadVideos();
             observer.disconnect(); // Only trigger once
           }
         });
       },
-      { threshold: 0.3 } // Trigger when 30% of the section is visible
+      { threshold: 0.1 } // Trigger when 30% of the section is visible
     );
 
     if (feelTheDifferenceRef.current) {
-      console.log('[Video Preloading] Observing Feel the Difference section');
       observer.observe(feelTheDifferenceRef.current);
-    } else {
-      console.log('[Video Preloading] Feel the Difference ref not found');
     }
 
     return () => {
-      console.log('[Video Preloading] Cleaning up intersection observer');
       observer.disconnect();
     };
   }, [preloadVideos]);
@@ -1312,61 +1274,40 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
     if (product.videoReviews && product.videoReviews.length > 0) {
       preloadVideos();
     }
-  }, [product.videoReviews]);
+  }, [product.videoReviews, preloadVideos]);
 
-  // Debug function to check video review thumbnails
-  const debugVideoReviewThumbnails = useCallback(() => {
-    console.log('[Store] Debugging video review thumbnails...');
-    console.log('[Store] Product video reviews:', product.videoReviews);
-    
-    if (product.videoReviews) {
-      product.videoReviews.forEach((review, index) => {
-        console.log(`[Store] Video Review ${index + 1}:`, {
-          id: review.id,
-          thumbnail: review.thumbnail,
-          videoUrl: review.videoUrl,
-          customerName: review.customerName
-        });
-        
-        // Check if thumbnail asset exists
-        const thumbnailAsset = getMediaAsset(review.thumbnail);
-        console.log(`[Store] Thumbnail asset for ${review.thumbnail}:`, thumbnailAsset);
-        
-        // Check if video asset exists
-        const videoAsset = getMediaAsset(review.videoUrl);
-        console.log(`[Store] Video asset for ${review.videoUrl}:`, videoAsset);
-      });
-    }
-  }, [product.videoReviews]);
+
 
   // Test thumbnail URLs directly
   const testThumbnailUrls = useCallback(async () => {
-    console.log('[Store] Testing thumbnail URLs directly...');
-    
-    if (product.videoReviews) {
-      for (const review of product.videoReviews) {
+    if (!product.videoReviews || product.videoReviews.length === 0) return;
+
+    for (let index = 0; index < product.videoReviews.length; index++) {
+      const review = product.videoReviews[index];
+      
+      if (review.thumbnail) {
         const thumbnailAsset = getMediaAsset(review.thumbnail);
         if (thumbnailAsset) {
-          console.log(`[Store] Testing thumbnail URL: ${thumbnailAsset.uploadLink}`);
-          
           try {
             const response = await fetch(thumbnailAsset.uploadLink, { method: 'HEAD' });
-            console.log(`[Store] Thumbnail ${review.thumbnail} status:`, response.status, response.ok);
-            
-            if (!response.ok) {
-              console.error(`[Store] Thumbnail ${review.thumbnail} failed to load:`, response.status, response.statusText);
-            }
+            // Silently handle thumbnail load errors
           } catch (error) {
-            console.error(`[Store] Thumbnail ${review.thumbnail} network error:`, error);
+            // Silently handle thumbnail network errors
           }
-        } else {
-          console.error(`[Store] Thumbnail asset not found: ${review.thumbnail}`);
         }
       }
     }
   }, [product.videoReviews]);
 
-
+  // Check if discount is already applied on page load
+  useEffect(() => {
+    const appliedDiscountPercentage = localStorage.getItem('wellnessDiscountPercentage');
+    const wellnessDiscountApplied = localStorage.getItem('wellnessDiscountApplied') === 'true';
+    
+    if (appliedDiscountPercentage && wellnessDiscountApplied) {
+      setDiscountApplied(true);
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -1571,10 +1512,11 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
       <div className="hidden lg:block pt-16"></div>
 
       {showPopupOffer && (
-        <PopupOffer
-          onClose={handlePopupClose}
-          onGoalSelect={handleGoalSelect}
-        />
+        <div>
+          <PopupOffer
+            onClose={handlePopupClose}
+          />
+        </div>
       )}
 
       {/* Admin Controls - Always Visible for Admin Users */}
@@ -1628,7 +1570,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
               <div className="lg:sticky lg:top-24 lg:self-start order-1 lg:order-1">
               {/* Product Images */}
               <div className="space-y-4 sm:space-y-6">
-                {/* Debug log for main product image */}
+
                 <div className="relative aspect-square bg-gradient-to-br from-muted/50 to-muted rounded-xl sm:rounded-2xl overflow-hidden shadow-lg sm:shadow-2xl shadow-black/10 border border-border/50">
                   <MediaImage
                     assetId={product.images[currentImageIndex]}
@@ -1796,7 +1738,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                       Save ${(getCurrentOriginalPrice() - finalPrice).toFixed(2)} ({discountPercentage}% OFF)
                   </Badge>
                     {(wellnessDiscountApplied && !wellnessDiscountUsed) && (
-                      <Badge variant="secondary" className="text-xs sm:text-sm px-2 sm:px-3 py-1 bg-orange-500 text-white">
+                      <Badge variant="secondary" className="text-xs sm:text-sm px-2 sm:px-3 py-1 bg-primary text-primary-foreground">
                         +{wellnessDiscountPercentage}% Extra Off
                       </Badge>
                     )}
@@ -1867,6 +1809,35 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                 </div>
 
                 {/* Quantity Selector */}
+                {/* Discount Code Input */}
+                <div className="bg-white border border-border/50 rounded-lg sm:rounded-xl p-4 sm:p-6 mb-4 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-base sm:text-lg font-semibold text-primary">Discount Code</span>
+                    {discountApplied && (
+                      <span className="text-xs sm:text-sm text-green-600 font-medium bg-green-50 px-2 sm:px-3 py-1 rounded-full">
+                        {wellnessDiscountPercentage}% OFF Applied!
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Enter discount code (e.g., WELLNESS10)"
+                      className="flex-1"
+                      value={discountCode}
+                      onChange={(e) => setDiscountCode(e.target.value)}
+                    />
+                    <Button 
+                      variant="outline" 
+                      onClick={applyDiscountCode}
+                      disabled={!discountCode.trim()}
+                    >
+                      Apply
+                    </Button>
+                  </div>
+                  
+
+                </div>
+
                 <div className="bg-white border border-border/50 rounded-lg sm:rounded-xl p-4 sm:p-6 mb-6 sm:mb-8 shadow-sm">
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-base sm:text-lg font-semibold text-primary">Quantity</span>
@@ -2442,7 +2413,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                                 assetId={video.thumbnail}
                                 alt={`Video testimonial by ${video.customerName}`}
                                 className="w-full h-full object-cover"
-                                fallbackUrl="/placeholder.svg"
+                                fallbackUrl="https://mro774wfph.ufs.sh/f/bwRfX2qUMqkgu0s6cMr5U3Hp2kVCI4csGZFedlbAq61QSPyt"
                                 errorFallback={
                                   <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
                                     <div className="text-center">
@@ -2632,7 +2603,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                                 assetId={video.thumbnail}
                                 alt={`Video testimonial by ${video.customerName}`}
                                 className="w-full h-full object-cover"
-                                fallbackUrl="/placeholder.svg"
+                                fallbackUrl="https://mro774wfph.ufs.sh/f/bwRfX2qUMqkgu0s6cMr5U3Hp2kVCI4csGZFedlbAq61QSPyt"
                                 errorFallback={
                                   <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
                                     <div className="text-center">
@@ -2706,17 +2677,18 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                     'Dynamic Dial', 'Iconic Look', 'Comfortable Fit', 'Versatile Style', 'Gifts', 
                     'Casual Wear', 'Watch Collectors', 'Daily Use'
                   ]).map((item, index) => {
-                    const icons = getBundleSectionHeader()?.benefitsIcons || ["⌚", "✨", "💎", "🌟", "🎯", "🔥", "💫", "🏆", "⭐"];
+                    const iconNames = getBundleSectionHeader()?.benefitsIcons || ["watch", "sparkles", "gem", "star", "target", "flame", "zap", "trophy", "star"];
+                    const IconComponent = getIconComponent(iconNames[index] || 'star');
                     return (
                       <div key={item} className="flex items-center gap-2 p-2 sm:p-3 rounded-lg bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/20">
-                        <span className="text-lg sm:text-xl">{icons[index] || '✨'}</span>
+                        <IconComponent className="h-5 w-5 text-primary" />
                         <span className="text-sm sm:text-base font-medium text-primary">{item}</span>
                       </div>
                     );
                   })}
                 </div>
                 <div className="flex items-center gap-2 mt-4 text-secondary font-semibold">
-                  <span className="text-lg">✨</span>
+                  <Star className="h-5 w-5 text-secondary" />
                   <span className="text-sm sm:text-base">
                     {getBundleSectionContent()?.ctaText || "And much more!"}
                   </span>
@@ -2738,7 +2710,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                     assetId="bundle-demonstration-video"
                     alt={getBundleSectionContent()?.description || "Bundle Product Demonstration - Watch how our watch bundle transforms your style"}
                     className="w-full h-full object-cover"
-                    fallbackUrl="placeholder-image"
+                    fallbackUrl="https://mro774wfph.ufs.sh/f/bwRfX2qUMqkgu0s6cMr5U3Hp2kVCI4csGZFedlbAq61QSPyt"
                     // Video-specific props
                     autoPlay={false}
                     muted={true}
@@ -3246,7 +3218,7 @@ const Store: React.FC<StoreProps> = ({ user, appId }) => {
                        // Media asset ID - get the actual video URL
                        const mediaAsset = getMediaAsset(selectedVideo.videoUrl);
                        if (mediaAsset) {
-                         console.log('[Video Modal] Playing media asset:', mediaAsset);
+                 
                          return (
                            <video
                              src={mediaAsset.uploadLink}

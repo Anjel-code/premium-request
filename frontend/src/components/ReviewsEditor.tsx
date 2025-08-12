@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -272,7 +272,7 @@ const ReviewsEditor: React.FC<ReviewsEditorProps> = ({
                             assetId={review.profileImage}
                             alt={review.name}
                             className="w-12 h-12 rounded-full object-cover"
-                            fallbackUrl="placeholder-image"
+                            fallbackUrl="https://mro774wfph.ufs.sh/f/bwRfX2qUMqkgu0s6cMr5U3Hp2kVCI4csGZFedlbAq61QSPyt"
                             errorFallback={
                               <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
                                 <span className="text-xs text-muted-foreground">Profile</span>

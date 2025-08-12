@@ -1,4 +1,3 @@
-import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
@@ -87,7 +86,7 @@ const ReturnRefundPolicy = () => {
               <ol className="list-decimal pl-6 space-y-2">
                 <li>
                   <strong>Contact Customer Support:</strong> Email us at
-                  returns@productconcierge.com or call +1 (555) 123-4567
+                  support@quibble.online
                 </li>
                 <li>
                   <strong>Provide Order Details:</strong> Include your order number,
@@ -236,10 +235,10 @@ const ReturnRefundPolicy = () => {
                 For questions about returns and refunds, please contact us:
               </p>
               <div className="bg-muted p-4 rounded-lg">
-                <p className="font-medium">Email: returns@productconcierge.com</p>
-                <p className="font-medium">Phone: +1 (555) 123-4567</p>
+                <p className="font-medium">Email: support@quibble.online</p>
+                {/* <p className="font-medium">Phone: +1 (555) 123-4567</p> */}
                 <p className="font-medium">Hours: Monday-Friday, 9 AM - 6 PM EST</p>
-                <p className="font-medium">Address: Returns Department, 123 Return Street, Refund City, RC 12345</p>
+                {/* <p className="font-medium">Address: Returns Department, 123 Return Street, Refund City, RC 12345</p> */}
               </div>
             </div>
           </section>

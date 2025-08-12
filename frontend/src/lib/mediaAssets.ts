@@ -168,6 +168,21 @@ export const generateOptimizedImageUrl = (
     fit?: 'cover' | 'contain' | 'fill';
   } = {}
 ): string => {
+  // Handle invalid or empty URLs
+  if (!originalUrl || originalUrl.trim() === '') {
+    return 'https://mro774wfph.ufs.sh/f/bwRfX2qUMqkgu0s6cMr5U3Hp2kVCI4csGZFedlbAq61QSPyt';
+  }
+  
+  // Handle relative paths that aren't valid URLs
+  if (originalUrl.startsWith('/') && !originalUrl.startsWith('//')) {
+    return 'https://mro774wfph.ufs.sh/f/bwRfX2qUMqkgu0s6cMr5U3Hp2kVCI4csGZFedlbAq61QSPyt';
+  }
+  
+  // Handle placeholder strings that aren't valid URLs
+  if (originalUrl === 'placeholder-image' || originalUrl === 'placeholder.svg') {
+    return 'https://mro774wfph.ufs.sh/f/bwRfX2qUMqkgu0s6cMr5U3Hp2kVCI4csGZFedlbAq61QSPyt';
+  }
+  
   try {
     const url = new URL(originalUrl);
     
@@ -193,13 +208,25 @@ export const generateOptimizedImageUrl = (
     // For non-UploadThing URLs, return original
     return originalUrl;
   } catch (error) {
-    console.warn('Failed to generate optimized URL:', error);
-    return originalUrl;
+    // Return the fallback URL for any URL parsing errors
+    return 'https://mro774wfph.ufs.sh/f/bwRfX2qUMqkgu0s6cMr5U3Hp2kVCI4csGZFedlbAq61QSPyt';
   }
 };
 
 // Generate responsive image URLs
 export const generateResponsiveImageUrls = (originalUrl: string, dimensions?: { width: number; height: number }) => {
+  // Handle invalid or empty URLs
+  if (!originalUrl || originalUrl.trim() === '') {
+    const fallbackUrl = 'https://mro774wfph.ufs.sh/f/bwRfX2qUMqkgu0s6cMr5U3Hp2kVCI4csGZFedlbAq61QSPyt';
+    return {
+      thumbnail: fallbackUrl,
+      small: fallbackUrl,
+      medium: fallbackUrl,
+      large: fallbackUrl,
+      original: fallbackUrl
+    };
+  }
+  
   if (!dimensions) {
     return {
       thumbnail: originalUrl,
@@ -247,25 +274,15 @@ export const generateResponsiveImageUrls = (originalUrl: string, dimensions?: { 
 
 // Security validation function
 export const validateMediaAsset = (asset: MediaAsset): boolean => {
-  console.log(`[validateMediaAsset] Validating asset: ${asset.name} (${asset.id})`);
-  console.log(`[validateMediaAsset] Upload link: ${asset.uploadLink}`);
-  
   try {
     const url = new URL(asset.uploadLink);
-    console.log(`[validateMediaAsset] Parsed URL hostname: ${url.hostname}`);
-    console.log(`[validateMediaAsset] Parsed URL pathname: ${url.pathname}`);
     
     // Check if domain is trusted
     const isTrustedDomain = TRUSTED_DOMAINS.some(domain => {
-      const matches = url.hostname === domain || url.hostname.endsWith(`.${domain}`);
-      console.log(`[validateMediaAsset] Checking domain ${domain}: ${matches}`);
-      return matches;
+      return url.hostname === domain || url.hostname.endsWith(`.${domain}`);
     });
     
-    console.log(`[validateMediaAsset] Is trusted domain: ${isTrustedDomain}`);
-    
     if (!isTrustedDomain) {
-      console.warn(`Untrusted domain for asset ${asset.name}: ${url.hostname}`);
       return false;
     }
     
@@ -273,29 +290,20 @@ export const validateMediaAsset = (asset: MediaAsset): boolean => {
     const isUploadThingUrl = url.hostname.endsWith('.ufs.sh');
     
     if (isUploadThingUrl) {
-      console.log(`[validateMediaAsset] UploadThing URL detected, skipping extension validation`);
-      console.log(`[validateMediaAsset] Asset ${asset.name} passed validation`);
       return true;
     }
     
     // Check if file extension is allowed (only for URLs that should have extensions)
     const hasValidExtension = ALLOWED_EXTENSIONS.some(ext => {
-      const matches = url.pathname.toLowerCase().endsWith(ext);
-      console.log(`[validateMediaAsset] Checking extension ${ext}: ${matches}`);
-      return matches;
+      return url.pathname.toLowerCase().endsWith(ext);
     });
     
-    console.log(`[validateMediaAsset] Has valid extension: ${hasValidExtension}`);
-    
     if (!hasValidExtension) {
-      console.warn(`Invalid file extension for asset ${asset.name}: ${url.pathname}`);
       return false;
     }
     
-    console.log(`[validateMediaAsset] Asset ${asset.name} passed validation`);
     return true;
   } catch (error) {
-    console.error(`Invalid URL for asset ${asset.name}:`, error);
     return false;
   }
 };
@@ -549,7 +557,7 @@ export const mediaAssets: MediaAsset[] = [
     priority: 'medium',
     textContent: {
       headerText: "Designed to impress:",
-      benefitsIcons: ["⌚", "✨", "💎", "🌟", "🎯", "🔥", "💫", "🏆", "⭐"]
+      benefitsIcons: ["watch", "sparkles", "gem", "star", "target", "flame", "zap", "trophy", "star"]
     }
   },
   {
@@ -1265,7 +1273,7 @@ export const mediaAssets: MediaAsset[] = [
     priority: 'low',
     textContent: {
       name: "William T.",
-      rating: 5,
+      rating: 4,
       comment: "I purchased this for my dad's birthday and he was thrilled. It looks very distinguished and classy. He says he gets compliments on it at work all the time!",
       date: "2024-01-03",
       verified: true,
@@ -1462,20 +1470,32 @@ export const mediaAssets: MediaAsset[] = [
       },
       faqs: [
         {
-          question: "How long does shipping take?",
-          answer: "We offer free 3-day shipping on all orders. Express shipping is available for an additional fee."
+          "question": "Is this watch water-resistant?",
+          "answer": "This watch is not waterproof and should not be submerged in water. It is designed for business and daily wear, and should be kept dry. Please avoid wearing it while swimming or showering."
         },
         {
-          question: "What's included in the warranty?",
-          answer: "All products come with a 1-year manufacturer warranty covering defects in materials and workmanship."
+          "question": "What kind of movement does the watch use?",
+          "answer": "The watch is powered by a reliable quartz movement from Mainland China, which is known for its accuracy and low-maintenance operation."
         },
         {
-          question: "Can I return the product if I'm not satisfied?",
-          answer: "Yes! We offer a 30-day money-back guarantee. If you're not completely satisfied, return the product for a full refund."
+          "question": "What are the dimensions of the watch?",
+          "answer": "The watch features a round alloy case with a thickness of 12.2mm. The stainless steel band has a length of 9 inches."
         },
         {
-          question: "Do you ship internationally?",
-          answer: "Currently, we ship to the United States, Canada, and select European countries. Contact us for international shipping options."
+          "question": "What is the band made of?",
+          "answer": "The band is made of durable and high-quality stainless steel with a bracelet clasp for a secure and comfortable fit."
+        },
+        {
+          "question": "What is the material of the dial window?",
+          "answer": "The dial window is made of glass, providing a clear and classic look for the Arabic numeral markers."
+        },
+        {
+          "question": "Does the watch have any special features?",
+          "answer": "Yes, it includes a complete calendar feature for added functionality and convenience."
+        },
+        {
+          "question": "What is the brand of this watch?",
+          "answer": "The watch is a product of RICECGO, a brand specializing in stylish and functional business watches."
         }
       ],
       shippingInfo: "Free 9-14 day shipping",
@@ -1530,11 +1550,7 @@ export const mediaAssets: MediaAsset[] = [
 
 // Helper functions for easy access
 export const getMediaAsset = (id: string): MediaAsset | undefined => {
-  console.log(`[getMediaAsset] Looking for asset with ID: ${id}`);
-  
   const asset = mediaAssets.find(a => a.id === id && a.isActive);
-  console.log(`[getMediaAsset] Found asset:`, asset);
-  
   return asset;
 };
 
@@ -1775,7 +1791,7 @@ export const getAllReviewsContent = (): Array<{
     asset.textContent?.comment
   );
   
-  console.log(`[getAllReviewsContent] Found ${reviewAssets.length} review assets:`, reviewAssets.map(a => a.id));
+  // console.log(`[getAllReviewsContent] Found ${reviewAssets.length} review assets:`, reviewAssets.map(a => a.id));
   
   // Sort by review ID number for consistent ordering
   reviewAssets.sort((a, b) => {
@@ -1795,7 +1811,7 @@ export const getAllReviewsContent = (): Array<{
     }
   });
   
-  console.log(`[getAllReviewsContent] Returning ${reviews.length} processed reviews:`, reviews.map(r => r.id));
+  // console.log(`[getAllReviewsContent] Returning ${reviews.length} processed reviews:`, reviews.map(r => r.id));
   
   return reviews;
 };
@@ -1853,8 +1869,6 @@ export const getVideoReviewsContent = (): Array<{
     asset.textContent?.customerName
   );
   
-  console.log(`[getVideoReviewsContent] Found ${videoReviewAssets.length} video review assets:`, videoReviewAssets.map(a => a.id));
-  
   // Sort by video review ID number for consistent ordering
   videoReviewAssets.sort((a, b) => {
     const aNum = parseInt(a.id.replace('video-review-', ''));
@@ -1875,67 +1889,33 @@ export const getVideoReviewsContent = (): Array<{
     }
   });
   
-  console.log(`[getVideoReviewsContent] Returning ${videoReviews.length} processed video reviews:`, videoReviews.map(r => r.id));
-  
   return videoReviews;
 };
 
-// Get video reviews with debugging
+// Get video reviews
 export const getVideoReviews = (): MediaAsset[] => {
-  console.log(`[getVideoReviews] Searching for video review assets...`);
-  
   const videoReviews = mediaAssets.filter(asset => 
     asset.category === 'video' && 
     asset.id.startsWith('video-review-') && 
     asset.isActive
   );
   
-  console.log(`[getVideoReviews] Found ${videoReviews.length} video reviews:`, videoReviews);
-  
-  // Log each video review with its details
-  videoReviews.forEach((review, index) => {
-    console.log(`[getVideoReviews] Video Review ${index + 1}:`, {
-      id: review.id,
-      name: review.name,
-      description: review.description,
-      uploadLink: review.uploadLink,
-      dimensions: review.dimensions
-    });
-  });
-  
   return videoReviews;
 };
 
-// Get video review thumbnails with debugging
+// Get video review thumbnails
 export const getVideoReviewThumbnails = (): MediaAsset[] => {
-  console.log(`[getVideoReviewThumbnails] Searching for video review thumbnail assets...`);
-  
   const thumbnails = mediaAssets.filter(asset => 
     asset.category === 'image' && 
     asset.id.startsWith('video-review-thumb-') && 
     asset.isActive
   );
   
-  console.log(`[getVideoReviewThumbnails] Found ${thumbnails.length} video review thumbnails:`, thumbnails);
-  
-  // Log each thumbnail with its details
-  thumbnails.forEach((thumb, index) => {
-    console.log(`[getVideoReviewThumbnails] Thumbnail ${index + 1}:`, {
-      id: thumb.id,
-      name: thumb.name,
-      description: thumb.description,
-      uploadLink: thumb.uploadLink,
-      dimensions: thumb.dimensions
-    });
-  });
-  
   return thumbnails;
 };
 
 // Preload all video reviews
 export const preloadAllVideoReviews = async (): Promise<void> => {
-  console.log(`[preloadAllVideoReviews] Starting to preload all video reviews...`);
-  
   const videoReviews = getVideoReviews();
   
   if (videoReviews.length === 0) {

@@ -83,10 +83,7 @@ export const MediaImage = forwardRef<HTMLVideoElement | HTMLImageElement, MediaI
   const videoRef = useRef<HTMLVideoElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   
-  // Special logging for main product image to debug URL issues
-  if (assetId === "product-main-image") {
-    console.log(`[MediaImage] Main product image - assetId: ${assetId}`);
-  }
+
   
   const { asset, url, isLoading, error, altText, dimensions } = useMediaAsset(assetId, {
     fallbackUrl,
@@ -115,16 +112,6 @@ export const MediaImage = forwardRef<HTMLVideoElement | HTMLImageElement, MediaI
 
   // Check if this is a video asset
   const isVideoAsset = asset?.category === 'video';
-  
-  // Debug logging for video assets
-  if (isVideoAsset) {
-    console.log(`[MediaImage] Video asset detected:`, {
-      assetId,
-      category: asset?.category,
-      url,
-      dimensions: asset?.dimensions
-    });
-  }
 
   // Generate optimized URLs (only for images)
   const optimizedUrls = useMemo(() => {
@@ -225,10 +212,7 @@ export const MediaImage = forwardRef<HTMLVideoElement | HTMLImageElement, MediaI
     return null as any;
   }, [isVideoAsset]);
 
-  // Special logging for main product image to show the URL being used
-  if (assetId === "product-main-image") {
-    console.log(`[MediaImage] Main product image - URL: ${url}, Loading: ${isLoading}, Error: ${error}`);
-  }
+
 
   if (isLoading) {
     return (
@@ -271,15 +255,6 @@ export const MediaImage = forwardRef<HTMLVideoElement | HTMLImageElement, MediaI
 
   // Render video element for video assets
   if (isVideoAsset) {
-    console.log(`[MediaImage] Rendering video element for ${assetId}:`, {
-      url,
-      autoPlay,
-      muted,
-      loop,
-      controls,
-      playsInline
-    });
-    
     return (
       <div 
         className={cn("relative overflow-hidden", className)}

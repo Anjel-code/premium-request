@@ -390,5 +390,76 @@ app.post("/api/chat", validateCSRF, async (req, res) => {
   });
 });
 
+// Add email sending endpoint
+app.post('/api/send-email', async (req, res) => {
+  try {
+    const { to, subject, htmlContent, fromEmail, fromName } = req.body;
+
+    // Validate required fields
+    if (!to || !subject || !htmlContent) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing required fields: to, subject, htmlContent' 
+      });
+    }
+
+    // Call Mailjet API
+    const mailjetApiKey = process.env.MAILJET_API_KEY || 'a5f02038e308caad17bfd205d8a9dcd0';
+    const mailjetApiSecret = process.env.MAILJET_API_SECRET || 'be327dee084cf1ac0b0370f036fc1591';
+    
+    const response = await fetch('https://api.mailjet.com/v3.1/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic ' + Buffer.from(`${mailjetApiKey}:${mailjetApiSecret}`).toString('base64')
+      },
+      body: JSON.stringify({
+        Messages: [
+          {
+            From: {
+              Email: fromEmail || 'info@quibble.online', // Back to the original domain email
+              Name: fromName || 'Quibble Watch Store'
+            },
+            To: [
+              {
+                Email: to,
+                Name: to.split('@')[0]
+              }
+            ],
+            Subject: subject,
+            HTMLPart: htmlContent
+          }
+        ]
+      })
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result.Messages && result.Messages[0].Status === 'success') {
+      console.log('📧 Email sent successfully:', result);
+      res.json({
+        success: true,
+        message: 'Email sent successfully',
+        data: result
+      });
+    } else {
+      console.error('❌ Email sending failed:', result);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to send email',
+        details: result
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Error sending email:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to send email',
+      details: error.message
+    });
+  }
+});
+
 const PORT = process.env.PORT || 4242;
 app.listen(PORT, () => console.log(`Backend server running on port ${PORT}`));

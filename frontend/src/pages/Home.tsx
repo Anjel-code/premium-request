@@ -28,10 +28,6 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
   const [isHeroImageLoaded, setIsHeroImageLoaded] = useState(false);
 
-  // Debug logging for MediaBackground
-  console.log('[Home] Component rendering');
-  console.log('[Home] About to render MediaBackground with assetId: home-hero-background');
-
   // Check if user is admin
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -62,7 +58,6 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
 
   // Handle hero image load
   const handleHeroImageLoad = () => {
-    console.log('[Home] Hero background image loaded successfully');
     setIsHeroImageLoaded(true);
   };
 
@@ -92,13 +87,14 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
         {isHeroImageLoaded && (
           <div className="relative container mx-auto text-center pt-24 sm:pt-32 md:pt-36 pb-24 sm:pb-32 md:pb-36 z-10">
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold text-white mb-4 sm:mb-6 animate-fade-in leading-tight drop-shadow-2xl">
-              Premium Wireless
-              <span className="block text-primary drop-shadow-2xl">Headphones</span>
+              Premium Men's
+              <span className="block text-primary drop-shadow-2xl">Business Watch</span>
             </h1>
             <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-white mb-6 sm:mb-8 max-w-3xl mx-auto animate-slide-up px-2 drop-shadow-lg">
-              Experience crystal-clear sound with our premium wireless headphones
-              featuring active noise cancellation, 30-hour battery life, and
-              premium comfort for all-day wear.
+              Experience
+timeless elegance with our premium business watch, featuring classic
+Arabic numeral markers, a durable stainless steel band, and reliable
+quartz movement.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center animate-scale-in px-2">
               <Button
@@ -126,7 +122,7 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
                 <div className="flex items-center justify-center mb-2">
                   <Users className="h-6 w-6 sm:h-8 sm:w-8 text-primary mr-2" />
                   <AnimatedCounter
-                    end={2370}
+                    end={1240}
                     suffix="+"
                     className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary"
                     duration={2500}
@@ -150,13 +146,13 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
                 <div className="flex items-center justify-center mb-2">
                   <Zap className="h-6 w-6 sm:h-8 sm:w-8 text-primary mr-2" />
                   <AnimatedCounter
-                    end={30}
-                    suffix="h"
+                    end={2}
+                    suffix="+ years"
                     className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary"
                     duration={2500}
                   />
                 </div>
-                <p className="text-white text-sm sm:text-base drop-shadow-md">Battery Life</p>
+                <p className="text-white text-sm sm:text-base drop-shadow-md">Quartz Movement</p>
               </div>
             </div>
           </div>
@@ -167,7 +163,7 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
        <section className="py-20 px-6 bg-gradient-to-br from-primary/5 via-secondary/5 to-primary/10">
          <div className="container mx-auto">
            <h2 className="text-4xl font-bold text-center text-primary mb-16">
-             Why Choose Our Headphones
+             Why Choose Our Watch
            </h2>
            <div className="grid md:grid-cols-3 gap-8">
                            <Card className="border-0 shadow-elegant bg-white/90 backdrop-blur-sm border border-white/50">
@@ -177,8 +173,7 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
                   </div>
                   <h3 className="text-xl font-semibold mb-4 text-primary">Premium Quality</h3>
                   <p className="text-muted-foreground">
-                    Built with premium materials and advanced technology for
-                    exceptional sound quality and durability.
+                    Crafted with high-quality alloy and stainless steel for exceptional durability and a sophisticated look.
                   </p>
                 </CardContent>
               </Card>
@@ -188,11 +183,10 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
                     <Clock className="h-8 w-8 text-primary" />
                   </div>
                   <h3 className="text-xl font-semibold mb-4 text-primary">
-                    Long Battery Life
+                    Elegant Design
                   </h3>
                   <p className="text-muted-foreground">
-                    Enjoy up to 30 hours of continuous playback with quick charge
-                    technology for convenience.
+                    Features classic Arabic numeral markers and a fluted bezel for a timeless, business-ready style.
                   </p>
                 </CardContent>
               </Card>
@@ -202,11 +196,10 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
                     <CheckCircle className="h-8 w-8 text-primary" />
                   </div>
                   <h3 className="text-xl font-semibold mb-4 text-primary">
-                    Active Noise Cancellation
+                    Reliable Movement
                   </h3>
                   <p className="text-muted-foreground">
-                    Immerse yourself in music with advanced noise cancellation
-                    technology that blocks out distractions.
+                    Powered by a precise quartz movement from Mainland China, ensuring accurate timekeeping.
                   </p>
                 </CardContent>
               </Card>
@@ -227,11 +220,10 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
                   <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-accent mt-1 flex-shrink-0" />
                   <div className="min-w-0 flex-1">
                     <h3 className="font-semibold text-base sm:text-lg mb-1 sm:mb-2">
-                      Active Noise Cancellation
+                      Arabic Numeral Markers
                     </h3>
                     <p className="text-muted-foreground text-sm sm:text-base">
-                      Advanced technology that blocks out ambient noise for an
-                      immersive listening experience.
+                      Classic and unique display with Arabic numerals for a distinguished look.
                     </p>
                   </div>
                 </div>
@@ -239,11 +231,10 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
                   <Clock className="h-5 w-5 sm:h-6 sm:w-6 text-accent mt-1 flex-shrink-0" />
                   <div className="min-w-0 flex-1">
                     <h3 className="font-semibold text-base sm:text-lg mb-1 sm:mb-2">
-                      30-Hour Battery Life
+                      Stainless Steel Band
                     </h3>
                     <p className="text-muted-foreground text-sm sm:text-base">
-                      Extended playback time with quick charge capability for
-                      uninterrupted listening sessions.
+                      Durable and stylish bracelet clasp band for a secure and comfortable fit.
                     </p>
                   </div>
                 </div>
@@ -251,11 +242,10 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
                   <Shield className="h-5 w-5 sm:h-6 sm:w-6 text-accent mt-1 flex-shrink-0" />
                   <div className="min-w-0 flex-1">
                     <h3 className="font-semibold text-base sm:text-lg mb-1 sm:mb-2">
-                      Premium Comfort
+                      Complete Calendar
                     </h3>
                     <p className="text-muted-foreground text-sm sm:text-base">
-                      Memory foam ear cushions and adjustable headband for
-                      all-day comfort without fatigue.
+                      Includes a complete calendar feature for added functionality and convenience.
                     </p>
                   </div>
                 </div>
@@ -271,26 +261,26 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
                   <div className="space-y-3 sm:space-y-6">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-white/50 backdrop-blur-sm rounded-lg border border-primary/20 gap-2 sm:gap-0">
                       <span className="text-muted-foreground text-sm sm:text-base">
-                        Basic sound quality
+                        Basic design
                       </span>
                       <span className="text-primary font-semibold text-sm sm:text-base">
-                        → Crystal clear audio
+                        → Timeless elegance
                       </span>
                     </div>
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-white/50 backdrop-blur-sm rounded-lg border border-primary/20 gap-2 sm:gap-0">
                       <span className="text-muted-foreground text-sm sm:text-base">
-                        Background noise
+                        Low-quality materials
                       </span>
                       <span className="text-primary font-semibold text-sm sm:text-base">
-                        → Active cancellation
+                        → Premium alloy & steel
                       </span>
                     </div>
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-white/50 backdrop-blur-sm rounded-lg border border-primary/20 gap-2 sm:gap-0">
                       <span className="text-muted-foreground text-sm sm:text-base">
-                        Short battery life
+                        Generic features
                       </span>
                       <span className="text-primary font-semibold text-sm sm:text-base">
-                        → 30-hour playback
+                        → Complete calendar
                       </span>
                     </div>
                   </div>
@@ -315,11 +305,10 @@ const Home = ({ setShowAuthModal, user, handleSignOut, setIsLoginView }) => {
       <section className="py-20 px-6">
         <div className="container mx-auto text-center">
           <h2 className="text-4xl font-bold text-primary mb-6">
-            Ready to Experience Premium Sound?
+            Ready to Experience Timeless Elegance?
           </h2>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join thousands of satisfied customers who trust our premium wireless
-            headphones for their daily listening needs.
+            Join thousands of satisfied customers who trust our premium business watch for their daily style needs.
           </p>
           <Button
             variant="glow"

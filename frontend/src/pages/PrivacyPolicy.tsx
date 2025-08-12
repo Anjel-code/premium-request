@@ -1,4 +1,3 @@
-import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
@@ -175,9 +174,9 @@ const PrivacyPolicy = () => {
                 practices, please contact us at:
               </p>
               <div className="bg-muted p-4 rounded-lg">
-                <p className="font-medium">Email: privacy@productconcierge.com</p>
-                <p className="font-medium">Phone: +1 (555) 123-4567</p>
-                <p className="font-medium">Address: 123 Privacy Street, Data City, DC 12345</p>
+                <p className="font-medium">Email: support@quibble.online</p>
+                {/* <p className="font-medium">Phone: +1 (555) 123-4567</p> */}
+                {/* <p className="font-medium">Address: 123 Privacy Street, Data City, DC 12345</p> */}
               </div>
             </div>
           </section>

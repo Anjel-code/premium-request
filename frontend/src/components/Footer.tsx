@@ -6,19 +6,18 @@ const Footer = () => {
       <div className="container mx-auto">
         <div className="grid md:grid-cols-4 gap-8">
           <div>
-            <h3 className="text-xl font-bold mb-4">Premium Audio</h3>
+            <h3 className="text-xl font-bold mb-4">Premium Watch</h3>
             <p className="text-primary-foreground/80">
-              Premium wireless headphones for the ultimate listening
-              experience.
+              A sophisticated business watch for a timeless look.
             </p>
           </div>
           <div>
             <h4 className="font-semibold mb-4">Features</h4>
             <ul className="space-y-2 text-primary-foreground/80">
-              <li>Active Noise Cancellation</li>
-              <li>30-Hour Battery Life</li>
-              <li>Premium Comfort</li>
-              <li>Bluetooth 5.0</li>
+              <li>Arabic Numeral Markers</li>
+              <li>Stainless Steel Band</li>
+              <li>Quartz Movement</li>
+              <li>Complete Calendar</li>
             </ul>
           </div>
           <div>
@@ -61,8 +60,8 @@ const Footer = () => {
           <div>
             <h4 className="font-semibold mb-4">Contact</h4>
             <ul className="space-y-2 text-primary-foreground/80">
-              <li>support@productconcierge.com</li>
-              <li>+1 (555) 123-4567</li>
+              <li>support@quibble.online</li>
+              {/* <li>+1 (555) 123-4567</li> */}
               <li>Available 24/7</li>
             </ul>
           </div>

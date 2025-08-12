@@ -3,36 +3,36 @@ import { collection, getDocs, query, limit } from "firebase/firestore";
 
 export const testFirebaseConnection = async () => {
   try {
-    console.log("Testing Firebase connection...");
+    // console.log("Testing Firebase connection...");
 
     // Test 1: Check if db is initialized
     if (!db) {
       throw new Error("Firestore database not initialized");
     }
-    console.log("✅ Firestore database initialized");
+    // console.log("✅ Firestore database initialized");
 
     // Test 2: Check if auth is initialized
     if (!auth) {
       throw new Error("Firebase Auth not initialized");
     }
-    console.log("✅ Firebase Auth initialized");
+    // console.log("✅ Firebase Auth initialized");
 
     // Test 3: Try to read from Firestore (without authentication)
     try {
       const testQuery = query(collection(db, "test"), limit(1));
       await getDocs(testQuery);
-      console.log("✅ Firestore read test successful");
+      // console.log("✅ Firestore read test successful");
     } catch (firestoreError) {
       // This is expected if the collection doesn't exist or rules don't allow read
-      console.log(
-        "⚠️ Firestore read test: Collection may not exist or rules restrict access"
-      );
-      console.log(
-        "This is normal for a new project. Firebase connection is working."
-      );
+      // console.log(
+      //   "⚠️ Firestore read test: Collection may not exist or rules restrict access"
+      // );
+      // console.log(
+      //   "This is normal for a new project. Firebase connection is working."
+      // );
     }
 
-    console.log("🎉 Firebase connection test passed!");
+    // console.log("🎉 Firebase connection test passed!");
     return true;
   } catch (error) {
     console.error("❌ Firebase connection test failed:", error);
@@ -63,6 +63,6 @@ export const checkEnvironmentVariables = () => {
     return false;
   }
 
-  console.log("✅ All required environment variables are set");
+  // console.log("✅ All required environment variables are set");
   return true;
 };
