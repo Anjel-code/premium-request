@@ -1,4 +1,4 @@
-// Email service using local backend proxy to avoid CORS issues
+// Email service using Netlify functions in production and local backend in development
 export interface EmailData {
   to: string;
   subject: string;
@@ -9,8 +9,14 @@ export interface EmailData {
 
 export const sendEmail = async (emailData: EmailData): Promise<boolean> => {
   try {
-    // Call our local backend endpoint which handles Mailjet API calls
-    const response = await fetch('http://localhost:4242/api/send-email', {
+    // Use Netlify functions in production, local backend in development
+    const isProduction = import.meta.env.PROD;
+    const apiUrl = isProduction 
+      ? '/.netlify/functions/send-email'
+      : 'http://localhost:4242/api/send-email';
+
+    // Call our backend endpoint which handles Mailjet API calls
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

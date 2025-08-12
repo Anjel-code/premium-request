@@ -37,19 +37,20 @@ exports.handler = async (event, context) => {
       };
     }
 
+    // Get API credentials from environment variables
+    const apiKey = process.env.MAILJET_API_KEY || 'a5f02038e308caad17bfd205d8a9dcd0';
+    const apiSecret = process.env.MAILJET_API_SECRET || 'be327dee084cf1ac0b0370f036fc1591';
+
     // Initialize Mailjet
-    const mailjet = Mailjet.connect(
-      'a5f02038e308caad17bfd205d8a9dcd0', // API Key
-      'a5f02038e308caad17bfd205d8a9dcd0'  // API Secret
-    );
+    const mailjet = Mailjet.connect(apiKey, apiSecret);
 
     // Send email
     const request = mailjet.post('send', { version: 'v3.1' }).request({
       Messages: [
         {
           From: {
-            Email: fromEmail || 'noreply@yourstore.com',
-            Name: fromName || 'Wellness Store'
+            Email: fromEmail || 'info@quibble.online',
+            Name: fromName || 'Quibble Wellness Store'
           },
           To: [
             {
